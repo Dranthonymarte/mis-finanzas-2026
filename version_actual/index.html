@@ -1,0 +1,2934 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles-desktop.css">
+<head>
+<meta charset="UTF-8">
+<title>Mis Finanzas 2026 — Anthony &amp; Isabel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Finanzas">
+<meta name="application-name" content="Mis Finanzas 2026">
+<meta name="theme-color" content="#0d1117">
+<meta name="description" content="Gestión financiera personal Anthony & Isabel 2026">
+<meta name="robots" content="noindex, nofollow">
+
+<!-- PWA: Apple touch icons (requeridos para iOS y Chrome install banner) -->
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+
+<!-- Preconexiones para reducir latencia en recursos críticos -->
+<link rel="preconnect" href="https://jcgoccaisemrfsuwwrrl.supabase.co" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+
+<link rel="manifest" href="manifest.json">
+
+<!--
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║            AI-CONTEXT v3 — MIS FINANZAS 2026 — DOCUMENTACIÓN COMPLETA       ║
+║            Batch-D · Service Worker v14 · Marzo 2026                        ║
+║            Plataforma: Cloudflare Pages → finanzasprueba.pages.dev          ║
+╠═══════════════════════════════════════════════════════════════════════════════╣
+║  ESTE COMENTARIO ES LA DOCUMENTACIÓN COMPLETA DEL SISTEMA.                  ║
+║  Está integrado en el código para que cualquier IA o desarrollador           ║
+║  que lea este archivo entienda el ecosistema sin necesidad de docs externas. ║
+║  No afecta la funcionalidad de la app en absoluto.                          ║
+║                                                                               ║
+║  PANEL INTERACTIVO: desde Ajustes → 📚 Documentación del sistema            ║
+║                     o con el atajo:  Ctrl + Shift + D                       ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  §1  VISIÓN GENERAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ¿Qué es?
+  PWA (Progressive Web App) de gestión financiera personal para Anthony &
+  Isabel Marte en Venezuela. SPA monolítica en un único index.html (~700 KB,
+  12,623 líneas) sin frameworks. Funciona instalada como app nativa sin tienda.
+
+  ¿Qué problema resuelve?
+  · Control dual de monedas: USD (principal) y Bs VEF con tasa BCV en vivo
+  · Registro colaborativo de dos usuarios en la misma base de datos
+  · Categorías y presupuestos personalizados por familia
+  · Proyección FIRE (Financial Independence, Retire Early)
+  · Modo offline con sincronización automática al reconectar
+  · Seguridad biométrica (WebAuthn FIDO2 — huella/Face ID)
+
+  Flujo de apertura:
+  1. Navegador → Cloudflare Pages CDN → index.html
+  2. SW v16 intercepta → network-first para app shell
+  3. CDN sync: supabase-js@2 (+ fallback unpkg) → scripts defer
+  4. Script bloque 3: sb = supabase.createClient(URL, KEY)
+  5. DOMContentLoaded: getSession() (try/catch) → sesión? → dashboard : login
+  6. Login: doLogin() → signInWithPassword() → onLoginSuccess()
+  7. loadFromSupabase() (5 queries paralelas) → recalcMonth() → render
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  §2  ARQUITECTURA TÉCNICA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Archivos del proyecto:
+  ┌─────────────────────┬───────────────────────────────────────────────────┐
+  │ index.html          │ App completa: HTML + CSS + 11 bloques JS          │
+  │ service-worker.js   │ SW v16: caché, offline, push, background sync     │
+  │ manifest.json       │ PWA: iconos, shortcuts, share_target              │
+  │ _headers            │ CSP + HSTS + X-Frame-Options (Cloudflare Pages)  │
+  └─────────────────────┴───────────────────────────────────────────────────┘
+
+  Tablas Supabase (proyecto: jcgoccaisemrfsuwwrrl):
+  ┌──────────────────────┬────────────────────────────────────────────────┐
+  │ movimientos          │ CRUD principal — fuente de verdad financiera   │
+  │ config_usuario       │ Tipos, categorías, subcats, presupuestos       │
+  │ tasas_cambio         │ rateBCV y rateEUR por mes                      │
+  │ fondo_emergencia     │ Meta y progreso del fondo de emergencia        │
+  │ cuentas              │ Cuentas bancarias y efectivo con saldo         │
+  │ registro_conexiones  │ Log de accesos para auditoría                  │
+  └──────────────────────┴────────────────────────────────────────────────┘
+
+  11 Bloques JS inline:
+  #1  L~1875  Viewport adaptativo (IIFE, corre antes de render)
+  #2  L~1974  Clase is-mobile en body (evita flash)
+  #3  L~3154  AUTH CRÍTICO: sb init, doLogin, onLoginSuccess, loadFromSupabase
+  #4  L~6723  Dashboard: KPIs, gráficos Chart.js, recalcMonth, renderTxnTable
+  #5  L~7200  Modo offline: setOfflineMode, cola movimientos, SW registration
+  #6  L~7600  Biométrico WebAuthn: initBiometric, doBiometricLogin
+  #7  L~9000  Cuentas bancarias CRUD: renderWalletCards, transferencias
+  #8  L~9600  Navegación PWA: pwaNavRial, sidebar, FAB, control de modales
+  #9  L~10100 IA Groq: askGroq, runIAInline, renderIAText, scanner OCR
+  #10 L~11000 PIN lock, autolock, recurrentes, presupuestos, modo viaje
+  #11 L~12400 Cuentas v2, export XLSX/PDF, Email backup, auditoría
+
+  Variables globales críticas:
+  ┌───────────────┬────────────────────────────────────────────────────────┐
+  │ sb            │ SupabaseClient — nunca null si el CDN cargó            │
+  │ currentUser   │ User | null — asignado en doLogin y onLoginSuccess     │
+  │ EXCEL_DATA    │ {mes:{ingresos,gastos,ahorros,transactions[]}} — fuente │
+  │ CONFIG        │ tipos, categorías, subcats, presupuestos (de Supabase) │
+  │ CUENTAS       │ Array — .moneda = "USD" o "BS" ÚNICAMENTE              │
+  │ rateBCV       │ Bs por 1 USD — API BCV o input manual                  │
+  │ currentMonth  │ "Enero" | "Febrero" | ... — mes activo del dashboard   │
+  └───────────────┴────────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  §3  REGLAS CRÍTICAS (NUNCA VIOLAR)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  🔴 calcFire() NO suma localStorage — usa EXCEL_DATA[m].ahorros
+     → sumar localStorage.finanzas_cochinito_v2 causaría doble conteo (FIX-12)
+
+  🔴 TODO texto de IA → renderIAText() ANTES de .innerHTML
+     → sin esto los caracteres ~ aparecen en pantalla
+
+  🔴 CUENTAS[].moneda solo tiene "USD" o "BS"
+     → "internacional" NO existe en el schema (FIX-17)
+
+  🔴 modal-cochinito NO EXISTE — el cochinito es una card del dashboard
+
+  🔴 CACHE_VERSION debe incrementarse en cada deploy (v16 → v17 → v18...)
+
+  🔴 const sb = supabase.createClient() es la PRIMERA línea del bloque 3
+     → nunca moverla ni envolverla en async
+     ⚠️ ACTUALIZADO Batch-F: sb ahora es `let sb = null` en bloque 3 y se
+        asigna en DOMContentLoaded DESPUÉS de await _sbLoadPromise.
+        La regla original queda obsoleta — no restaurar el patrón sincrónico.
+
+  🔴 showCardInfo tiene una sola versión unificada que delega a _showCardInfoV2
+
+  🔴 DOCUMENTAR TODO CAMBIO — REGLA ABSOLUTA PARA IAs Y DESARROLLADORES
+     ══════════════════════════════════════════════════════════════════════
+     Cualquier modificación a index.html, service-worker.js, _headers o
+     manifest.json DEBE dejar registro ANTES de cerrar la sesión de trabajo.
+     Sin excepción. Sin importar si el cambio es "pequeño".
+
+     ¿Qué registrar en §4?
+       · ID del fix (FIX-XX o nombre descriptivo)
+       · Archivo y línea aproximada donde se hizo el cambio
+       · Causa raíz del problema (no solo el síntoma)
+       · Efecto que tenía el bug / qué rompía
+       · Descripción exacta de la solución aplicada
+       · Punto de reversión: cómo deshacer si el fix introduce otro bug
+
+     ¿Qué actualizar en §7?
+       · Si el cambio es fix o feat: nueva entrada en el Batch activo
+       · Bump de CACHE_VERSION en service-worker.js (v14 → v15 → ...)
+       · Actualizar "Sincronizado con: Batch-X" en _headers
+
+     ¿Por qué es irrompible esta regla?
+       · Este archivo es monolítico (~13.000 líneas, sin repo git visible)
+       · El AI-CONTEXT ES el historial — no existe otro lugar
+       · Un bug no documentado = el próximo que trabaje aquí repite el error
+       · Un fix no documentado = no se puede revertir con seguridad
+       · Batch-E existe precisamente porque Batch-D documentó FIX-BTN
+         en el changelog pero NO lo implementó realmente → se repitió trabajo
+
+     Formato mínimo aceptable para registrar un cambio:
+       FIX-XX  archivo:línea — descripción de qué se cambió
+                Causa: por qué fallaba
+                Fix:   qué se hizo exactamente
+                Revert: cómo deshacerlo
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  §4  HISTORIAL DE FIXES (BATCH-D — MARZO 2026)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  FIX-1   onLoginSuccess: Chart.js onerror→resolve (no rompe login si CDN falla)
+  FIX-2   doLogin: try/catch + null-check en data.user post signInWithPassword
+  FIX-6   txn-table: td:last-child sticky + bg en hover corregido
+  FIX-9   pwaNavRial('dashboard'): cierra 8 modales + closeFabMenu antes de ir
+  FIX-12  calcFire: eliminado bloque try{} que sumaba localStorage (doble conteo)
+  FIX-13  populateRecCatSelect: llama updateRecSubcats() al finalizar
+  FIX-14  settNav('perfil'): repobla sett-nombre antes de mostrar el panel
+  FIX-15  login-screen: display:flex por defecto; ocultado solo si hay sesión
+  FIX-17  updateTransferAmountDisplay: moneda detecta "USD"/"BS", no "internacional"
+  FIX-BTN login-btn: touchend+click listeners, touch-action:manipulation (iOS)
+  SW-FIX  service-worker.js: doble ;; → bump a v14
+  CDN-FIX supabase-js: onerror con fallback a unpkg.com
+  CSP-FIX _headers: https:// explícito en script-src + unpkg agregado
+
+  ── BATCH-F · Marzo 2026 (CDN async loader) ─────────────────────────────────
+  PUNTO DE REVERSIÓN: Batch-E (restaurar la línea <script src="sw-loader.js"></script>
+<!-- Resto de librerías diferidas — no bloquean el render -->
+<script src="sw-loader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+<link rel="stylesheet" href="styles.css">
+<script src="viewport.js"></script>
+<script src="https://js.hcaptcha.com/1/api.js?onload=onHcaptchaLoad&render=explicit" async defer></script>
+<script>
+function onHcaptchaLoad() {
+  const el = document.getElementById('h-captcha-login');
+  if (el && typeof hcaptcha !== 'undefined') {
+    hcaptcha.render('h-captcha-login', { sitekey: '592a2770-b3ac-4a30-b652-fd2c42564a5e', theme: 'dark' });
+  }
+}
+</script>
+</head>
+<body>
+<script>
+// Aplicar clase is-mobile inmediatamente al cargar body
+(function(){
+  var ua = navigator.userAgent;
+  var isMob = /Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(ua) ||
+              window.screen.width <= 820 || window.innerWidth <= 820 ||
+              (navigator.maxTouchPoints > 0 && window.screen.width < 900);
+  if (isMob) {
+    document.body.classList.add('is-mobile');
+    document.body.classList.add('is-android', /Android/i.test(ua));
+    document.body.classList.add('is-ios', /iPhone|iPad|iPod/i.test(ua));
+  }
+  if (window._applyViewport) window._applyViewport();
+})();
+</script>
+<!-- App URL: ganache-cool-25381b.netlify.app -->
+<!-- ═══ PANTALLA DE LOGIN ═══ -->
+<!-- ═══ BANNER OFFLINE ═══ -->
+<div id="offline-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#b62324;color:#fff;padding:10px 16px;font-size:.78rem;font-weight:600;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.5);animation:toastIn .3s ease">
+  <span>📵 Sin conexión a internet — Solo lectura. Los registros, ediciones y eliminaciones no están disponibles hasta que te reconectes.</span>
+</div>
+
+<!-- Banner instalación PWA — directo en body, visible en login Y dentro de la app -->
+<div id="pwa-install-banner" style="display:none;position:fixed;bottom:16px;left:16px;right:16px;background:linear-gradient(135deg,#1a3626,#0d2137);border:1px solid #3fb950;border-radius:12px;padding:14px 16px;z-index:100000;box-shadow:0 4px 20px rgba(0,0,0,.5)">
+  <div style="display:flex;align-items:center;gap:12px">
+    <span style="font-size:1.6rem;flex-shrink:0">📲</span>
+    <div style="flex:1">
+      <div style="font-size:.8rem;font-weight:700;color:#e6edf3">Instalar Finanzas 2026</div>
+      <div style="font-size:.68rem;color:#8b949e;margin-top:2px">Accede sin browser, más rápido y offline</div>
+    </div>
+    <div style="display:flex;gap:6px;flex-shrink:0">
+      <button onclick="dismissInstallBanner()" style="background:none;border:1px solid #30363d;color:#8b949e;padding:5px 10px;border-radius:7px;font-size:.7rem;cursor:pointer">Ahora no</button>
+      <button onclick="triggerPWAInstall()" style="background:#238636;border:none;color:#fff;padding:5px 14px;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer">✅ Instalar</button>
+    </div>
+  </div>
+</div>
+
+<div id="splash-overlay" style="position:fixed;inset:0;background:#0d1117;z-index:999999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;transition:opacity .3s">
+  <div style="font-size:2.5rem">💰</div>
+  <div style="font-size:.8rem;color:#3fb950;letter-spacing:.15em;text-transform:uppercase;font-weight:700">Mis Finanzas</div>
+  <div style="width:32px;height:2px;background:#21262d;border-radius:2px;overflow:hidden;margin-top:8px">
+    <div style="height:100%;background:#3fb950;border-radius:2px;animation:splashLoad 1.2s ease infinite"></div>
+  </div>
+</div>
+<style>@keyframes splashLoad{0%{width:0;margin-left:0}50%{width:100%;margin-left:0}100%{width:0;margin-left:100%}}</style>
+<div id="login-screen" style="display:flex;position:fixed;inset:0;background:#0d1117;z-index:99999;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#161b22;border:1px solid #30363d;border-radius:14px;padding:36px 32px;width:360px;max-width:100%">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-size:2rem;margin-bottom:8px">💰</div>
+      <h2 style="color:#e6edf3;font-size:1.2rem;font-weight:700">Mis Finanzas 2026</h2>
+      <p style="color:#8b949e;font-size:.75rem;margin-top:4px">Anthony Marte — Acceso privado</p>
+    </div>
+    <div id="login-error" style="display:none;background:#3d1a1a;border:1px solid #f85149;border-radius:6px;padding:8px 12px;font-size:.73rem;color:#f85149;margin-bottom:12px"></div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:.72rem;color:#8b949e;display:block;margin-bottom:4px">Correo</label>
+      <input id="login-email" type="email" placeholder="tu@correo.com" maxlength="100" style="width:100%;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:9px 12px;border-radius:7px;font-size:.82rem;outline:none" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="font-size:.72rem;color:#8b949e;display:block;margin-bottom:4px">Contraseña</label>
+      <input id="login-pass" type="password" placeholder="••••••••" maxlength="72" style="width:100%;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:9px 12px;border-radius:7px;font-size:.82rem;outline:none" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+   
+    <button id="login-btn" style="width:100%;background:#238636;color:#fff;border:none;padding:10px;border-radius:7px;font-size:.85rem;font-weight:600;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none">Entrar</button>
+    <div style="display:flex;align-items:center;gap:8px;margin:14px 0 2px">
+      <div style="flex:1;height:1px;background:#30363d"></div>
+      <span style="font-size:.68rem;color:#484f58">o continúa con</span>
+      <div style="flex:1;height:1px;background:#30363d"></div>
+    </div>
+    <button onclick="doGoogleLogin()" style="width:100%;background:#fff;color:#1a1a1a;border:none;padding:9px;border-radius:7px;font-size:.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;touch-action:manipulation">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Continuar con Google
+    </button>
+    <div style="text-align:center;margin-top:10px">
+      <button onclick="openForgotModal()" style="background:none;border:none;color:#8b949e;font-size:.7rem;cursor:pointer;text-decoration:underline">¿Olvidaste tu contraseña?</button>
+    </div>
+    
+
+    <div style="text-align:center;margin-top:12px">
+      <button onclick="showRegister()" style="background:none;border:none;color:#58a6ff;font-size:.72rem;cursor:pointer;text-decoration:underline">¿Primera vez? Crear cuenta</button>
+    </div>
+    <div id="register-section" style="display:none;margin-top:16px;border-top:1px solid #30363d;padding-top:16px">
+      <p style="font-size:.7rem;color:#8b949e;margin-bottom:10px">Crear nueva cuenta:</p>
+      <input id="reg-email" type="email" placeholder="correo" maxlength="100" style="width:100%;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:8px 10px;border-radius:6px;font-size:.78rem;outline:none;margin-bottom:8px">
+      <input id="reg-pass" type="password" placeholder="contraseña (min 6 caracteres)" maxlength="72" style="width:100%;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:8px 10px;border-radius:6px;font-size:.78rem;outline:none;margin-bottom:10px">
+      <button onclick="doRegister()" style="width:100%;background:#1f4068;color:#58a6ff;border:1px solid #1f4068;padding:8px;border-radius:6px;font-size:.78rem;cursor:pointer;font-weight:600">Registrarse</button>
+    </div>
+  </div>
+  <!-- Banner instalación PWA movido fuera del login-screen -->
+</div>
+
+<div id="app-shell" style="display:none">
+
+<!-- ═══ DESKTOP SIDEBAR ═══ -->
+<div id="desktop-sidebar">
+  <div class="sidebar-logo">
+    💰 MIS FINANZAS
+    <div class="sidebar-logo-sub">Anthony & Isabel · 2026</div>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="sidebar-item active" onclick="sidebarNav('dashboard')" id="sb-dashboard">
+      <span class="s-icon">🏠</span><span class="s-label">Inicio</span>
+    </button>
+    <button class="sidebar-item" onclick="openModalCuentas();sidebarNav('cuentas')" id="sb-cuentas">
+      <span class="s-icon">💳</span><span class="s-label">Cuentas</span>
+    </button>
+    <button class="sidebar-item" onclick="openSearch();sidebarNav('movimientos')" id="sb-movimientos">
+      <span class="s-icon">↔️</span><span class="s-label">Movimientos</span>
+    </button>
+    <button class="sidebar-item" onclick="openEnvelopeBudget();sidebarNav('presupuesto')" id="sb-presupuesto">
+      <span class="s-icon">✉️</span><span class="s-label">Presupuesto</span>
+    </button>
+    <button class="sidebar-item" onclick="openIA();sidebarNav('ia')" id="sb-ia">
+      <span class="s-icon">🤖</span><span class="s-label">IA Financiera</span>
+    </button>
+    <button class="sidebar-item" onclick="openIntelFinanciera();sidebarNav('analisis')" id="sb-analisis">
+      <span class="s-icon">🧠</span><span class="s-label">Análisis</span>
+    </button>
+    <button class="sidebar-item" onclick="openListaCompras();sidebarNav('lista')" id="sb-lista">
+      <span class="s-icon">🛒</span><span class="s-label">Lista Compras</span>
+    </button>
+    <button class="sidebar-item" onclick="openDineroFuera();sidebarNav('dinero')" id="sb-dinero">
+      <span class="s-icon">💰</span><span class="s-label">Dinero Fuera</span>
+    </button>
+    <button class="sidebar-item" onclick="openBackupPanel();sidebarNav('respaldo')" id="sb-respaldo">
+      <span class="s-icon">💾</span><span class="s-label">Respaldo</span>
+    </button>
+    <button class="sidebar-item" onclick="openSettings();sidebarNav('config')" id="sb-config">
+      <span class="s-icon">⚙️</span><span class="s-label">Configuración</span>
+    </button>
+    <button class="sidebar-item" onclick="doLogout()" style="margin-top:8px">
+      <span class="s-icon">🚪</span><span class="s-label" style="color:#f85149">Salir</span>
+    </button>
+  </nav>
+  <div class="sidebar-profile">
+    <div class="sidebar-avatar" id="sidebar-avatar">A</div>
+    <div>
+      <div style="font-size:10px;color:#e6edf3;font-weight:600" id="sidebar-name">Anthony</div>
+      <div style="font-size:9px;color:#8b949e">Plan Personal</div>
+    </div>
+  </div>
+</div>
+
+<div class="header">
+  <div class="header-left">
+    <h1>💳 Mis Finanzas 2026</h1>
+    <p>Anthony Marte · Dashboard Personal</p>
+  </div>
+  <div class="header-actions">
+    <span class="header-badge"><span class="live-dot"></span> En vivo</span>
+    <span class="header-badge" style="border-color:#30363d;color:var(--muted)">📅 Marzo 2026</span>
+    <button class="btn-header desktop-only" onclick="openCalc()">🧮 Calculadora</button>
+    <button id="btn-pwa-install" onclick="" style="display:none;background:#238636;border:1px solid #3fb950;color:#fff;padding:5px 10px;border-radius:6px;font-size:.7rem;cursor:pointer;align-items:center;gap:5px;font-weight:600">📲 Instalar App</button>
+    <button class="btn-header desktop-only" onclick="openConexiones()" style="border-color:#58a6ff;color:#58a6ff">🔐 Sesiones</button>
+    <button class="btn-header desktop-only" onclick="openBackupPanel()" style="border-color:#3fb950;color:#3fb950">💾 Respaldo</button>
+    <button class="btn-header desktop-only" onclick="openSettings()">⚙️ Configuración</button>
+    <button class="btn-header desktop-only" onclick="openIA()" style="border-color:#bc8cff;color:#bc8cff">🤖 IA Llama</button>
+    <button class="btn-header desktop-only" onclick="openDineroFuera()" style="border-color:#3fb950;color:#3fb950">💰 Dinero Fuera</button>
+    <button class="btn-header desktop-only" onclick="openIntelFinanciera()" style="border-color:#e3b341;color:#e3b341">🧠 Análisis</button>
+    <button class="btn-header primary mobile-sm" onclick="sendReport()">📸 Informe</button>
+    <button class="btn-header desktop-only" onclick="openConexiones()" style="border-color:#58a6ff;color:#58a6ff" title="Registro de conexiones">🔐 Sesiones</button>
+    <button class="btn-header" id="btn-desktop-mode" onclick="toggleDesktopMode()" style="font-size:.65rem" title="Visualizar en modo escritorio">🖥️</button>
+    <button class="btn-header" onclick="doLogout()" style="border-color:#f85149;color:#f85149" title="Cerrar sesión">🚪 Salir</button>
+    <button onclick="openNovedades()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:4px 9px;border-radius:5px;font-size:var(--font-xs);cursor:pointer;display:none" id="btn-novedades" class="desktop-only">✨ Novedades</button> <span id="user-email-badge" style="font-size:.65rem;color:#8b949e;display:none"></span>
+  </div>
+</div>
+
+<!-- CURRENCY BAR -->
+<div class="currency-bar">
+  <div style="font-size:.68rem;color:var(--muted);font-weight:600;white-space:nowrap">Moneda:</div>
+  <div class="currency-selector">
+    <button class="currency-btn active" onclick="setCurrency('USD')" id="cur-USD">$ USD</button>
+    <button class="currency-btn" onclick="setCurrency('BS')" id="cur-BS">Bs VEF</button>
+    <button class="currency-btn" onclick="setCurrency('EUR')" id="cur-EUR">€ EUR</button>
+  </div>
+  <div class="rate-input-group">
+    <label>Bs / $ (BCV)</label>
+    <input type="number" class="rate-input" id="rate-bcv" value="431.01" oninput="updateRates()" placeholder="Ej: 431">
+  </div>
+  <div class="rate-input-group">
+    <label>Bs / € (EUR)</label>
+    <input type="number" class="rate-input" id="rate-eur" value="499.62" oninput="updateRates()" placeholder="Ej: 499">
+  </div>
+  <div id="currency-display" style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:1px">
+    <span style="font-size:.68rem;color:var(--muted)">1 $ = <span id="cd-bcv-val" style="color:#e3b341;font-weight:600">431.01</span> Bs &middot; 1 &euro; = <span id="cd-eur-val" style="color:#e3b341;font-weight:600">499.62</span> Bs</span>
+    <span style="font-size:.59rem;color:#484f58">&#128197; <span id="cd-fecha">hoy</span> &middot; bcv.org.ve</span>
+  </div>
+</div>
+
+<div class="topbar" id="topbar-desktop">
+  <div class="month-tabs" id="month-tabs"></div>
+  <div class="topbar-right">
+    <button class="btn-header" id="btn-activar-mes" onclick="activarSiguienteMes()" style="font-size:.7rem;border-color:#3fb950;color:#3fb950;display:none" title="Activar el siguiente mes">➕ Mes</button>
+    <button class="btn-add" onclick="openModal()">+ Nuevo</button>
+    <button class="btn-header" onclick="openSearch()" style="font-size:.7rem">🔍 Buscar</button>
+    <button class="btn-header" id="btn-close-month" onclick="toggleCloseMonth()" style="font-size:.7rem">🔒 Cerrar</button>
+    <button class="btn-header" onclick="openReorganize()" style="font-size:.7rem;border-color:#bc8cff;color:#bc8cff" title="Reorganizar secciones del dashboard">🔀 Orden</button>
+  </div>
+</div>
+
+<!-- MOBILE TOPBAR con dropdown de mes -->
+<div class="mobile-topbar" id="mobile-topbar">
+  <div class="mobile-month-row">
+    <select id="mobile-month-select" onchange="switchMonth(this.value)" class="mobile-month-select">
+    </select>
+    <span id="mobile-month-status" style="font-size:.65rem;color:var(--muted)"></span>
+  </div>
+  <!-- Tasas visibles en mobile -->
+  <div id="mobile-rates-strip" style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;background:#0d1117;border-radius:8px;padding:6px 10px;border:1px solid #21262d">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:.72rem;color:#e6edf3">💵 <span id="mob-bcv-val" style="color:#e3b341;font-weight:700">--</span> Bs/$</span>
+      <span style="font-size:.62rem;color:#484f58">·</span>
+      <span style="font-size:.72rem;color:#e6edf3">💶 <span id="mob-eur-val" style="color:#e3b341;font-weight:700">--</span> Bs/€</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span id="mob-rate-fecha" style="font-size:.6rem;color:#484f58">bcv.org.ve</span>
+      <button onclick="fetchTasaBCV(true)" title="Actualizar tasa" style="background:#1c2128;border:1px solid #30363d;color:#58a6ff;font-size:.72rem;padding:3px 7px;border-radius:5px;cursor:pointer;line-height:1">⟳</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ═══ HERO BALANCE — MOBILE ONLY ═══ -->
+
+<!-- ═══ PUSH NOTIFICATIONS BANNER ═══ -->
+<div id="push-notif-banner" style="display:none">
+  <span class="pnb-text">🔔 Activa notificaciones para alertas de pagos y movimientos de Isabel</span>
+  <button class="pnb-btn" onclick="requestPushPermission()">Activar</button>
+  <button class="pnb-close" onclick="dismissPushBanner()">✕</button>
+</div>
+
+<div id="offline-banner">📡 Sin conexión — los cambios se sincronizarán al reconectar</div>
+<!-- HERO UNIT: bloque draggable completo (balance + ingresos + gastos) -->
+<div id="dash-hero-unit" data-label="🏦 Balance y Finanzas" style="position:relative">
+  <span class="drag-handle" style="position:absolute;top:8px;right:8px;z-index:2;font-size:14px;color:#484f58;cursor:grab;user-select:none;opacity:.6" title="Mover bloque">⠿</span>
+  <div id="hero-balance-section">
+    <div class="hero-card">
+      <div class="hero-meta-row">
+        <div class="hero-label" style="margin-bottom:0">Balance Total</div>
+        <div style="display:flex;gap:4px">
+          <button class="hero-micro-btn" id="btn-hide-balance" title="Ocultar/mostrar cifras"
+            onclick="toggleHideAmounts()">👁️</button>
+          <button class="hero-micro-btn" title="¿Qué es el balance total?"
+            onclick="showCardInfo('kpi-balance')">ℹ️</button>
+          <button class="hero-micro-btn" title="Analizar con IA"
+            onclick="openIAWithAnalysis()">🤖</button>
+        </div>
+      </div>
+      <div class="hero-amount">
+        <span class="hero-symbol" id="hero-symbol">$</span>
+        <span class="hero-int" id="hero-int">0</span>
+        <span class="hero-dec" id="hero-dec">.00</span>
+      </div>
+      <div class="hero-bs" id="hero-bs">Bs —</div>
+      <div class="hero-pills" id="hero-pills">
+        <div class="hero-pill active" id="pill-USD" onclick="heroSetCurrency('USD')">USD</div>
+        <div class="hero-pill" id="pill-BS"  onclick="heroSetCurrency('BS')">Bs</div>
+        <div class="hero-pill" id="pill-EUR" onclick="heroSetCurrency('EUR')">EUR</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INCOME / EXPENSE MINI CARDS -->
+  <div id="mobile-inc-exp">
+    <div class="inc-card">
+      <div class="inc-exp-micro">
+        <div class="inc-exp-row">
+          <div class="inc-exp-dot green">↑</div>
+          <span class="inc-exp-label inc-label">Ingresos</span>
+        </div>
+        <div style="display:flex;gap:3px">
+          <button class="mini-info-btn" onclick="showCardInfo('kpi-ingresos')" title="Info">ℹ️</button>
+          <button class="mini-ia-btn" onclick="askCardIA('k-ingresos')" title="IA">🤖</button>
+        </div>
+      </div>
+      <div class="inc-val" id="mob-inc-val">$0</div>
+    </div>
+    <div class="exp-card">
+      <div class="inc-exp-micro">
+        <div class="inc-exp-row">
+          <div class="inc-exp-dot red">↓</div>
+          <span class="inc-exp-label exp-label">Gastos</span>
+        </div>
+        <div style="display:flex;gap:3px">
+          <button class="mini-info-btn" onclick="showCardInfo('kpi-gastos')" title="Info">ℹ️</button>
+          <button class="mini-ia-btn" onclick="askCardIA('k-gastos')" title="IA">🤖</button>
+        </div>
+      </div>
+      <div class="exp-val" id="mob-exp-val">$0</div>
+    </div>
+  </div>
+</div>
+
+<!-- QUICK ACTIONS — horizontal scroll -->
+<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 14px 2px">
+  <span style="font-size:.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Accesos rápidos</span>
+  <button id="btn-reorder-shortcuts" onclick="toggleShortcutReorder()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:2px 7px;font-size:.6rem;cursor:pointer">🔀 Orden</button>
+</div>
+<div id="mobile-quick-actions">
+  <button class="quick-btn" onclick="openCalc()"><div class="quick-icon">🧮</div><span class="quick-label">Calculadora</span></button>
+  <button class="quick-btn" onclick="openModalCuentas()"><div class="quick-icon">💳</div><span class="quick-label">Cuentas</span></button>
+  <button class="quick-btn" onclick="openSearch()"><div class="quick-icon">🔍</div><span class="quick-label">Buscar</span></button>
+  <button class="quick-btn" onclick="openIA()"><div class="quick-icon">🤖</div><span class="quick-label">IA</span></button>
+  <button class="quick-btn" onclick="openDineroFuera()"><div class="quick-icon">💰</div><span class="quick-label">Dinero Fuera</span></button>
+  <button class="quick-btn" onclick="openIntelFinanciera()"><div class="quick-icon">🧠</div><span class="quick-label">Análisis</span></button>
+  <button class="quick-btn" onclick="openTransferRial()"><div class="quick-icon">↔️</div><span class="quick-label">Transferir</span></button>
+  <button class="quick-btn" onclick="openRecurrentes()"><div class="quick-icon">🔁</div><span class="quick-label">Recurrentes</span></button>
+  <button class="quick-btn" onclick="openPareja()"><div class="quick-icon">💑</div><span class="quick-label">Pareja</span></button>
+  <button class="quick-btn" onclick="openBCVHistory()"><div class="quick-icon">📈</div><span class="quick-label">Tasa BCV</span></button>
+  <button class="quick-btn" onclick="openReceiptScanner()"><div class="quick-icon">📸</div><span class="quick-label">Escáner</span></button>
+  <button class="quick-btn" onclick="openCSVImport()"><div class="quick-icon">📂</div><span class="quick-label">Importar CSV</span></button>
+  <button class="quick-btn" onclick="openVoiceLanding()"><div class="quick-icon">🎙️</div><span class="quick-label">Voz</span></button>
+  <button class="quick-btn" onclick="openMobileRatesPanel()"><div class="quick-icon">💱</div><span class="quick-label">Tasas</span></button>
+  <button class="quick-btn" onclick="openPresupuestosPanel()"><div class="quick-icon">📊</div><span class="quick-label">Presupuesto</span></button>
+  <button class="quick-btn" onclick="openListaCompras()"><div class="quick-icon">🛒</div><span class="quick-label">Lista</span></button>
+  <button class="quick-btn" onclick="openNotifPanel()"><div class="quick-icon">🔔</div><span class="quick-label">Notificaciones</span></button>
+</div>
+
+<!-- WALLET / MIS SALDOS SECTION -->
+<div id="wallet-section">
+  <div class="wallet-section-header">
+    <span class="wallet-section-title">Mis Saldos</span>
+    <div style="display:flex;gap:5px;align-items:center">
+      <button id="btn-reorder-wallets" onclick="toggleWalletReorder()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:3px 8px;font-size:.63rem;cursor:pointer">🔀 Orden</button>
+      <button class="wallet-see-all" onclick="openModalCuentas()">Ver todas →</button>
+    </div>
+  </div>
+  <div class="wallet-scroll" id="wallet-cards-container">
+    <!-- Populated by JS renderWalletCards() -->
+    <div style="display:flex;align-items:center;justify-content:center;width:100%;padding:20px;color:#8b949e;font-size:.75rem">
+      Agrega cuentas para ver tus saldos →
+    </div>
+  </div>
+
+
+  <!-- KPI STRIP -->
+  <div class="kpi-strip" id="kpi-strip">
+    <div class="kpi green" data-kpi-id="ingresos">
+      <div class="kpi-header-row">
+        <div style="display:flex;align-items:center;gap:4px">
+          <span class="drag-handle" style="cursor:grab;color:rgba(139,148,158,0.5);font-size:.7rem;user-select:none">⠿</span>
+          <div class="kpi-label" style="margin:0">Ingresos</div>
+        </div>
+        <div class="kpi-action-row" style="margin:0">
+          <button class="kpi-mini-btn" onclick="showCardInfo('k-ingresos')" title="¿Qué es?">ℹ️</button>
+          <button class="kpi-mini-btn" onclick="askCardIA('k-ingresos')" title="Analizar con IA">🤖</button>
+        </div>
+      </div>
+      <div class="kpi-val" id="k-ingresos">$0</div>
+      <div class="kpi-sub" id="k-ingresos-sub">del mes</div>
+      <div class="kpi-bar" id="k-bar-green" style="width:70%"></div>
+    </div>
+    <div class="kpi red" data-kpi-id="gastos">
+      <div class="kpi-header-row">
+        <div style="display:flex;align-items:center;gap:4px">
+          <span class="drag-handle" style="cursor:grab;color:rgba(139,148,158,0.5);font-size:.7rem;user-select:none">⠿</span>
+          <div class="kpi-label" style="margin:0">Gastos</div>
+        </div>
+        <div class="kpi-action-row" style="margin:0">
+          <button class="kpi-mini-btn" onclick="showCardInfo('k-gastos')" title="¿Qué es?">ℹ️</button>
+          <button class="kpi-mini-btn" onclick="askCardIA('k-gastos')" title="Analizar con IA">🤖</button>
+        </div>
+      </div>
+      <div class="kpi-val" id="k-gastos">$0</div>
+      <div class="kpi-sub" id="k-gastos-sub">del mes</div>
+      <div class="kpi-bar" style="width:60%"></div>
+    </div>
+    <div class="kpi blue" data-kpi-id="ahorros">
+      <div class="kpi-header-row">
+        <div style="display:flex;align-items:center;gap:4px">
+          <span class="drag-handle" style="cursor:grab;color:rgba(139,148,158,0.5);font-size:.7rem;user-select:none">⠿</span>
+          <div class="kpi-label" style="margin:0">Ahorros</div>
+        </div>
+        <div class="kpi-action-row" style="margin:0">
+          <button class="kpi-mini-btn" onclick="showCardInfo('k-ahorros')" title="¿Qué es?">ℹ️</button>
+          <button class="kpi-mini-btn" onclick="askCardIA('k-ahorros')" title="Analizar con IA">🤖</button>
+        </div>
+      </div>
+      <div class="kpi-val" id="k-ahorros">$0</div>
+      <div class="kpi-sub" id="k-ahorros-sub">Total: $0</div>
+      <div class="kpi-bar" style="width:40%"></div>
+    </div>
+    <div class="kpi gold" data-kpi-id="balance">
+      <div class="kpi-header-row">
+        <div style="display:flex;align-items:center;gap:4px">
+          <span class="drag-handle" style="cursor:grab;color:rgba(139,148,158,0.5);font-size:.7rem;user-select:none">⠿</span>
+          <div class="kpi-label" style="margin:0">Balance</div>
+        </div>
+        <div class="kpi-action-row" style="margin:0">
+          <button class="kpi-mini-btn" onclick="showCardInfo('k-balance')" title="¿Qué es?">ℹ️</button>
+          <button class="kpi-mini-btn" onclick="askCardIA('k-balance')" title="Analizar con IA">🤖</button>
+        </div>
+      </div>
+      <div class="kpi-val" id="k-balance">$0</div>
+      <div class="kpi-sub">ing − gas + ajustes</div>
+      <div class="kpi-bar" style="width:50%"></div>
+    </div>
+    <div class="kpi purple" data-kpi-id="score">
+      <div class="kpi-header-row">
+        <div style="display:flex;align-items:center;gap:4px">
+          <span class="drag-handle" style="cursor:grab;color:rgba(139,148,158,0.5);font-size:.7rem;user-select:none">⠿</span>
+          <div class="kpi-label" style="margin:0">Score</div>
+        </div>
+        <div class="kpi-action-row" style="margin:0">
+          <button class="kpi-mini-btn" onclick="showCardInfo('k-score')" title="¿Qué es?">ℹ️</button>
+          <button class="kpi-mini-btn" onclick="askCardIA('k-score')" title="Analizar con IA">🤖</button>
+        </div>
+      </div>
+      <div class="kpi-val" id="k-score">—</div>
+      <div class="kpi-sub" id="k-score-label">—</div>
+      <div class="kpi-bar" id="k-score-bar" style="width:0%"></div>
+    </div>
+    <div class="kpi orange" data-kpi-id="emergencia">
+      <div class="kpi-header-row">
+        <div style="display:flex;align-items:center;gap:4px">
+          <span class="drag-handle" style="cursor:grab;color:rgba(139,148,158,0.5);font-size:.7rem;user-select:none">⠿</span>
+          <div class="kpi-label" style="margin:0">F. Emergencia</div>
+        </div>
+        <div class="kpi-action-row" style="margin:0">
+          <button class="kpi-mini-btn" onclick="showCardInfo('k-emergency')" title="¿Qué es?">ℹ️</button>
+          <button class="kpi-mini-btn" onclick="askCardIA('k-emergency')" title="Analizar con IA">🤖</button>
+        </div>
+      </div>
+      <div class="kpi-val" id="k-emergency">$0</div>
+      <div class="kpi-sub" id="k-emergency-sub">Total: $0</div>
+      <div class="kpi-bar" style="width:30%"></div>
+    </div>
+    <div class="kpi teal" data-kpi-id="forecast">
+      <div class="kpi-header-row">
+        <div style="display:flex;align-items:center;gap:4px">
+          <span class="drag-handle" style="cursor:grab;color:rgba(139,148,158,0.5);font-size:.7rem;user-select:none">⠿</span>
+          <div class="kpi-label" style="margin:0">Predicción Anual</div>
+        </div>
+        <div class="kpi-action-row" style="margin:0">
+          <button class="kpi-mini-btn" onclick="showCardInfo('k-forecast')" title="¿Qué es?">ℹ️</button>
+          <button class="kpi-mini-btn" onclick="askCardIA('k-forecast')" title="Analizar con IA">🤖</button>
+        </div>
+      </div>
+      <div class="kpi-val" id="k-forecast">$0</div>
+      <div class="kpi-sub">ahorro estimado</div>
+      <div class="kpi-bar" style="width:55%"></div>
+    </div>
+  </div>
+
+<!-- ALERTAS DEL MES -->
+<div id="alertas-container" class="dash-full"></div>
+
+<!-- METAS DE AHORRO — MOBILE -->
+<div class="metas-section" id="metas-section">
+  <div class="wallet-section-header">
+    <span class="wallet-section-title">🎯 Metas de Ahorro</span>
+    <button class="wallet-see-all" onclick="openMetasPanel()">+ Nueva</button>
+  </div>
+  <div id="metas-cards-container"></div>
+</div>
+
+<!-- RECENT TRANSACTIONS MOBILE -->
+
+        <!-- ── ACCIONES SMART ──────────────────────────────────────────── -->
+        <div id="smart-actions-row" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 14px 0">
+          <button onclick="openPatrimonioNeto()" style="background:#13181f;border:1px solid #21262d;border-radius:20px;padding:7px 14px;font-size:.72rem;color:#e6edf3;cursor:pointer;display:flex;align-items:center;gap:5px">🏦 Patrimonio</button>
+          <button onclick="openEnvelopeBudget()" style="background:#13181f;border:1px solid #21262d;border-radius:20px;padding:7px 14px;font-size:.72rem;color:#e6edf3;cursor:pointer;display:flex;align-items:center;gap:5px">✉️ Presupuesto</button>
+          <button onclick="openDetectRecurrentes()" style="background:#13181f;border:1px solid #21262d;border-radius:20px;padding:7px 14px;font-size:.72rem;color:#e6edf3;cursor:pointer;display:flex;align-items:center;gap:5px">🔍 Detectar</button>
+          <button onclick="openCatRules()" style="background:#13181f;border:1px solid #21262d;border-radius:20px;padding:7px 14px;font-size:.72rem;color:#e6edf3;cursor:pointer;display:flex;align-items:center;gap:5px">🤖 Reglas</button>
+        </div>
+
+  <div id="mobile-recent-txn">
+  <div class="wallet-section-header">
+    <span class="wallet-section-title">Últimos movimientos</span>
+    <button class="mobile-section-seeall" onclick="openSearch()">Ver todos →</button>
+  </div>
+  <div id="mobile-recent-list"></div>
+</div>
+
+
+
+  <!-- ALERTAS -->
+  
+  <!-- ── PRONÓSTICO DE FLUJO DE CAJA ──────────────────────────────── -->
+  <div class="card dash-full" id="dash-s-forecast" data-label="📊 Pronóstico de Flujo de Caja">
+    <div class="card-title">
+      <span>📊 Pronóstico</span>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span style="font-size:.62rem;color:var(--muted)">próximos 30/60 días</span>
+        <button class="card-ia-btn" onclick="renderForecast()" title="Actualizar">↺</button>
+      </div>
+    </div>
+    <div id="forecast-card-content">
+      <p style="color:var(--muted);font-size:.75rem;text-align:center;padding:12px">Cargando pronóstico...</p>
+    </div>
+  </div>
+
+
+  <!-- CHARTS ROW -->
+  <div class="card" id="dash-s-ingvsgastos" data-label="📊 Ingresos vs Gastos">
+    <div class="card-title">
+      <span style="display:flex;align-items:center;gap:5px"><span class="drag-handle">⠿</span>📊 Ingresos vs Gastos vs Ahorros</span>
+      <span style="display:flex;gap:4px">
+        <button class="card-info-btn" onclick="openFinQuestion('que-es')" title="¿Qué es?">ℹ️</button>
+        <button class="card-info-btn" onclick="openFinQuestion('como-funciona')" title="¿Cómo funciona?" style="font-size:.68rem;padding:2px 6px">⚙️</button>
+        <button class="card-ia-btn" onclick="askCardIA('ingvsgastos')" title="Analizar con IA">🤖</button>
+      </span>
+    </div>
+    <div class="chart-wrap"><canvas id="chart-overview"></canvas></div>
+  </div>
+
+  <div class="card" id="dash-s-distribgastos" data-label="🥧 Distribución de Gastos">
+    <div class="card-title">
+      <span style="display:flex;align-items:center;gap:5px"><span class="drag-handle">⠿</span>🥧 Distribución Gastos</span>
+      <span style="display:flex;gap:4px">
+        <button class="card-info-btn" onclick="showCardInfo('distribgastos')" title="¿Qué es?">ℹ️</button>
+        <button class="card-ia-btn" onclick="askCardIA('distribgastos')" title="Analizar con IA">🤖</button>
+      </span>
+    </div>
+    <div class="chart-wrap"><canvas id="chart-pie"></canvas></div>
+  </div>
+
+  <div class="card" id="dash-s-patrimoniochart" data-label="📈 Patrimonio Neto (gráfico)">
+    <div class="card-title">
+      <span style="display:flex;align-items:center;gap:5px"><span class="drag-handle">⠿</span>📈 Patrimonio Neto</span>
+      <span style="display:flex;gap:4px">
+        <button class="card-info-btn" onclick="showCardInfo('patrimoniochart')" title="¿Qué es?">ℹ️</button>
+        <button class="card-ia-btn" onclick="askCardIA('patrimoniochart')" title="Analizar con IA">🤖</button>
+      </span>
+    </div>
+    <div class="chart-wrap"><canvas id="chart-patrimonio"></canvas></div>
+  </div>
+
+  <div class="card" id="dash-s-subcategastos" data-label="🔍 Gastos por Subcategoría">
+    <div class="card-title">
+      <span style="display:flex;align-items:center;gap:5px"><span class="drag-handle">⠿</span>🔍 Gastos por Subcategoría <span id="subcat-filter-label" style="text-transform:none;font-size:.72rem;color:var(--blue)"></span></span>
+      <span style="display:flex;gap:4px">
+        <button class="card-info-btn" onclick="showCardInfo('subcategastos')" title="¿Qué es?">ℹ️</button>
+        <button class="card-ia-btn" onclick="askCardIA('subcategastos')" title="Analizar con IA">🤖</button>
+      </span>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap" id="subcat-cat-filters"></div>
+    <div class="chart-wrap-sm"><canvas id="chart-subcat"></canvas></div>
+  </div>
+
+  <div class="card" id="dash-s-ingxtipo" data-label="💰 Ingresos por Tipo">
+    <div class="card-title">
+      <span style="display:flex;align-items:center;gap:5px"><span class="drag-handle">⠿</span>💰 Ingresos por Tipo</span>
+      <span style="display:flex;gap:4px">
+        <button class="card-info-btn" onclick="showCardInfo('ingxtipo')" title="¿Qué es?">ℹ️</button>
+        <button class="card-ia-btn" onclick="askCardIA('ingxtipo')" title="Analizar con IA">🤖</button>
+      </span>
+    </div>
+    <div class="chart-wrap-sm"><canvas id="chart-income-type"></canvas></div>
+    <div id="income-type-list" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card" id="dash-s-topgastos" data-label="🏆 Top Gastos por Categoría">
+    <div class="card-title">
+      <span style="display:flex;align-items:center;gap:5px"><span class="drag-handle">⠿</span>🏆 Top Gastos</span>
+      <span style="display:flex;gap:4px">
+        <button class="card-info-btn" onclick="showCardInfo('topgastos')" title="¿Qué es?">ℹ️</button>
+        <button class="card-ia-btn" onclick="askCardIA('topgastos')" title="Analizar con IA">🤖</button>
+      </span>
+    </div>
+    <div id="ranking-container"></div>
+  </div>
+
+  <div class="card" id="dash-s-topingresos" data-label="💚 Top Ingresos por Tipo">
+    <div class="card-title">
+      <span style="display:flex;align-items:center;gap:5px"><span class="drag-handle">⠿</span>💚 Top Ingresos por Tipo</span>
+      <span style="display:flex;gap:4px">
+        <button class="card-info-btn" onclick="showCardInfo('topingresos')" title="¿Qué es?">ℹ️</button>
+        <button class="card-ia-btn" onclick="askCardIA('topingresos')" title="Analizar con IA">🤖</button>
+      </span>
+    </div>
+    <div id="income-ranking-container"></div>
+  </div>
+
+  <div class="card" id="dash-s-fondoemerg" data-label="🆘 Fondo de Emergencia">
+    <div class="card-title">
+      <span style="display:flex;align-items:center;gap:5px"><span class="drag-handle">⠿</span>🆘 Fondo de Emergencia</span>
+      <span style="display:flex;gap:4px">
+        <button class="card-info-btn" onclick="showCardInfo('fondoemerg')" title="¿Qué es?">ℹ️</button>
+        <button class="card-ia-btn" onclick="askCardIA('fondoemerg')" title="Analizar con IA">🤖</button>
+      </span>
+    </div>
+    <div id="emergency-fund-display"></div>
+  </div>
+
+  <div class="card" id="dash-s-presupuesto" data-label="📋 Presupuesto vs Real">
+    <div class="card-title">
+      <span style="display:flex;align-items:center;gap:5px"><span class="drag-handle">⠿</span>📋 Presupuesto vs Real</span>
+      <span style="display:flex;gap:4px">
+        <button class="card-info-btn" onclick="showCardInfo('presupuesto')" title="¿Qué es?">ℹ️</button>
+        <button class="card-ia-btn" onclick="askCardIA('presupuesto')" title="Analizar con IA">🤖</button>
+      </span>
+    </div>
+    <div id="budget-bars"></div>
+  </div>
+
+
+  <!-- DESGLOSE SEMANAL -->
+  <div class="card" id="dash-s-semanal" data-label="📅 Desglose Semanal">
+    <div class="card-title">
+      <span style="display:flex;align-items:center;gap:5px"><span class="drag-handle">⠿</span>📅 Desglose Semanal</span>
+      <span style="display:flex;gap:4px">
+        <button class="card-info-btn" onclick="showCardInfo('semanal')" title="¿Qué es?">ℹ️</button>
+        <button class="card-ia-btn" onclick="askCardIA('semanal')" title="Analizar con IA">🤖</button>
+      </span>
+    </div>
+    <div id="weekly-breakdown-container"></div>
+  </div>
+
+  <!-- BATCH-XXVII: ocultado — cubierto por Últimos movimientos -->
+  <div class="card dash-full" id="dash-s-transacciones" data-label="📋 Movimientos del Mes" style="display:none!important">
+    <div class="card-title">
+      <span style="display:flex;align-items:center;gap:5px"><span class="drag-handle">⠿</span>📋 Movimientos del Mes <span id="txn-count" style="color:var(--muted);font-size:.68rem;text-transform:none;font-weight:400"></span></span>
+      <span style="display:flex;gap:4px">
+        <button class="card-info-btn" onclick="showCardInfo('transacciones')" title="¿Qué es?">ℹ️</button>
+        <button class="card-ia-btn" onclick="askCardIA('transacciones')" title="Analizar con IA">🤖</button>
+      </span>
+    </div>
+    <div class="scroll-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+      <table class="txn-table">
+        <thead><tr>
+          <th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Categoría</th><th>Método</th><th>Monto</th><th style="position:sticky;right:0;background:#13181f;z-index:2"></th>
+        </tr></thead>
+        <tbody id="txn-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" id="dash-s-iaanalisis" data-label="🤖 Análisis IA del Mes">
+    <div class="card-title" style="margin-bottom:8px">
+      <span style="display:flex;align-items:center;gap:5px"><span class="drag-handle">⠿</span>🤖 Análisis IA del Mes</span>
+      <button onclick="runIAInline()" id="btn-ia-inline" style="background:#3a1f6e;border:1px solid #bc8cff;color:#bc8cff;padding:3px 10px;border-radius:5px;font-size:.65rem;cursor:pointer;font-weight:600">⚡ Analizar</button>
+    </div>
+    <div id="ia-inline-result" style="min-height:80px;max-height:240px;overflow-y:auto;background:#0a0e14;border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:6px">
+      <div class="ia-inline-bubble" style="color:#484f58">💬 Presiona ⚡ Analizar para que la IA revise tus finanzas del mes.</div>
+    </div>
+  </div>
+
+  <div class="card" id="dash-s-fire" data-label="🔥 Simulador FIRE">
+    <div class="card-title" style="margin-bottom:8px">
+      <span style="display:flex;align-items:center;gap:5px"><span class="drag-handle">⠿</span>🔥 Simulador FIRE</span>
+      <span style="display:flex;gap:4px;align-items:center">
+        <button class="card-info-btn" onclick="showCardInfo('fire')" title="¿Qué es?">ℹ️</button>
+        <button class="card-ia-btn" onclick="askCardIA('fire')" title="Analizar con IA" style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px 4px">🤖</button>
+        <button onclick="saveFire()" style="background:#1c2128;border:1px solid #3fb950;color:#3fb950;padding:3px 9px;border-radius:5px;font-size:.64rem;cursor:pointer;font-weight:600">💾</button>
+      </span>
+    </div>
+    <div class="fire-input"><label>🎯 Meta ahorro ($)</label><input type="number" id="fire-meta" value="200000" oninput="calcFire()"></div>
+    <div class="fire-input"><label>📈 Retorno (%/año)</label><input type="number" id="fire-retorno" value="7" step="0.5" oninput="calcFire()"></div>
+    <div class="fire-input"><label>🧾 Gastos anuales ($)</label><input type="number" id="fire-gastos-anuales" value="15000" oninput="calcFire()"></div>
+    <div class="fire-result" id="fire-result">Cargando...</div>
+  </div>
+
+  <div class="card" id="dash-s-meta" data-label="🎯 Simulador de Meta">
+    <div class="card-title" style="margin-bottom:8px">
+      <span style="display:flex;align-items:center;gap:5px"><span class="drag-handle">⠿</span>🎯 Simulador de Meta</span>
+      <span style="display:flex;gap:4px;align-items:center">
+        <button class="card-info-btn" onclick="showCardInfo('meta')" title="¿Qué es?">ℹ️</button>
+        <button onclick="saveGoal()" style="background:#1c2128;border:1px solid #58a6ff;color:#58a6ff;padding:3px 9px;border-radius:5px;font-size:.64rem;cursor:pointer;font-weight:600">💾</button>
+      </span>
+    </div>
+    <div class="fire-input"><label>🎯 Meta ($)</label><input type="number" id="goal-meta" value="3000" oninput="calcGoal()" placeholder="3000"></div>
+    <div class="fire-input"><label>💵 Ya ahorrado ($)</label><input type="number" id="goal-actual" value="0" oninput="calcGoal()" placeholder="0"></div>
+    <div class="fire-input"><label>📅 Ahorro extra/mes ($)</label><input type="number" id="goal-extra" value="0" step="10" oninput="calcGoal()" placeholder="0"></div>
+    <div class="fire-input" style="border-top:1px solid #30363d;margin-top:4px;padding-top:6px">
+      <label>⏱️ Plazo deseado (meses)</label>
+      <input type="number" id="goal-plazo" value="12" min="1" oninput="calcGoal()" placeholder="12" style="border-color:#bc8cff">
+    </div>
+    <div class="fire-result" id="goal-result">Cargando...</div>
+  </div>
+
+  <div class="card" id="dash-s-patrimest" data-label="🏦 Patrimonio Estimado">
+    <div class="card-title">
+      <span style="display:flex;align-items:center;gap:5px"><span class="drag-handle">⠿</span>🏦 Patrimonio Estimado</span>
+      <span style="display:flex;gap:4px">
+        <button class="card-info-btn" onclick="showCardInfo('patrimest')" title="¿Qué es?">ℹ️</button>
+        <button class="card-ia-btn" onclick="askCardIA('patrimest')" title="Analizar con IA">🤖</button>
+      </span>
+    </div>
+    <div class="pat-row"><span>💰 Ahorro acumulado</span><span id="p-ahorro" style="color:var(--green)"></span></div>
+    <div class="pat-row"><span>💵 Balance (mes actual)</span><span id="p-balance" style="color:var(--blue)"></span></div>
+    <div class="pat-row"><span>💳 Deudas activas</span><span id="p-deudas" style="color:var(--red)">$0.00</span></div>
+    <div class="pat-row"><span>🤝 Préstamos por cobrar</span><span id="p-prestamos" style="color:var(--gold)">$0.00</span></div>
+    <div class="pat-row"><span>📊 Patrimonio Neto</span><span id="p-total"></span></div>
+    <div style="margin-top:14px">
+      <div class="card-title">⚠️ Anomalías Detectadas</div>
+      <div id="anomalias-container"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL: REORGANIZAR DASHBOARD -->
+<div class="modal-overlay" id="modal-reorganize" onclick="closeReorganizeIfOutside(event)">
+  <div class="modal" style="width:400px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="margin:0;font-size:.92rem">🔀 Reorganizar Dashboard</h3>
+      <button onclick="closeReorganize()" style="background:none;border:none;color:#8b949e;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <p style="font-size:.72rem;color:#8b949e;margin-bottom:12px">Usa las flechas ↑↓ para mover las secciones. Se guarda automáticamente.</p>
+    <div id="reorganize-list" style="display:flex;flex-direction:column;gap:6px"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="applyReorganize()" style="flex:1;background:#238636;color:#fff;border:none;padding:9px;border-radius:7px;font-size:.8rem;cursor:pointer;font-weight:600">✅ Aplicar</button>
+      <button onclick="closeReorganize()" style="background:#1c2128;color:#8b949e;border:1px solid #30363d;padding:9px 18px;border-radius:7px;font-size:.8rem;cursor:pointer">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: NUEVO MOVIMIENTO -->
+<!-- ═══ MODAL: CONFIRMACIÓN ═══ -->
+<!-- ═══ MODAL INFO TARJETA ═══ -->
+<div id="modal-card-info" onclick="if(event.target===this)this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:10500;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#161b22;border:1px solid #30363d;border-radius:14px;padding:24px;width:380px;max-width:calc(100vw - 32px)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:1.2rem">ℹ️</span>
+        <h3 id="card-info-title" style="margin:0;font-size:.9rem;color:#e6edf3;font-weight:700"></h3>
+      </div>
+      <button onclick="document.getElementById('modal-card-info').style.display='none'" style="background:none;border:none;color:#8b949e;font-size:1.1rem;cursor:pointer;padding:2px 6px">✕</button>
+    </div>
+    <p id="card-info-body" style="font-size:.83rem;color:#c9d1d9;line-height:1.8;margin-bottom:18px;white-space:normal"></p>
+    <button onclick="document.getElementById('modal-card-info').style.display='none'" style="width:100%;background:#238636;color:#fff;border:none;padding:10px;border-radius:8px;font-size:.82rem;cursor:pointer;font-weight:600">Entendido ✓</button>
+  </div>
+</div>
+
+<!-- ═══ MODAL CONFIRMAR ═══ -->
+<div id="modal-confirm" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:19000;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:28px;width:360px;max-width:calc(100vw - 32px);text-align:center">
+    <div id="confirm-icon" style="font-size:2rem;margin-bottom:10px">⚠️</div>
+    <h3 id="confirm-title" style="color:#e6edf3;font-size:.95rem;margin-bottom:8px"></h3>
+    <p id="confirm-msg" style="color:#8b949e;font-size:.78rem;margin-bottom:20px;line-height:1.5"></p>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button id="confirm-yes" style="background:#b91c1c;color:#fff;border:none;padding:9px 24px;border-radius:7px;font-size:.82rem;cursor:pointer;font-weight:600">Sí, confirmar</button>
+      <button id="confirm-no" style="background:#1c2128;color:#8b949e;border:1px solid #30363d;padding:9px 24px;border-radius:7px;font-size:.82rem;cursor:pointer">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: REGISTRO DE CONEXIONES ═══ -->
+<div class="modal-overlay" id="modal-conexiones" onclick="closeConexionesIfOutside(event)" style="z-index:320">
+  <div class="modal-box" style="width:600px;max-height:80vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="color:#58a6ff;font-size:.92rem">🔐 Registro de Conexiones</h3>
+      <button onclick="closeConexiones()" style="background:none;border:none;color:#8b949e;font-size:1.1rem;cursor:pointer">✕</button>
+    </div>
+    <div id="conexiones-list" style="font-size:.74rem"></div>
+  </div>
+</div>
+
+<!-- Modal Historial de Movimientos (auditoría) -->
+<div class="modal-overlay" id="modal-audit" onclick="if(event.target===this){unlockScroll();this.classList.remove('open')}" style="z-index:320">
+  <div class="modal-box" style="width:700px;max-height:84vh;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-shrink:0">
+      <h3 style="color:#e3b341;font-size:.92rem">📋 Historial de Movimientos</h3>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <select id="audit-filter-user" onchange="loadAuditLog()" style="background:#1c2128;border:1px solid #30363d;color:#e6edf3;padding:4px 8px;border-radius:5px;font-size:.7rem;outline:none">
+          <option value="">Todos los usuarios</option>
+        </select>
+        <select id="audit-filter-accion" onchange="loadAuditLog()" style="background:#1c2128;border:1px solid #30363d;color:#e6edf3;padding:4px 8px;border-radius:5px;font-size:.7rem;outline:none">
+          <option value="">Todas las acciones</option>
+          <option value="crear">✅ Crear</option>
+          <option value="editar">✏️ Editar</option>
+          <option value="eliminar">🗑️ Eliminar</option>
+        </select>
+        <button onclick="unlockScroll();document.getElementById('modal-audit').classList.remove('open')" style="background:none;border:none;color:#8b949e;font-size:1.1rem;cursor:pointer">✕</button>
+      </div>
+    </div>
+    <div id="audit-list" style="font-size:.74rem;overflow-y:auto;flex:1"></div>
+  </div>
+</div>
+
+<!-- Modal Configuración Respaldo por Correo -->
+<div class="modal-overlay" id="modal-backup-config" onclick="if(event.target===this){unlockScroll();this.classList.remove('open')}" style="z-index:320">
+  <div class="modal-box" style="width:460px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="color:#58a6ff;font-size:.92rem">📧 Configurar Respaldo por Correo</h3>
+      <button onclick="unlockScroll();document.getElementById('modal-backup-config').classList.remove('open')" style="background:none;border:none;color:#8b949e;font-size:1.1rem;cursor:pointer">✕</button>
+    </div>
+    <div style="background:#0d1e2d;border:1px solid #1f4068;border-radius:8px;padding:12px;margin-bottom:14px;font-size:.72rem;color:#58a6ff;line-height:1.6">
+      <strong>Configuración única (5 min):</strong><br>
+      1. Crea cuenta gratis en <a href="https://emailjs.com" target="_blank" style="color:#58a6ff">emailjs.com</a><br>
+      2. Conecta tu Gmail como servicio de correo<br>
+      3. Crea una plantilla con variable <code style="background:#0d1117;padding:1px 4px;border-radius:3px">{{backup_data}}</code><br>
+      4. Pega los 3 IDs aquí abajo
+    </div>
+    <div id="backup-cfg-status" style="margin-bottom:10px"></div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div>
+        <label style="font-size:.7rem;color:#8b949e;display:block;margin-bottom:3px">Public Key (User ID)</label>
+        <input id="ejs-public-key" type="text" placeholder="ej: user_aBcDeFgHiJ..." style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:8px 32px 8px 10px;border-radius:6px;font-size:.78rem;outline:none">
+      </div>
+      <div>
+        <label style="font-size:.7rem;color:#8b949e;display:block;margin-bottom:3px">Service ID</label>
+        <input id="ejs-service-id" type="text" placeholder="ej: service_xxxxxxx" style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:8px 10px;border-radius:6px;font-size:.78rem;outline:none">
+      </div>
+      <div>
+        <label style="font-size:.7rem;color:#8b949e;display:block;margin-bottom:3px">Template ID</label>
+        <input id="ejs-template-id" type="text" placeholder="ej: template_xxxxxxx" style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:8px 10px;border-radius:6px;font-size:.78rem;outline:none">
+      </div>
+      <div>
+        <label style="font-size:.7rem;color:#8b949e;display:block;margin-bottom:3px">Correo de destino del respaldo</label>
+        <input id="ejs-to-email" type="email" placeholder="tu@correo.com" maxlength="100" style="width:100%;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:8px 10px;border-radius:6px;font-size:.78rem;outline:none">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="saveEmailjsConfig()" style="flex:1;background:#238636;border:none;color:#fff;padding:9px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer">💾 Guardar configuración</button>
+      <button onclick="testEmailBackup()" style="flex:1;background:#1c2128;border:1px solid #30363d;color:#e6edf3;padding:9px;border-radius:6px;font-size:.8rem;cursor:pointer">🧪 Probar envío</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-mov" onclick="closeModalMovIfOutside(event)">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <h3 style="margin:0">➕ <span id="modal-mov-title">Nuevo Movimiento</span></h3>
+      <button onclick="closeModalMov()" style="background:none;border:none;color:#8b949e;font-size:1.2rem;cursor:pointer;line-height:1;padding:2px 6px" title="Cerrar">✕</button>
+    </div>
+    <input type="hidden" id="edit-mov-id" value="">
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label style="display:flex;justify-content:space-between;align-items:center">
+          Descripción
+          <button type="button" onclick="openOCRCamera()" title="Foto del recibo" style="background:#1c2128;border:1px solid #bc8cff;color:#bc8cff;padding:3px 8px;border-radius:5px;font-size:.65rem;cursor:pointer">📷 Foto recibo</button>
+        </label>
+        <input type="text" id="f-desc" placeholder="Ej: Mercado, Salario..." maxlength="200" oninput="autoCategorizarDesc(this.value)">
+        <div id="autocateg-hint" style="display:none;font-size:.62rem;color:#3fb950;margin-top:2px;padding:3px 6px;background:#0d1117;border-radius:4px;border:1px solid #1a3626"></div>
+      </div>
+      <div class="form-group">
+        <label>Tipo</label>
+        <select id="f-tipo" onchange="onTipoChange()">
+          <option value="Gasto">Gasto</option>
+          <option value="Ingreso Fijo">Ingreso Fijo</option>
+          <option value="Ingreso Variable">Ingreso Variable</option>
+          <option value="Ahorro en efectivo">Ahorro</option>
+          <option value="Transferencia Interna">🔄 Transferencia Interna</option>
+          <option value="Prestamo recibido">Préstamo recibido</option>
+          <option value="Prestamo pagado">Préstamo pagado</option>
+          <option value="Ajuste">Ajuste</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Categoría</label>
+        <select id="f-cat" onchange="onCatChange()"></select>
+      </div>
+      <div class="form-group">
+        <label>Subcategoría</label>
+        <select id="f-subcat"></select>
+      </div>
+      <div class="form-group">
+        <label>Método de Pago</label>
+        <select id="f-method">
+          <option value="Pago móvil">Pago móvil</option>
+          <option value="Tarjeta de débito">Tarjeta de débito</option>
+          <option value="Efectivo en dólares">Efectivo en dólares</option>
+          <option value="Efectivo en bolívares">Efectivo en bolívares</option>
+        </select>
+      </div>
+      <div class="form-group" id="f-cuenta-row">
+        <label>💳 Cuenta / Billetera</label>
+        <select id="f-cuenta">
+          <option value="">— Sin cuenta —</option>
+        </select>
+      </div>
+      <!-- TRANSFERENCIA ENTRE CUENTAS -->
+      <div id="transfer-cuenta-row" class="form-group">
+        <label>🔄 Transferencia entre cuentas</label>
+        <div class="transfer-accounts">
+          <select id="f-transfer-from" class="transfer-select">
+            <option value="">Origen</option>
+          </select>
+          <span class="transfer-arrow">→</span>
+          <select id="f-transfer-to" class="transfer-select">
+            <option value="">Destino</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Fecha</label>
+        <input type="date" id="f-date" onchange="onDateChange()">
+      </div>
+      <div class="note" id="rate-note-box" style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:.67rem;color:var(--muted);white-space:nowrap">&#x1f4b1; Tasas mov.:</span>
+          <div style="display:flex;align-items:center;gap:4px">
+            <label style="font-size:.64rem;color:#e3b341;white-space:nowrap">BCV</label>
+            <input type="number" id="rn-bcv-input" style="width:70px;background:#0d1117;border:1px solid #e3b341;color:#e3b341;padding:2px 5px;border-radius:4px;font-size:.71rem;outline:none;font-weight:600" oninput="onEditModalRate()" placeholder="431.01">
+            <label style="font-size:.64rem;color:#8b949e">Bs/$</label>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <label style="font-size:.64rem;color:#e3b341;white-space:nowrap">EUR</label>
+            <input type="number" id="rn-eur-input" style="width:70px;background:#0d1117;border:1px solid #e3b341;color:#ebb343;padding:2px 5px;border-radius:4px;font-size:.71rem;outline:none;font-weight:600" oninput="onEditModalRate()" placeholder="499.62">
+            <label style="font-size:.64rem;color:#8b949e">Bs/&#x20ac;</label>
+          </div>
+          <button onclick="syncModalRatesFromGlobal()" title="Cargar tasas del dashboard" style="background:#1c2128;border:1px solid #e3b341;color:#e3b341;padding:2px 7px;border-radius:4px;font-size:.62rem;cursor:pointer">&#x1f504; Actualizar</button>
+        </div>
+
+        <div style="font-size:.59rem;color:#484f58">&#128197; <span id="rn-fecha-label">&#8212;</span> &middot; bcv.org.ve</div>
+        <div id="rate-date-warning" style="display:none;color:#f85149;font-size:.68rem">&#x26a0;&#xfe0f; La fecha del movimiento difiere de la última tasa registrada.</div></div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:4px;gap:6px;align-items:center">
+        <!-- Normal voice button -->
+        <button id="btn-voice" onclick="startVoiceInput()" style="background:#1c2128;border:1px solid #bc8cff;color:#bc8cff;padding:4px 10px;border-radius:20px;font-size:.7rem;cursor:pointer;display:flex;align-items:center;gap:4px">🎙️ Registrar por voz</button>
+        <!-- Recording UI (WhatsApp style) -->
+        <div id="form-voice-rec" style="display:none;align-items:center;gap:8px;background:#1c2128;border:1px solid #f85149;border-radius:22px;padding:5px 12px;flex:1">
+          <span style="color:#f85149;font-size:.85rem">🔴</span>
+          <span id="form-voice-timer" style="font-size:.75rem;font-weight:700;color:#f85149;min-width:34px">0:00</span>
+          <div class="ia-voice-wave" style="flex:1">
+            <div class="ia-voice-bar"></div><div class="ia-voice-bar"></div>
+            <div class="ia-voice-bar"></div><div class="ia-voice-bar"></div>
+            <div class="ia-voice-bar"></div>
+          </div>
+          <button onclick="stopFormVoice()" style="background:#3fb950;border:none;color:#fff;width:26px;height:26px;border-radius:50%;font-size:.75rem;cursor:pointer;flex-shrink:0">✓</button>
+          <button onclick="cancelFormVoice()" style="background:#21262d;border:1px solid #30363d;color:#8b949e;width:26px;height:26px;border-radius:50%;font-size:.75rem;cursor:pointer;flex-shrink:0">✕</button>
+        </div>
+      </div>
+      <div class="monto-row">
+        <div class="form-group">
+          <label>Monto en USD ($)</label>
+          <input type="text" inputmode="none" id="f-amount-usd" placeholder="0.00" maxlength="10" autocomplete="off" oninput="onAmountUSD();updateTravelConversion()" onfocus="this.blur();openNumpadForField('usd')" onclick="openNumpadForField('usd')" ontouchstart="this.blur();event.preventDefault();openNumpadForField('usd')" style="cursor:pointer;caret-color:transparent">
+        </div>
+        <div class="form-group">
+          <label>Monto en Bs (Bolívares)</label>
+          <input type="text" inputmode="none" id="f-amount-bs" placeholder="0.00" maxlength="10" autocomplete="off" oninput="onAmountBS()" onfocus="this.blur();openNumpadForField('bs')" onclick="openNumpadForField('bs')" ontouchstart="this.blur();event.preventDefault();openNumpadForField('bs')" style="cursor:pointer;caret-color:transparent">
+        </div>
+      </div>
+      <!-- Modo viaje: conversión en tiempo real -->
+      <div id="travel-conv-row" style="display:none;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.2);border-radius:8px;padding:8px 12px;font-size:.78rem;color:#58a6ff;margin-bottom:4px">
+        ✈️ <span id="travel-conv-label">—</span>
+      </div>
+      <div class="form-group form-full" id="ajuste-note" style="display:none">
+        <div class="rate-note" style="border-color:var(--purple);color:var(--purple)">
+          ℹ️ Los ajustes corrigen el balance sin afectar ingresos, gastos ni ahorros. Puede ser positivo o negativo.
+        </div>
+      </div>
+      <div class="form-group form-full" id="template-section">
+        <label>⚡ Plantillas rápidas</label>
+        <div class="template-cards-scroll" id="template-list"></div>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-save" onclick="saveMovimiento()">💾 Guardar</button>
+      <button class="btn-template" id="btn-template" onclick="toggleTemplate()">⭐ Guardar plantilla</button>
+      <button style="background:none;border:1px solid #30363d;color:#58a6ff;padding:6px 10px;border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit;margin-left:4px" onclick="openReceiptFromModal()" title="Escanear recibo con cámara">📸 Recibo</button>
+      <button class="btn-cancel" onclick="closeModalMov()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: BÚSQUEDA -->
+
+<!-- ═══ MODAL: GEMINI IA ═══ -->
+<div class="modal-overlay" id="modal-ia" onclick="closeIAIfOutside(event)" style="z-index:310">
+  <div class="modal-box" style="width:620px;max-height:85vh;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="color:#bc8cff;font-size:.9rem;display:flex;align-items:center;gap:7px">🤖 <span>Llama 3.3 — Asistente</span><span class="ia-model-badge" title="Modelo activo">70b</span></h3>
+      <div style="display:flex;gap:5px;align-items:center">
+        <button onclick="setIAMode('analisis')" id="ia-tab-analisis" class="ia-tab active-ia-tab">📊 Análisis</button>
+        <button onclick="setIAMode('corrector')" id="ia-tab-corrector" class="ia-tab">🛠️ Corrector</button>
+        <div style="width:1px;height:20px;background:#30363d;margin:0 2px"></div>
+        <button onclick="closeIA()" style="background:rgba(248,81,73,.1);border:1px solid #f85149;color:#f85149;font-size:.75rem;cursor:pointer;padding:3px 8px;border-radius:5px;font-weight:600">✕ Cerrar</button>
+      </div>
+    </div>
+
+    <!-- Modo Análisis -->
+    <div id="ia-analisis-panel" style="display:flex;flex-direction:column;flex:1;min-height:0">
+      <div id="ia-chat" style="flex:1;overflow-y:auto;background:#0a0e14;border:1px solid #30363d;border-radius:10px 10px 0 0;min-height:180px;max-height:320px"></div>
+      <div class="ia-chat-footer">
+        <!-- Input de texto normal -->
+        <input id="ia-input" class="ia-chat-input" type="text" placeholder="Pregunta sobre tus finanzas..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();askGroq()}">
+        <!-- Indicador de grabación (oculto por defecto) -->
+        <div class="ia-voice-rec" id="ia-voice-rec">
+          <span style="font-size:.85rem;color:#f85149">🔴</span>
+          <span class="ia-voice-timer" id="ia-voice-timer">0:00</span>
+          <div class="ia-voice-wave">
+            <div class="ia-voice-bar"></div><div class="ia-voice-bar"></div>
+            <div class="ia-voice-bar"></div><div class="ia-voice-bar"></div>
+            <div class="ia-voice-bar"></div>
+          </div>
+          <button onclick="stopVoiceNote()" style="background:#f85149;border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:.75rem;cursor:pointer;flex-shrink:0" title="Enviar">✓</button>
+          <button onclick="cancelVoiceNote()" style="background:#21262d;border:1px solid #30363d;color:#8b949e;width:28px;height:28px;border-radius:50%;font-size:.75rem;cursor:pointer;flex-shrink:0" title="Cancelar">✕</button>
+        </div>
+        <!-- Botón micrófono (solo en modo chat IA, no para formulario) -->
+        <button id="btn-ia-voice" onclick="startIAVoiceNote()" style="background:#1c2128;border:1px solid #bc8cff;color:#bc8cff;width:38px;height:38px;border-radius:50%;font-size:1rem;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center" title="Nota de voz">🎙️</button>
+        <button class="ia-send-btn" onclick="askGroq()" title="Enviar">➤</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:8px" id="ia-quick-btns">
+        <button class="ia-quick" onclick="askGroq('Dame un resumen completo de mis finanzas este mes con números exactos.')">📈 Resumen mes</button>
+        <button class="ia-quick" onclick="askGroq('¿Cuánto ingresé y gasté esta semana aproximadamente?')">📅 Esta semana</button>
+        <button class="ia-quick" onclick="askGroq('¿En qué gasté más dinero y cómo puedo reducir esos gastos?')">💸 Mayor gasto</button>
+        <button class="ia-quick" onclick="askGroq('¿Qué debo hacer para llegar a 3000 dólares ahorrados? Dame un plan concreto.')">🎯 Meta $3k</button>
+        <button class="ia-quick" onclick="askGroq('Compara mis ingresos y gastos de los últimos meses. ¿Voy mejorando o empeorando?')">📊 Comparar</button>
+        <button class="ia-quick" onclick="askGroq('Dame 5 consejos específicos para mejorar mis finanzas basados en mis datos reales.')">💡 Consejos</button>
+      </div>
+    </div>
+
+    <!-- Modo Corrector -->
+    <div id="ia-corrector-panel" style="display:none;flex-direction:column;flex:1;min-height:0">
+      <p style="font-size:.72rem;color:#8b949e;margin-bottom:8px">Describe qué quieres cambiar o agregar al dashboard. Groq (Llama 3.3) generará el código listo para aplicar.</p>
+      <div id="ia-corrector-chat" style="flex:1;overflow-y:auto;background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:12px;margin-bottom:10px;min-height:160px;max-height:280px;font-size:.74rem;line-height:1.6"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="ia-quick" onclick="askCorrector('Agrega una nueva categoría llamada Mascotas con subcategorías Veterinario y Comida para Mascotas')">🐾 Ejemplo: agregar categoría</button>
+        <button class="ia-quick" onclick="askCorrector('Cómo cambio el color del balance a azul cuando es positivo')">🎨 Ejemplo: cambiar color</button>
+      </div>
+      <div style="display:flex;gap:6px">
+        <input id="ia-corrector-input" type="text" placeholder="Ej: quiero agregar un campo de notas a cada movimiento..." style="flex:1;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:8px 12px;border-radius:7px;font-size:.78rem;outline:none" onkeydown="if(event.key==='Enter')askCorrector()">
+        <button onclick="askCorrector()" style="background:#6e40c9;color:#fff;border:none;padding:8px 14px;border-radius:7px;font-size:.78rem;cursor:pointer;font-weight:600">Generar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-search" onclick="closeSearchIfOutside(event)">
+  <div class="modal" style="width:720px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h3 style="margin:0">🔍 Buscar Movimientos</h3>
+      <button onclick="closeSearch()" style="background:none;border:none;color:#8b949e;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <!-- Fila 1: texto + monto + mes -->
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:7px;margin-bottom:7px">
+      <div>
+        <label style="font-size:.62rem;color:#8b949e;display:block;margin-bottom:3px">🔤 Concepto / descripción</label>
+        <input type="text" id="search-text" placeholder="ej: Netflix, mercado, yummy..." oninput="applySearch()" style="width:100%;background:#1c2128;border:1px solid #30363d;color:#e6edf3;padding:7px 10px;border-radius:7px;font-size:.78rem;outline:none">
+      </div>
+      <div>
+        <label style="font-size:.62rem;color:#8b949e;display:block;margin-bottom:3px">💲 Monto ($)</label>
+        <input type="number" id="search-amount" placeholder="ej: 25" oninput="applySearch()" step="0.01" min="0" style="width:100%;background:#1c2128;border:1px solid #30363d;color:#e6edf3;padding:7px 10px;border-radius:7px;font-size:.78rem;outline:none">
+      </div>
+      <div>
+        <label style="font-size:.62rem;color:#8b949e;display:block;margin-bottom:3px">📅 Mes</label>
+        <select id="search-month" onchange="applySearch()" style="width:100%;background:#1c2128;border:1px solid #30363d;color:#e6edf3;padding:7px 10px;border-radius:7px;font-size:.78rem;outline:none">
+          <option value="">Todos</option>
+        </select>
+      </div>
+    </div>
+    <!-- Fila 2: tipo → categoría → subcategoría (cascade) -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:7px;margin-bottom:12px">
+      <div>
+        <label style="font-size:.62rem;color:#8b949e;display:block;margin-bottom:3px">📌 Tipo</label>
+        <select id="search-tipo" onchange="onSearchTipoChange()" style="width:100%;background:#1c2128;border:1px solid #30363d;color:#e6edf3;padding:7px 10px;border-radius:7px;font-size:.78rem;outline:none">
+          <option value="">Todos</option>
+          <option value="Gasto">Gasto</option>
+          <option value="Ingreso Fijo">Ingreso Fijo</option>
+          <option value="Ingreso Variable">Ingreso Variable</option>
+          <option value="Ahorro en efectivo">Ahorro</option>
+          <option value="Ajuste">Ajuste</option>
+          <option value="Prestamo recibido">Préstamo</option>
+          <option value="Prestamo pagado">Préstamo pagado</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.62rem;color:#8b949e;display:block;margin-bottom:3px">🏷️ Categoría</label>
+        <select id="search-cat" onchange="onSearchCatChange()" style="width:100%;background:#1c2128;border:1px solid #30363d;color:#e6edf3;padding:7px 10px;border-radius:7px;font-size:.78rem;outline:none">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.62rem;color:#8b949e;display:block;margin-bottom:3px">📂 Subcategoría</label>
+        <select id="search-subcat" onchange="applySearch()" style="width:100%;background:#1c2128;border:1px solid #30363d;color:#e6edf3;padding:7px 10px;border-radius:7px;font-size:.78rem;outline:none">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.62rem;color:#8b949e;display:block;margin-bottom:3px">💳 Método</label>
+        <select id="search-method" onchange="applySearch()" style="width:100%;background:#1c2128;border:1px solid #30363d;color:#e6edf3;padding:7px 10px;border-radius:7px;font-size:.78rem;outline:none">
+          <option value="">Todos</option>
+          <option value="Pago móvil">Pago móvil</option>
+          <option value="Tarjeta de débito">Tarjeta débito</option>
+          <option value="Efectivo en dólares">Efectivo $</option>
+          <option value="Efectivo en bolívares">Efectivo Bs</option>
+          <option value="Transferencia">Transferencia</option>
+          <option value="Zelle">Zelle</option>
+          <option value="Binance">Binance</option>
+        </select>
+      </div>
+    </div>
+    <div class="scroll-wrap" style="max-height:320px">
+      <table class="txn-table">
+        <thead><tr><th>Mes</th><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Cat</th><th>Método</th><th>Monto</th><th></th></tr></thead>
+        <tbody id="search-results"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:.72rem;color:var(--muted)">
+      <span id="search-count">0 resultados</span>
+      <button class="btn-cancel" onclick="closeSearch()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CONFIGURACIÓN -->
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal" style="width:480px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:90vh">
+
+    <!-- PANTALLA PRINCIPAL -->
+    <div class="sett-screen active" id="sett-main">
+      <div class="sett-header">
+        <div style="width:32px"></div>
+        <div class="sett-title">Configuración</div>
+        <button onclick="closeSettings()" style="background:none;border:none;color:#8b949e;font-size:1.1rem;cursor:pointer;width:32px;text-align:right">✕</button>
+      </div>
+      <div style="overflow-y:auto;flex:1">
+        <!-- Perfil card -->
+        <div class="sett-profile-card" onclick="settNav('perfil')">
+          <div class="sett-avatar" id="sett-avatar-main">A</div>
+          <div class="sett-profile-info">
+            <div class="sett-profile-name" id="sett-name-display">Anthony Marte</div>
+            <div class="sett-profile-email" id="sett-email-display">—</div>
+          </div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+
+        <!-- GESTIÓN FINANCIERA -->
+        <div class="sett-section-label">Gestión Financiera</div>
+        <div class="sett-row" onclick="openTiposModal()">
+          <div class="sett-row-icon" style="background:rgba(63,185,80,.15)">📋</div>
+          <div class="sett-row-content"><div class="sett-row-label">Tipos de movimiento</div><div class="sett-row-sub">Gasto, Ingreso, Ahorro…</div></div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+        <div class="sett-row" onclick="openCategoriasModal()">
+          <div class="sett-row-icon" style="background:rgba(88,166,255,.15)">🏷️</div>
+          <div class="sett-row-content"><div class="sett-row-label">Categorías</div><div class="sett-row-sub">Casa, Comida, Transporte…</div></div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+        <div class="sett-row" onclick="openSubcatModal()">
+          <div class="sett-row-icon" style="background:rgba(188,140,255,.15)">🔖</div>
+          <div class="sett-row-content"><div class="sett-row-label">Subcategorías</div><div class="sett-row-sub">Detalle de cada categoría</div></div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+        <div class="sett-row" onclick="closeSettings();openEnvelopeBudget()">
+          <div class="sett-row-icon" style="background:rgba(227,179,65,.15)">💰</div>
+          <div class="sett-row-content"><div class="sett-row-label">Presupuestos</div><div class="sett-row-sub">Sobres y límites por categoría</div></div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+
+        <!-- APARIENCIA -->
+        <div class="sett-section-label">Apariencia</div>
+        <div class="sett-row" onclick="toggleTheme()">
+          <div class="sett-row-icon" style="background:rgba(88,166,255,.15)">🌙</div>
+          <div class="sett-row-content"><div class="sett-row-label">Tema Oscuro / Claro</div><div class="sett-row-sub">Alterna entre modo noche y día</div></div>
+          <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="theme-toggle-cb" onchange="toggleTheme()"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="sett-row" onclick="closeSettings();openCatIcons()">
+          <div class="sett-row-icon" style="background:rgba(227,179,65,.15)">😀</div>
+          <div class="sett-row-content"><div class="sett-row-label">Personalizar iconos de categorías</div><div class="sett-row-sub">Cambia el emoji de cada categoría</div></div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+
+        <!-- SEGURIDAD -->
+        <div class="sett-section-label">Seguridad</div>
+        <div class="sett-row" onclick="closeSettings();openPINSetup()">
+          <div class="sett-row-icon" style="background:rgba(248,81,73,.15)">🔐</div>
+          <div class="sett-row-content"><div class="sett-row-label">PIN de bloqueo</div><div class="sett-row-sub" id="pin-status-label">PIN no configurado</div></div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+        <div class="sett-row" onclick="toggleAutoLock()">
+          <div class="sett-row-icon" style="background:rgba(248,81,73,.1)">⏱</div>
+          <div class="sett-row-content"><div class="sett-row-label">Auto-bloqueo (5 min)</div><div class="sett-row-sub">Pide PIN tras inactividad</div></div>
+          <label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" id="autolock-toggle-cb" onchange="toggleAutoLock()"><span class="toggle-slider"></span></label>
+        </div>
+
+        <!-- VIAJE -->
+        <div class="sett-section-label">Viaje / Moneda temporal</div>
+        <div class="sett-row" onclick="closeSettings();openTravelMode()">
+          <div class="sett-row-icon" style="background:rgba(88,166,255,.15)">✈️</div>
+          <div class="sett-row-content"><div class="sett-row-label">Modo Viaje</div><div class="sett-row-sub" id="travel-mode-label">Inactivo — toca para configurar</div></div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+
+        <!-- HERRAMIENTAS -->
+        <div class="sett-section-label">Herramientas</div>
+        <div class="sett-row" onclick="closeSettings();openConexiones()">
+          <div class="sett-row-icon" style="background:rgba(88,166,255,.15)">🔐</div>
+          <div class="sett-row-content"><div class="sett-row-label">Historial de sesiones</div><div class="sett-row-sub">Entradas y salidas de todos los usuarios</div></div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+
+        <!-- INTEGRACIONES -->
+        <div class="sett-section-label">Integraciones</div>
+        <div style="padding:0 16px 8px">
+          <div id="gcal-status-container"></div>
+        </div>
+
+        <!-- RESPALDOS -->
+        <div class="sett-section-label">Respaldos</div>
+        <div class="sett-row" onclick="exportBackupExcel()">
+          <div class="sett-row-icon" style="background:rgba(26,107,42,.25)">📊</div>
+          <div class="sett-row-content"><div class="sett-row-label">Exportar a Excel</div><div class="sett-row-sub">Todos los movimientos en .xlsx, por mes</div></div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+        <div class="sett-row" onclick="exportBackupJSON()">
+          <div class="sett-row-icon" style="background:rgba(63,185,80,.15)">📥</div>
+          <div class="sett-row-content"><div class="sett-row-label">Descargar respaldo JSON</div><div class="sett-row-sub">Guarda toda la data localmente ahora</div></div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+        <div class="sett-row" onclick="sendEmailBackup()">
+          <div class="sett-row-icon" style="background:rgba(88,166,255,.15)">📧</div>
+          <div class="sett-row-content"><div class="sett-row-label">Enviar respaldo por correo</div><div class="sett-row-sub">Envía la data a tu correo via EmailJS</div></div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+        <div class="sett-row" onclick="closeSettings();openBackupConfig()">
+          <div class="sett-row-icon" style="background:rgba(188,140,255,.15)">⚙️</div>
+          <div class="sett-row-content"><div class="sett-row-label">Configurar correo de respaldo</div><div class="sett-row-sub">EmailJS · Configura una sola vez</div></div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+        <div class="sett-row" onclick="closeSettings();openCalc()">
+          <div class="sett-row-icon" style="background:rgba(63,185,80,.15)">🧮</div>
+          <div class="sett-row-content"><div class="sett-row-label">Calculadora financiera</div><div class="sett-row-sub">Cálculos rápidos</div></div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+        <div class="sett-row" onclick="closeSettings();openIA()">
+          <div class="sett-row-icon" style="background:rgba(188,140,255,.15)">🤖</div>
+          <div class="sett-row-content"><div class="sett-row-label">Asistente IA Llama</div><div class="sett-row-sub">Análisis y consejos financieros</div></div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+
+        <!-- SISTEMA -->
+        <div class="sett-section-label">Sistema</div>
+        <div class="sett-row" onclick="closeSettings();openNovedadesFromSettings()">
+          <div class="sett-row-icon" style="background:rgba(63,185,80,.15)">✨</div>
+          <div class="sett-row-content">
+            <div class="sett-row-label">Novedades del sistema</div>
+            <div class="sett-row-sub">Ver los últimos cambios y correcciones</div>
+          </div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+        <div class="sett-row" onclick="togglePushFromSettings()">
+          <div class="sett-row-icon" style="background:rgba(88,166,255,.15)">🔔</div>
+          <div class="sett-row-content">
+            <div class="sett-row-label">Notificaciones push</div>
+            <div class="sett-row-sub">Alertas aunque la app esté cerrada</div>
+          </div>
+          <div id="push-toggle-btn" style="font-size:.72rem;color:var(--muted);flex-shrink:0">🔕 Desactivadas</div>
+        </div>
+        <div class="sett-row" onclick="forzarSincConfig()">
+          <div class="sett-row-icon" style="background:rgba(227,179,65,.15)">🔄</div>
+          <div class="sett-row-content">
+            <div class="sett-row-label">Sincronizar configuración</div>
+            <div class="sett-row-sub">Guarda categorías, presupuestos y ajustes en la nube</div>
+          </div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+        <div class="sett-row" onclick="closeSettings();triggerPWAInstall()">
+          <div class="sett-row-icon" style="background:rgba(63,185,80,.15)">📲</div>
+          <div class="sett-row-content"><div class="sett-row-label">Instalar app en dispositivo</div><div class="sett-row-sub" id="pwa-install-status">Agregar a pantalla de inicio</div></div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+
+        <!-- CUENTA -->
+        <div class="sett-section-label">Cuenta</div>
+        <div class="sett-row danger" onclick="closeSettings();doLogout()">
+          <div class="sett-row-icon">🚪</div>
+          <div class="sett-row-content"><div class="sett-row-label">Cerrar sesión</div></div>
+          <div class="sett-row-arrow">›</div>
+        </div>
+
+        <div style="padding:16px;text-align:center;font-size:.62rem;color:#484f58">Finanzas Anthony 2026 · v11</div>
+      </div>
+    </div>
+
+    <!-- PANTALLA PERFIL -->
+    <div class="sett-screen" id="sett-perfil">
+      <div class="sett-header">
+        <button class="sett-back" onclick="settNav('main')">‹ Volver</button>
+        <div class="sett-title">Perfil</div>
+        <button onclick="closeSettings()" style="background:none;border:none;color:#8b949e;font-size:1.1rem;cursor:pointer;width:32px;text-align:right">✕</button>
+      </div>
+      <div style="overflow-y:auto;flex:1;padding-top:8px">
+        <div style="text-align:center;padding:20px 16px 16px">
+          <div class="sett-avatar" id="sett-avatar-perfil" style="width:64px;height:64px;font-size:1.8rem;margin:0 auto 10px">A</div>
+          <div style="font-size:1rem;font-weight:700;color:var(--text)" id="sett-perfil-name">—</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:3px" id="sett-perfil-email">—</div>
+        </div>
+        <div class="sett-section-label">Información Personal</div>
+        <div style="padding:0 16px 8px">
+          <label style="font-size:.68rem;color:var(--muted);display:block;margin-bottom:4px">Nombre</label>
+          <input class="sett-edit-field" id="sett-nombre" placeholder="Tu nombre" maxlength="60" style="margin:0 0 10px;width:100%">
+          <label style="font-size:.68rem;color:var(--muted);display:block;margin-bottom:4px">Correo electrónico</label>
+          <input class="sett-edit-field" id="sett-correo-display" disabled style="margin:0;width:100%;opacity:.6;cursor:not-allowed">
+        </div>
+        <div style="padding:0 16px;margin-top:8px">
+          <button onclick="saveProfile()" style="width:100%;background:var(--accent);color:#fff;border:none;padding:10px;border-radius:8px;font-size:.83rem;font-weight:600;cursor:pointer">Guardar cambios</button>
+        </div>
+        <!-- HOGAR COMPARTIDO -->
+        <div style="padding:0 16px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
+          <div style="font-size:.7rem;color:var(--muted);margin-bottom:8px;font-weight:600">👥 HOGAR COMPARTIDO</div>
+          <div style="display:flex;gap:8px">
+            <input id="invite-email-input" type="email" placeholder="correo@ejemplo.com" maxlength="100"
+              style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:.8rem;color:var(--text)">
+            <button onclick="invitePartnerFromUI()"
+              style="background:var(--accent);border:none;border-radius:8px;padding:9px 14px;color:#fff;font-size:.8rem;font-weight:600;cursor:pointer">
+              Invitar
+            </button>
+          </div>
+          <div style="font-size:.65rem;color:var(--muted);margin-top:5px">La persona recibirá acceso al hogar la próxima vez que inicie sesión.</div>
+        </div>
+        <!-- ZONA DE PELIGRO -->
+        <div style="padding:0 16px;margin-top:18px;padding-bottom:16px;border-top:1px solid #3d1a1a;padding-top:14px">
+          <div style="font-size:.7rem;color:#f85149;margin-bottom:8px;font-weight:600">⚠️ ZONA DE PELIGRO</div>
+          <button onclick="confirmDeleteAccount()"
+            style="width:100%;background:none;border:1px solid #f85149;border-radius:8px;padding:10px;color:#f85149;font-size:.8rem;font-weight:600;cursor:pointer">
+            🗑️ Eliminar mi cuenta y todos mis datos
+          </button>
+          <div style="font-size:.65rem;color:var(--muted);margin-top:5px">Esta acción es permanente e irreversible.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANTALLAS DE LISTAS (tipos/cats/subcats/presupuestos) -->
+    <div class="sett-screen" id="sett-lista">
+      <div class="sett-header">
+        <button class="sett-back" onclick="settNav('main')">‹ Volver</button>
+        <div class="sett-title" id="sett-lista-title">Lista</div>
+        <button onclick="closeSettings()" style="background:none;border:none;color:#8b949e;font-size:1.1rem;cursor:pointer;width:32px;text-align:right">✕</button>
+      </div>
+      <div style="overflow-y:auto;flex:1">
+        <div style="font-size:.68rem;color:var(--muted);padding:10px 16px 4px">Toca para editar · ✕ para eliminar</div>
+        <div id="sett-lista-content"></div>
+        <div class="sett-add-row">
+          <input class="sett-add-input" id="sett-add-input" placeholder="Nuevo...">
+          <button onclick="settAddItem()" style="background:var(--accent);color:#fff;border:none;padding:8px 14px;border-radius:7px;font-size:.78rem;font-weight:600;cursor:pointer">+ Agregar</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: CALCULADORA -->
+<div class="modal-overlay" id="modal-calc" onclick="closeCalcIfOutside(event)">
+  <div class="modal" style="width:320px">
+    <h3>🧮 Calculadora</h3>
+    <div class="calc-display">
+      <div class="calc-history" id="calc-history"></div>
+      <div class="calc-val" id="calc-val">0</div>
+    </div>
+    <div class="calc-grid">
+      <button class="calc-btn clear" onclick="calcClear()">C</button>
+      <button class="calc-btn op" onclick="calcToggleSign()">+/−</button>
+      <button class="calc-btn op" onclick="calcOp('%')">%</button>
+      <button class="calc-btn op" onclick="calcOp('/')">÷</button>
+      <button class="calc-btn" onclick="calcNum('7')">7</button>
+      <button class="calc-btn" onclick="calcNum('8')">8</button>
+      <button class="calc-btn" onclick="calcNum('9')">9</button>
+      <button class="calc-btn op" onclick="calcOp('*')">×</button>
+      <button class="calc-btn" onclick="calcNum('4')">4</button>
+      <button class="calc-btn" onclick="calcNum('5')">5</button>
+      <button class="calc-btn" onclick="calcNum('6')">6</button>
+      <button class="calc-btn op" onclick="calcOp('-')">−</button>
+      <button class="calc-btn" onclick="calcNum('1')">1</button>
+      <button class="calc-btn" onclick="calcNum('2')">2</button>
+      <button class="calc-btn" onclick="calcNum('3')">3</button>
+      <button class="calc-btn op" onclick="calcOp('+')">+</button>
+      <button class="calc-btn span2" onclick="calcNum('0')">0</button>
+      <button class="calc-btn" onclick="calcDot()">.</button>
+      <button class="calc-btn eq" onclick="calcEquals()">=</button>
+    </div>
+    <div style="margin-top:10px;font-size:.7rem;color:var(--muted);text-align:center">
+      <button class="btn-cancel" onclick="closeCalc()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SUPABASE-JS — CDN-FIX-2: re-añadido tras eliminación accidental en BATCH-F ══
+     UMD build requerido para window.supabase.createClient (no usar ESM).
+     Fallback a unpkg si jsdelivr falla. Script síncrono: app-core.js depende de él. -->
+<script id="sb-cdn-noop">
+</script>
+<script>
+window._sbLoadPromise = new Promise(function(resolve, reject) {
+  function tryLoad(url, isFallback) {
+    var s = document.createElement('script');
+    s.src = url;
+    s.onload = resolve;
+    s.onerror = function() {
+      if (!isFallback) tryLoad('https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js', true);
+      else reject(new Error('supabase-js no disponible'));
+    };
+    document.head.appendChild(s);
+  }
+  tryLoad('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js', false);
+});</script>
+<script src="config.js"></script>
+<script src="app-core.js"></script>
+<script src="globals-init.js"></script>
+<script src="auth.js"></script>
+<script src="household.js"></script>
+<script src="data-load.js"></script>
+<script src="audit.js"></script>
+<script src="init.js"></script>
+<script src="notificaciones-panel.js"></script>
+
+<!-- ═══ BARRA NAVEGACIÓN INFERIOR (móvil PWA) ═══ -->
+<nav class="pwa-nav" id="pwa-nav">
+  <button class="pwa-nav-btn active" id="nav-dashboard" onclick="pwaNavRial('dashboard')">
+    <span class="nav-icon">🏠</span><span class="nav-label">Inicio</span>
+  </button>
+  <button class="pwa-nav-btn" id="nav-mas" onclick="pwaNavRial('mas')">
+    <span class="nav-icon">☰</span><span class="nav-label">Menú</span>
+  </button>
+  <button class="pwa-nav-btn" id="nav-ia" onclick="pwaNavRial('ia')">
+    <span class="nav-icon">🤖</span><span class="nav-label">IA</span>
+  </button>
+  <button class="pwa-nav-btn" id="nav-config" onclick="pwaNavRial('config')">
+    <span class="nav-icon">⚙️</span><span class="nav-label">Config</span>
+  </button>
+</nav>
+
+<!-- ═══ FAB SUBMENU ═══ -->
+<div id="fab-submenu">
+  <button class="fab-sub-item" onclick="closeFabMenu();haptic();openModal()">
+    <span class="fab-sub-icon">➕</span>
+    <span class="fab-sub-label">Nuevo movimiento</span>
+  </button>
+  <button class="fab-sub-item" onclick="closeFabMenu();haptic();openVoiceLanding()">
+    <span class="fab-sub-icon">🎤</span>
+    <span class="fab-sub-label">Registro por voz</span>
+  </button>
+  <button class="fab-sub-item" onclick="closeFabMenu();haptic();openTransferRial()">
+    <span class="fab-sub-icon">🔄</span>
+    <span class="fab-sub-label">Transferencia</span>
+  </button>
+  <button class="fab-sub-item" onclick="closeFabMenu();haptic();openPlantillaIA()">
+    <span class="fab-sub-icon">🤖</span>
+    <span class="fab-sub-label">Plantilla IA</span>
+  </button>
+</div>
+<!-- ═══ FAB — Botón flotante ═══ -->
+<button id="fab-nuevo" onclick="haptic();toggleFabMenu()" title="Nuevo movimiento" aria-label="Nuevo movimiento">＋</button>
+
+<!-- ═══ MENÚ MÓVIL "MÁS" — bottom sheet ═══ -->
+<div id="mobile-menu-overlay" onclick="closeMobileMenu(event)" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000">
+  <div id="mobile-menu-sheet" style="position:fixed;bottom:0;left:0;right:0;background:#161b22;border-radius:20px 20px 0 0;border-top:1px solid #30363d;padding:0;padding-bottom:calc(72px + env(safe-area-inset-bottom,0px));max-height:calc(90vh - 60px);overflow-y:auto;transform:translateY(100%);transition:transform .3s ease;z-index:10001">
+    <!-- Handle -->
+    <div style="display:flex;justify-content:center;padding:12px 0 4px">
+      <div style="width:36px;height:4px;background:#30363d;border-radius:2px"></div>
+    </div>
+    <!-- Title -->
+    <div style="padding:4px 20px 14px;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:.9rem;font-weight:700;color:#e6edf3">Menú</span>
+      <button onclick="closeMobileMenu()" style="background:none;border:none;color:#8b949e;font-size:1.2rem;cursor:pointer;padding:4px">✕</button>
+    </div>
+
+    <!-- OPCIONES DEL MENÚ -->
+    <div style="padding:0 12px 8px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button class="mob-menu-btn" onclick="openMobileRatesPanel()">
+          <span style="font-size:1.4rem">💱</span>
+          <span>Tasas</span>
+        </button>
+        <button class="mob-menu-btn" onclick="openCalc();closeMobileMenu()">
+          <span style="font-size:1.4rem">🧮</span>
+          <span>Calculadora</span>
+        </button>
+        <button class="mob-menu-btn" onclick="openIA();closeMobileMenu()">
+          <span style="font-size:1.4rem">🤖</span>
+          <span>IA Llama</span>
+        </button>
+        <button class="mob-menu-btn" onclick="sendReport();closeMobileMenu()">
+          <span style="font-size:1.4rem">📸</span>
+          <span>Informe</span>
+        </button>
+        <button class="mob-menu-btn" onclick="openDineroFuera();closeMobileMenu()">
+          <span style="font-size:1.4rem">💰</span>
+          <span class="mob-menu-label">Dinero Fuera</span>
+        </button>
+        <button class="mob-menu-btn" onclick="openRecurrentes();closeMobileMenu()">
+          <span style="font-size:1.4rem">🔁</span>
+          <span class="mob-menu-label">Recurrentes</span>
+        </button>
+        <button class="mob-menu-btn" onclick="openPareja();closeMobileMenu()">
+          <span style="font-size:1.4rem">💑</span>
+          <span class="mob-menu-label">Vista Pareja</span>
+        </button>
+        <button class="mob-menu-btn" onclick="openBCVHistory();closeMobileMenu()">
+          <span style="font-size:1.4rem">📈</span>
+          <span class="mob-menu-label">Tasa BCV</span>
+        </button>
+        <button class="mob-menu-btn" onclick="openCSVImport();closeMobileMenu()">
+          <span style="font-size:1.4rem">📂</span>
+          <span class="mob-menu-label">Importar CSV</span>
+        </button>
+        <button class="mob-menu-btn" onclick="openReceiptScanner();closeMobileMenu()">
+          <span style="font-size:1.4rem">📸</span>
+          <span class="mob-menu-label">Escanear Recibo</span>
+        </button>
+        <button style="display:none"
+          <span style="font-size:1.4rem">💰</span>
+          <span>Dinero Fuera</span>
+        </button>
+        <button class="mob-menu-btn" onclick="openIntelFinanciera();closeMobileMenu()">
+          <span style="font-size:1.4rem">🧠</span>
+          <span>Inteligencia</span>
+        </button>
+        <button class="mob-menu-btn" onclick="openNotificaciones();closeMobileMenu()">
+          <span style="font-size:1.4rem">🔔</span>
+          <span>Recordatorios</span>
+        </button>
+        <button class="mob-menu-btn" onclick="openConexiones();closeMobileMenu()">
+          <span style="font-size:1.4rem">🔐</span>
+          <span>Sesiones</span>
+        </button>
+        <button class="mob-menu-btn" onclick="openBackupPanel();closeMobileMenu()">
+          <span style="font-size:1.4rem">💾</span>
+          <span>Respaldo</span>
+        </button>
+        <button class="mob-menu-btn" onclick="toggleCloseMonth();closeMobileMenu()" id="mob-btn-cerrar">
+          <span style="font-size:1.4rem">🔒</span>
+          <span>Cerrar Mes</span>
+        </button>
+        <button class="mob-menu-btn" onclick="openReorganize();closeMobileMenu()">
+          <span style="font-size:1.4rem">🔀</span>
+          <span>Ordenar</span>
+        </button>
+        <button class="mob-menu-btn" onclick="openSettings();closeMobileMenu()">
+          <span style="font-size:1.4rem">⚙️</span>
+          <span>Configuración</span>
+        </button>
+        <button class="mob-menu-btn" onclick="detectarPlantillasAuto();closeMobileMenu()">
+          <span style="font-size:1.4rem">🔁</span>
+          <span>Plantillas IA</span>
+        </button>
+        <button class="mob-menu-btn" onclick="openListaCompras();closeMobileMenu()">
+          <span style="font-size:1.4rem">🛒</span>
+          <span>Lista Compras</span>
+        </button>
+        <button class="mob-menu-btn" onclick="toggleDesktopMode();closeMobileMenu()">
+          <span style="font-size:1.4rem">🖥️</span>
+          <span>Escritorio</span>
+        </button>
+        <button class="mob-menu-btn" onclick="openNavEditor();closeMobileMenu()">
+          <span style="font-size:1.4rem">✏️</span>
+          <span>Editar Nav</span>
+        </button>
+      </div>
+    </div>
+    </div>
+
+    <!-- SALIR -->
+    <div style="padding:8px 16px 20px">
+      <button onclick="doLogout()" style="width:100%;background:#2d0f0f;border:1px solid #f85149;color:#f85149;padding:11px;border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer">🚪 Cerrar sesión</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SUBPANEL TASAS ═══ -->
+<div id="rates-panel-overlay" onclick="closeMobileRatesPanel(event)" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000">
+  <div id="rates-panel-sheet" onclick="event.stopPropagation()" style="position:fixed;bottom:0;left:0;right:0;background:#161b22;border-radius:20px 20px 0 0;border-top:1px solid #30363d;padding:0;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 8px);transform:translateY(100%);transition:transform .28s ease;z-index:10001;overflow-y:auto;max-height:90vh">
+    <div style="display:flex;justify-content:center;padding:12px 0 4px"><div style="width:36px;height:4px;background:#30363d;border-radius:2px"></div></div>
+    <div style="padding:4px 20px 16px;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:.9rem;font-weight:700;color:#e6edf3">💱 Tasas de cambio</span>
+      <button onclick="closeMobileRatesPanel()" style="background:none;border:none;color:#8b949e;font-size:1.2rem;cursor:pointer;padding:4px">✕</button>
+    </div>
+    <div style="padding:0 14px 10px">
+
+      <!-- ── TASAS: inputs de configuración ──────────────────────── -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <label style="font-size:.62rem;color:#8b949e;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">💵 Bs / $ (BCV)</label>
+          <input type="number" id="mobile-rate-bcv" placeholder="451.51" oninput="_ratesCalcUpdate()" style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #e3b341;color:#e3b341;padding:8px 6px;border-radius:8px;font-size:.88rem;outline:none;font-weight:700">
+        </div>
+        <div>
+          <label style="font-size:.62rem;color:#8b949e;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">💶 Bs / € (EUR)</label>
+          <input type="number" id="mobile-rate-eur" placeholder="499.62" oninput="_ratesCalcUpdate()" style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:8px 6px;border-radius:8px;font-size:.88rem;outline:none;font-weight:700">
+        </div>
+      </div>
+
+      <!-- ── CALCULADORA BIDIRECCIONAL (estilo "Al cambio") ─────── -->
+      <div style="background:#0d1117;border:1px solid #21262d;border-radius:12px;padding:11px 13px;margin-bottom:10px">
+        <div style="font-size:.6rem;color:#8b949e;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+          <span>💱 Calculadora</span>
+          <!-- Selector de tipo de tasa -->
+          <div style="display:flex;gap:4px">
+            <button id="rcalc-btn-bcv" onclick="_ratesCalcSetMode('bcv')" style="padding:2px 9px;border-radius:20px;border:1px solid #e3b341;background:#e3b34120;color:#e3b341;font-size:.6rem;font-weight:700;cursor:pointer">BCV</button>
+            <button id="rcalc-btn-eur" onclick="_ratesCalcSetMode('eur')" style="padding:2px 9px;border-radius:20px;border:1px solid #30363d;background:transparent;color:#8b949e;font-size:.6rem;font-weight:700;cursor:pointer">EUR</button>
+          </div>
+        </div>
+        <!-- Campo USD / EUR -->
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <span id="rcalc-label-left" style="font-size:.95rem;font-weight:700;color:#e3b341;width:18px;flex-shrink:0">$</span>
+          <input id="rcalc-input-usd" type="number" inputmode="decimal" placeholder="0.00"
+            oninput="_ratesCalcFromUSD()"
+            style="flex:1;min-width:0;background:transparent;border:none;border-bottom:1px solid #30363d;color:#e6edf3;font-size:1.3rem;font-weight:700;padding:3px 0;outline:none;text-align:right;font-family:inherit">
+          <button onclick="_ratesCopyVal('usd')" style="background:none;border:none;color:#484f58;cursor:pointer;font-size:.85rem;padding:3px;flex-shrink:0">⧉</button>
+        </div>
+        <!-- Campo Bs -->
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:.85rem;font-weight:700;color:#8b949e;width:18px;flex-shrink:0">Bs</span>
+          <input id="rcalc-input-bs" type="number" inputmode="decimal" placeholder="0.00"
+            oninput="_ratesCalcFromBs()"
+            style="flex:1;min-width:0;background:transparent;border:none;border-bottom:1px solid #30363d;color:#6bcf8a;font-size:1.3rem;font-weight:700;padding:3px 0;outline:none;text-align:right;font-family:inherit">
+          <button onclick="_ratesCopyVal('bs')" style="background:none;border:none;color:#484f58;cursor:pointer;font-size:.85rem;padding:3px;flex-shrink:0">⧉</button>
+        </div>
+        <!-- Tasa activa label -->
+        <div id="rcalc-rate-label" style="font-size:.6rem;color:#484f58;text-align:right;margin-top:5px">Tasa BCV: Bs —</div>
+      </div>
+
+      <!-- ── SELECTOR MONEDA ──────────────────────────────────────── -->
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <button onclick="setCurrency('USD')" style="flex:1;padding:7px 4px;border-radius:7px;border:1px solid #30363d;background:transparent;color:#8b949e;font-size:.72rem;cursor:pointer;font-weight:600" id="mcur-USD">$ USD</button>
+        <button onclick="setCurrency('BS')" style="flex:1;padding:7px 4px;border-radius:7px;border:1px solid #30363d;background:transparent;color:#8b949e;font-size:.72rem;cursor:pointer;font-weight:600" id="mcur-BS">Bs VEF</button>
+        <button onclick="setCurrency('EUR')" style="flex:1;padding:7px 4px;border-radius:7px;border:1px solid #30363d;background:transparent;color:#8b949e;font-size:.72rem;cursor:pointer;font-weight:600" id="mcur-EUR">€ EUR</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-bottom:16px">
+        <button onclick="fetchTasaBCV(true)" style="padding:10px;background:#0d2137;border:1px solid #58a6ff;color:#58a6ff;border-radius:9px;font-size:.78rem;font-weight:700;cursor:pointer">⟳ Auto BCV</button>
+        <button onclick="applyMobileRates()" style="padding:10px;background:#1a3626;border:1px solid #3fb950;color:#3fb950;border-radius:9px;font-size:.78rem;font-weight:700;cursor:pointer">✓ Aplicar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app-nav.js"></script>
+
+<!-- ═══ PWA — Service Worker + Banner de instalación ═══ -->
+<script src="app-offline.js"></script>
+<!-- ═══ MODAL: EDITOR NAV BARRA ═══ -->
+<div class="modal-overlay" id="modal-nav-editor" onclick="closeNavEditorIfOutside(event)">
+  <div class="modal" style="width:360px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="margin:0;font-size:.92rem">✏️ Personalizar Barra Inferior</h3>
+      <button onclick="closeNavEditor()" style="background:none;border:none;color:#8b949e;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <p style="font-size:.72rem;color:#8b949e;margin-bottom:12px">Cambia el orden de los botones de la barra inferior con ↑↓. El botón ➕ siempre está en el centro.</p>
+    <div id="nav-editor-list" style="display:flex;flex-direction:column;gap:6px"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="applyNavOrder()" style="flex:1;background:#238636;color:#fff;border:none;padding:9px;border-radius:7px;font-size:.8rem;cursor:pointer;font-weight:600">✅ Aplicar</button>
+      <button onclick="closeNavEditor()" style="background:#1c2128;color:#8b949e;border:1px solid #30363d;padding:9px 18px;border-radius:7px;font-size:.8rem;cursor:pointer">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="app-analytics.js"></script>
+
+
+<!-- ═══ MODAL: DETALLE DE CUENTA ═══ -->
+<div class="modal-overlay" id="modal-cuenta-detail" onclick="if(event.target===this)closeModalCuentaDetail()" style="z-index:10800">
+  <div class="modal-box" style="width:500px;max-height:90vh;overflow-y:auto;padding:0">
+    <!-- Hero Card -->
+    <div id="cdet-hero" style="padding:22px 20px 18px;border-radius:18px 18px 0 0;position:relative">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="font-size:15px;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px" id="cdet-title">—</div>
+        <button onclick="closeModalCuentaDetail()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;line-height:28px;text-align:center">✕</button>
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:4px" id="cdet-owner"></div>
+      <div style="font-size:32px;font-weight:900;color:#fff;margin:12px 0 4px" id="cdet-balance">$0.00</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.7)" id="cdet-balance-bs">Bs —</div>
+    </div>
+    <!-- Body -->
+    <div style="padding:16px 18px">
+      <!-- Stats grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px" id="cdet-stats"></div>
+      <!-- Meta bar -->
+      <div id="cdet-meta-bar" style="display:none;margin-bottom:14px"></div>
+      <!-- Acciones -->
+      <div class="cdet-actions-row" style="display:flex;gap:8px;margin-bottom:16px">
+        <button onclick="editCuentaFromDetail()" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">✏️ Editar</button>
+        <button onclick="closeModalCuentaDetail();openTransferRial();" style="flex:1;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.25);color:#58a6ff;padding:9px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">↔️ Transferir</button>
+        <button onclick="openMetaCuenta(_cdetCuentaId)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">🎯</button>
+        <button onclick="deleteCuentaFromDash(_cdetCuentaId);closeModalCuentaDetail()" style="background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--red);padding:9px 10px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">🗑</button>
+      </div>
+      <!-- Últimos movimientos -->
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Últimos movimientos vinculados</div>
+      <div id="cdet-txn-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: GESTIÓN DE CUENTAS ═══ -->
+<div class="modal-overlay" id="modal-cuentas" onclick="if(event.target===this)closeModalCuentas()" style="z-index:10300">
+  <div class="modal-box" style="width:500px;max-height:88vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="color:#3fb950;font-size:.95rem;display:flex;align-items:center;gap:7px">
+        💳 Mis Cuentas
+        <span id="cuentas-total-badge" style="background:#1a3d26;border:1px solid #3fb950;border-radius:10px;padding:2px 8px;font-size:.7rem;color:#3fb950"></span>
+      </h3>
+      <button onclick="closeModalCuentas()" style="background:none;border:none;color:#8b949e;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <!-- Saldo total -->
+    <div style="background:linear-gradient(135deg,#092215,#0e3321);border:1px solid #1a3d26;border-radius:16px;padding:16px 20px;margin-bottom:16px">
+      <div style="font-size:10px;color:#4a9960;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Saldo Total</div>
+      <div style="font-size:32px;font-weight:900;color:#e6edf3;letter-spacing:-1px" id="cuentas-modal-total">$0.00</div>
+      <div style="font-size:11px;color:#4a9960;margin-top:2px" id="cuentas-modal-total-bs">Bs —</div>
+    </div>
+    <!-- Lista -->
+    <div id="cuentas-lista-modal" style="margin-bottom:12px">
+      <div style="color:#8b949e;font-size:.78rem;text-align:center;padding:20px">
+        No tienes cuentas. Agrega una →
+      </div>
+    </div>
+    <!-- Botón agregar -->
+    <button onclick="openNuevaCuenta()" style="width:100%;background:#3fb950;color:#000;border:none;padding:13px;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit">
+      + Agregar cuenta
+    </button>
+  </div>
+</div>
+
+<!-- ═══ MODAL: NUEVA / EDITAR CUENTA ═══ -->
+<div class="modal-overlay" id="modal-nueva-cuenta" onclick="if(event.target===this)closeNuevaCuenta()" style="z-index:10850">
+  <div class="modal-box" style="width:480px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 id="nueva-cuenta-title" style="color:#e6edf3;font-size:.95rem">💳 Nueva Cuenta</h3>
+      <button onclick="closeNuevaCuenta()" style="background:none;border:none;color:#8b949e;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+
+    <!-- Tipo: Nacional / Internacional -->
+    <div style="display:flex;gap:7px;margin-bottom:16px">
+      <button onclick="setCuentaTipo('nacional')" id="ct-nacional" style="flex:1;padding:8px;border-radius:18px;background:#1a3d26;border:1px solid #3fb950;font-size:12px;color:#3fb950;cursor:pointer;font-family:inherit;font-weight:600">Nacional</button>
+      <button onclick="setCuentaTipo('internacional')" id="ct-internacional" style="flex:1;padding:8px;border-radius:18px;background:#13181f;border:1px solid #21262d;font-size:12px;color:#8b949e;cursor:pointer;font-family:inherit">🌎 Internacional</button>
+    </div>
+
+    <!-- Campo adicional: banco/país para cuentas internacionales -->
+    <div id="nc-intl-field" style="display:none;background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.25);border-radius:12px;padding:12px 15px;margin-bottom:12px">
+      <div style="font-size:10px;color:#58a6ff;letter-spacing:.06em;margin-bottom:8px;font-weight:700">🌎 CUENTA INTERNACIONAL — se guarda como USD</div>
+      <input id="nc-banco-pais" placeholder="Banco y país (ej: Bank of America — EE.UU.)"
+             style="width:100%;background:none;border:none;border-bottom:1px solid rgba(88,166,255,.3);color:#e6edf3;font-size:13px;outline:none;font-family:inherit;padding-bottom:6px;box-sizing:border-box">
+    </div>
+
+    <input type="hidden" id="nc-edit-id">
+
+    <!-- Nombre -->
+    <div style="background:#13181f;border:1px solid #21262d;border-radius:14px;padding:12px 15px;display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div id="nc-logo-preview" style="width:34px;height:34px;border-radius:9px;background:#3fb950;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;flex-shrink:0">💳</div>
+      <input id="nc-nombre" placeholder="Nombre de la cuenta (ej: Zinli)" maxlength="60"
+             style="flex:1;background:none;border:none;color:#e6edf3;font-size:13px;outline:none;font-family:inherit"
+             oninput="updateLogoPreview()">
+    </div>
+
+    <!-- URL Logo -->
+    <div style="background:#13181f;border:1px solid #21262d;border-radius:14px;padding:12px 15px;display:flex;align-items:center;gap:9px;margin-bottom:10px">
+      <span style="font-size:15px">🌐</span>
+      <input id="nc-logo-url" placeholder="URL o dominio (ej: zinli.com)" oninput="previewLogoFromUrl(this.value)"
+             style="flex:1;background:none;border:none;color:#8b949e;font-size:12px;outline:none;font-family:inherit"
+             oninput="updateLogoPreview()">
+    </div>
+
+    <!-- Color -->
+    <div style="background:#13181f;border:1px solid #21262d;border-radius:14px;padding:13px 15px;margin-bottom:10px">
+      <div style="font-size:10px;color:#8b949e;letter-spacing:.06em;margin-bottom:9px">COLOR DE CUENTA</div>
+      <div class="color-picker-row" id="nc-color-row">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+    <!-- Saldo inicial -->
+    <div style="background:#13181f;border:1px solid #21262d;border-radius:14px;padding:15px;margin-bottom:10px">
+      <div style="font-size:11px;color:#8b949e;margin-bottom:10px">Saldo inicial</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <span style="font-size:16px;color:#8b949e;font-weight:600">$</span>
+        <input type="number" id="nc-saldo" placeholder="0.00" step="0.01"
+               style="flex:1;background:none;border:none;color:#e6edf3;font-size:24px;font-weight:700;outline:none;font-family:inherit">
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid #21262d">
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="font-size:15px;color:#3fb950">$</span>
+          <span style="font-size:13px;color:#e6edf3">Dólares (USD)</span>
+        </div>
+        <div id="nc-usd-toggle" onclick="toggleUSDToggle()" 
+             style="width:42px;height:22px;border-radius:11px;background:#21262d;border:1px solid #30363d;position:relative;cursor:pointer;transition:all .2s">
+          <div id="nc-usd-dot" style="width:16px;height:16px;border-radius:50%;background:#8b949e;position:absolute;top:2px;left:2px;transition:all .2s"></div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-cuenta-save" onclick="saveCuenta()">Guardar cuenta</button>
+  </div>
+</div>
+
+<script src="app-cuentas.js"></script>
+<script src="app-numpad.js"></script>
+
+<!-- ═══ VOICE LANDING — Registro por voz (pantalla completa) ═══ -->
+<div id="modal-voice-landing">
+  <div class="voice-landing-header">
+    <button class="voice-close-btn" onclick="closeVoiceLanding()">✕</button>
+    <span style="font-size:14px;font-weight:600;color:#e6edf3">Registro por voz</span>
+    <button class="voice-close-btn" onclick="closeVoiceLanding();openModal()" style="font-size:11px;color:#3fb950">⌨️</button>
+  </div>
+
+  <div class="voice-greeting" id="voice-greeting-area">
+    <div class="voice-greeting-name" id="voice-greeting-name">Hola Anthony,</div>
+    <div class="voice-greeting-sub">¿Qué movimiento registramos?</div>
+  </div>
+
+  <div class="voice-wave" id="voice-wave-anim" style="display:none">
+    <div class="voice-wave-bar"></div><div class="voice-wave-bar"></div>
+    <div class="voice-wave-bar"></div><div class="voice-wave-bar"></div>
+    <div class="voice-wave-bar"></div><div class="voice-wave-bar"></div>
+    <div class="voice-wave-bar"></div>
+  </div>
+  <div class="voice-status" id="voice-status-text">Toca el micrófono para empezar</div>
+
+  <div class="voice-examples" id="voice-examples-area">
+    <div class="voice-example-row">
+      <button class="voice-chip" onclick="voiceLandingChip('Gasté gasolina 20 dólares')">Gasté gasolina 20$</button>
+      <button class="voice-chip" onclick="voiceLandingChip('Café 3 dólares en Starbucks')">Café 3$ en Starbucks</button>
+      <button class="voice-chip" onclick="voiceLandingChip('Gasté 5 dólares en la farmacia')">Gasté 5$ en farmacia</button>
+      <div id="voice-ia-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"></div>
+    </div>
+    <div class="voice-example-row">
+      <button class="voice-chip" onclick="voiceLandingChip('Ayer pagué el internet 18 dólares')">Ayer pagué el internet</button>
+      <button class="voice-chip" onclick="voiceLandingChip('Ingresé 80 dólares de sueldo')">Ingresé sueldo</button>
+      <button class="voice-chip" onclick="voiceLandingChip('Almuerzo 8 dólares hoy')">Almuerzo hoy</button>
+    </div>
+  </div>
+
+  <!-- Preview area for manual send -->
+  <div id="voice-preview-area" style="display:none;padding:0 16px 10px">
+    <div id="voice-preview-card" style="background:#13181f;border:1px solid #30363d;border-radius:14px;padding:12px 14px;font-size:12px;margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="sendVoiceManual()" style="flex:1;background:#3fb950;color:#000;border:none;padding:11px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit">✓ Registrar</button>
+      <button onclick="cancelVoicePreview()" style="flex:0 0 48px;background:#13181f;border:1px solid #30363d;color:#8b949e;padding:11px;border-radius:10px;font-size:16px;cursor:pointer">✕</button>
+    </div>
+  </div>
+
+  <div class="voice-bottom">
+    <button class="voice-action-btn" onclick="closeVoiceLanding();openModal()" title="Texto manual">⌨️</button>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+      <button class="voice-mic-btn" id="voice-landing-mic" onclick="toggleVoiceLandingMic()">🎙️</button>
+    </div>
+    <button class="voice-action-btn" onclick="closeVoiceLanding();openIA()" title="Preguntar a IA">💬</button>
+  </div>
+</div>
+
+<!-- ═══ TRANSFER RIAL STYLE ═══ -->
+<div id="modal-transfer-rial">
+  <div class="transfer-header">
+    <button onclick="closeTransferRial()" style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.08);border:none;color:#e6edf3;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">←</button>
+    <div class="transfer-type-pills">
+      <span class="transfer-type-pill pill-gasto" onclick="setTransferView('gasto')">↓ Gasto</span>
+      <span class="transfer-type-pill pill-ingreso" onclick="setTransferView('ingreso')">↑ Ingreso</span>
+      <button class="transfer-type-pill active" onclick="setTransferView('transfer')">⇄ Transferencia</button>
+    </div>
+  </div>
+
+  <button class="transfer-date-btn" id="transfer-date-btn" onclick="pickTransferDate()">
+    📅 <span id="transfer-date-label">Hoy</span>
+  </button>
+  <input type="date" id="transfer-date-input" style="display:none" onchange="onTransferDateChange()">
+
+  <!-- Card ENVIASTE -->
+  <div class="transfer-card">
+    <div class="transfer-card-label">Enviaste</div>
+    <button class="transfer-account-pill" id="transfer-from-btn" onclick="openTransferAccountPicker('from')">
+      <div class="transfer-account-dot" id="transfer-from-dot" style="background:#21262d">💳</div>
+      <div class="transfer-account-info">
+        <div class="transfer-account-name" id="transfer-from-name">Seleccionar origen</div>
+        <div class="transfer-account-sub">Toca para seleccionar</div>
+      </div>
+      <span style="color:#8b949e;font-size:16px">›</span>
+    </button>
+    <div class="transfer-amount-big" id="transfer-amount-from" onclick="openNumpadForTransfer('from')">Bs 0,00</div>
+  </div>
+
+  <div class="transfer-divider"><div class="transfer-divider-icon">∨</div></div>
+
+  <!-- Card RECIBISTE -->
+  <div class="transfer-card">
+    <div class="transfer-card-label">Recibiste</div>
+    <button class="transfer-account-pill" id="transfer-to-btn" onclick="openTransferAccountPicker('to')">
+      <div class="transfer-account-dot" id="transfer-to-dot" style="background:#21262d">💳</div>
+      <div class="transfer-account-info">
+        <div class="transfer-account-name" id="transfer-to-name">Seleccionar destino</div>
+        <div class="transfer-account-sub">Toca para seleccionar</div>
+      </div>
+      <span style="color:#8b949e;font-size:16px">›</span>
+    </button>
+    <div class="transfer-amount-big dest" id="transfer-amount-to" onclick="openNumpadForTransfer('to')">Bs 0,00</div>
+  </div>
+
+  <!-- Account picker sheet -->
+  <div id="transfer-picker-overlay" onclick="closeTransferAccountPicker()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10700">
+    <div id="transfer-picker-sheet" style="position:fixed;bottom:0;left:0;right:0;background:#13181f;border-radius:24px 24px 0 0;border-top:1px solid #21262d;padding:16px;max-height:60vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s ease">
+      <div style="font-size:14px;font-weight:700;color:#e6edf3;margin-bottom:12px" id="transfer-picker-title">Seleccionar cuenta</div>
+      <div id="transfer-picker-list"></div>
+    </div>
+  </div>
+
+  <button class="transfer-listo" id="transfer-listo-btn" onclick="executeTransferRial()">Listo</button>
+</div>
+
+<!-- ═══ PLANTILLA IA MODAL ═══ -->
+<div class="modal-overlay" id="modal-plantilla-ia" onclick="if(event.target===this)closeModalPlantillaIA()" style="z-index:11200">
+  <div class="modal-box" style="width:460px;max-height:85vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="color:#bc8cff;font-size:.95rem;display:flex;align-items:center;gap:7px">🤖 Sugerencias IA — Movimientos frecuentes</h3>
+      <button onclick="closeModalPlantillaIA()" style="background:none;border:none;color:#8b949e;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div style="font-size:.78rem;color:#8b949e;margin-bottom:14px;line-height:1.6">
+      La IA analiza tus patrones del mes y sugiere el movimiento más probable que aún no has registrado hoy.
+    </div>
+    <div id="plantilla-ia-result" style="min-height:80px;display:flex;align-items:center;justify-content:center">
+      <div style="color:#8b949e;font-size:.75rem">Generando sugerencia...</div>
+    </div>
+    <div id="plantilla-ia-actions" style="display:none;margin-top:14px;display:flex;flex-direction:column;gap:8px">
+      <button onclick="applyPlantillaIA()" style="background:#3fb950;color:#000;border:none;padding:12px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit">
+        ✓ Usar esta sugerencia
+      </button>
+      <button onclick="regeneratePlantillaIA()" style="background:#13181f;border:1px solid #30363d;color:#8b949e;padding:10px;border-radius:10px;font-size:13px;cursor:pointer;font-family:inherit">
+        🔄 Sugerir otra
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="app-voice.js"></script>
+
+<!-- ═══ RECURRING TRANSACTIONS MODAL ═══ -->
+<div class="modal-overlay" id="modal-recurrentes" onclick="if(event.target===this)closeRecurrentes()" style="z-index:10800">
+  <div class="modal-box" style="width:min(500px,94vw);max-height:88vh;overflow-y:auto;box-sizing:border-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="color:#e3b341;font-size:.95rem">🔁 Transacciones Recurrentes</h3>
+      <button onclick="closeRecurrentes()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.6">
+      Registra gastos e ingresos que se repiten cada mes. La app te recordará y podrá registrarlos automáticamente.
+    </div>
+    <!-- Add new recurring form -->
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">+ Nueva recurrente</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;box-sizing:border-box">
+        <div class="form-group" style="grid-column:1/-1">
+          <label>Descripción</label>
+          <input id="rec-desc" placeholder="ej: Internet, Netflix, Sueldo..." style="width:100%;box-sizing:border-box">
+        </div>
+        <div class="form-group" style="min-width:0">
+          <label>Tipo</label>
+          <select id="rec-tipo" onchange="updateRecCats();updateRecSubcats()" style="width:100%;box-sizing:border-box">
+            <option value="Gasto">Gasto</option>
+            <option value="Ingreso Fijo">Ingreso Fijo</option>
+            <option value="Ingreso Variable">Ingreso Variable</option>
+          </select>
+        </div>
+        <div class="form-group" style="min-width:0">
+          <label>Monto USD</label>
+          <input id="rec-amount" type="number" placeholder="0.00" step="0.01" style="width:100%;box-sizing:border-box">
+        </div>
+        <div class="form-group" style="min-width:0">
+          <label>Categoría</label>
+          <select id="rec-cat" onchange="updateRecSubcats()" style="width:100%;box-sizing:border-box"></select>
+        </div>
+        <div class="form-group" style="min-width:0">
+          <label>Día del mes</label>
+          <select id="rec-dia" style="width:100%;box-sizing:border-box;background:var(--surface2,#1c2128);border:1px solid var(--border,#30363d);border-radius:8px;color:var(--text,#e6edf3);padding:8px;font-size:.82rem;font-family:inherit"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option></select>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:4px;box-sizing:border-box">
+        <div class="form-group" style="flex:1;min-width:0">
+          <label>Auto-registrar</label>
+          <select id="rec-auto" style="width:100%;box-sizing:border-box">
+            <option value="remind">Solo recordar</option>
+            <option value="auto">Registrar automáticamente</option>
+          </select>
+        </div>
+      </div>
+      <input type="hidden" id="rec-edit-id" value="">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;box-sizing:border-box">
+        <div class="form-group" style="min-width:0">
+          <label>Subcategoría</label>
+          <select id="rec-subcat" style="width:100%;box-sizing:border-box"><option value="">— opcional —</option></select>
+        </div>
+        <div class="form-group" style="min-width:0">
+          <label>Método de pago</label>
+          <select id="rec-method" style="width:100%;box-sizing:border-box">
+            <option value="Transferencia">Transferencia</option>
+            <option value="Pago móvil">Pago móvil</option>
+            <option value="Efectivo $">Efectivo $</option>
+            <option value="Tarjeta">Tarjeta</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+      </div>
+      <button id="rec-save-btn" onclick="saveRecurrente()" style="width:100%;background:var(--gold);color:#000;border:none;padding:10px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;margin-top:10px">
+        🔁 Guardar recurrente
+      </button>
+    </div>
+    <!-- List -->
+    <div id="recurrentes-list"></div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: PANEL DE NOTIFICACIONES ═══ -->
+<div class="modal-overlay" id="modal-notificaciones" onclick="if(event.target===this)closeNotificaciones()" style="z-index:10800">
+  <div class="modal-box" style="width:min(500px,94vw);max-height:88vh;overflow-y:auto;box-sizing:border-box;padding:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px 12px;border-bottom:1px solid var(--border)">
+      <h3 style="color:#e3b341;font-size:.95rem">🔔 Recordatorios</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="btn-nueva-notif" style="background:#22c55e;border:none;color:#000;padding:6px 14px;border-radius:10px;font-size:.75rem;font-weight:700;cursor:pointer">+ Nueva</button>
+        <button onclick="closeNotificaciones()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
+      </div>
+    </div>
+    <div id="notif-panel-contenedor" style="padding:14px 16px;min-height:100px"></div>
+  </div>
+</div>
+
+<!-- ═══ PAREJA VIEW MODAL ═══ -->
+<div class="modal-overlay" id="modal-pareja" onclick="if(event.target===this)closePareja()" style="z-index:10800">
+  <div class="modal-box" style="width:560px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="color:#bc8cff;font-size:.95rem">💑 Vista Pareja — Anthony & Isabel</h3>
+      <button onclick="closePareja()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div class="pareja-tab-row">
+      <button class="pareja-tab active" id="ptab-all" onclick="setParejaTab('all')">🔀 Todos mezclados</button>
+      <button class="pareja-tab" id="ptab-anthony" onclick="setParejaTab('anthony')">👨 Anthony</button>
+      <button class="pareja-tab" id="ptab-isabel" onclick="setParejaTab('isabel')">👩 Isabel</button>
+      <button class="pareja-tab" id="ptab-stats" onclick="setParejaTab('stats')">📊 Comparar</button>
+    </div>
+    <div id="pareja-content"></div>
+  </div>
+</div>
+
+<!-- ═══ BCV HISTORY MODAL ═══ -->
+<!-- ═══ META CUENTA MODAL ═══ -->
+<div class="modal-overlay" id="modal-meta-cuenta" onclick="if(event.target===this)closeMetaCuenta()" style="z-index:10900">
+  <div class="modal-box" style="width:420px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <h3 style="color:var(--gold);font-size:.95rem">🎯 Meta de Cuenta</h3>
+      <button onclick="closeMetaCuenta()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <input type="hidden" id="meta-cuenta-id">
+    <div class="form-group" style="margin-bottom:12px">
+      <label style="font-size:.67rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Nombre de la meta</label>
+      <input id="meta-nombre" type="text" placeholder="Ej: Fondo de emergencia, Viaje, Auto..." maxlength="60"
+        style="width:100%;background:rgba(13,17,23,0.7);border:1px solid var(--glass-border);color:var(--text);padding:10px 12px;border-radius:10px;font-size:.82rem;font-family:inherit;margin-top:4px"
+        oninput="updateMetaPreview()">
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label style="font-size:.67rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Monto objetivo ($)</label>
+      <input id="meta-objetivo" type="number" placeholder="0.00" min="0" step="0.01"
+        style="width:100%;background:rgba(13,17,23,0.7);border:1px solid var(--glass-border);color:var(--text);padding:10px 12px;border-radius:10px;font-size:.82rem;font-family:inherit;margin-top:4px"
+        oninput="updateMetaPreview()">
+    </div>
+    <!-- Preview barra de progreso -->
+    <div id="meta-preview" style="background:rgba(22,27,34,0.7);border:1px solid var(--glass-border);border-radius:10px;padding:12px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-bottom:6px">
+        <span id="meta-preview-label">—</span>
+        <span id="meta-preview-pct" style="color:var(--green);font-weight:700">0%</span>
+      </div>
+      <div style="background:rgba(48,54,61,0.5);border-radius:4px;height:6px;overflow:hidden">
+        <div id="meta-preview-bar" style="height:100%;width:0%;background:var(--green);border-radius:4px;transition:width .3s"></div>
+      </div>
+      <div style="font-size:.67rem;color:var(--muted);margin-top:6px" id="meta-preview-sub">Saldo actual: —</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="saveMetaCuenta()" style="flex:1;background:var(--green);color:#000;border:none;padding:11px;border-radius:10px;font-weight:700;font-size:.82rem;cursor:pointer;font-family:inherit">💾 Guardar</button>
+      <button id="btn-delete-meta" onclick="deleteMetaCuenta()" style="display:none;flex:1;background:rgba(248,81,73,0.15);color:var(--red);border:1px solid rgba(248,81,73,0.3);padding:11px;border-radius:10px;font-weight:600;font-size:.82rem;cursor:pointer;font-family:inherit">🗑️ Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-bcv-history" onclick="if(event.target===this)closeBCVHistory()" style="z-index:10800">
+  <div class="modal-box" style="width:520px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <button onclick="closeBCVHistory()" style="background:none;border:1px solid #30363d;color:#8b949e;font-size:.8rem;cursor:pointer;display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:7px;font-family:inherit">‹ Volver</button>
+      <h3 style="color:#e3b341;font-size:.95rem;margin:0">🇻🇪 Historial en Bs</h3>
+      <button onclick="closeBCVHistory()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:4px 8px">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+      Todos tus movimientos registrados, mostrados en su equivalente en bolívares (Bs) al momento del registro.
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+      <button id="bcv-filter-all" onclick="renderBCVMovimientos('all')" style="background:#21262d;border:1px solid #3fb950;color:#3fb950;padding:4px 10px;border-radius:6px;font-size:.7rem;cursor:pointer">Todos</button>
+      <button id="bcv-filter-ing" onclick="renderBCVMovimientos('ing')" style="background:#21262d;border:1px solid #30363d;color:#8b949e;padding:4px 10px;border-radius:6px;font-size:.7rem;cursor:pointer">Ingresos</button>
+      <button id="bcv-filter-gas" onclick="renderBCVMovimientos('gas')" style="background:#21262d;border:1px solid #30363d;color:#8b949e;padding:4px 10px;border-radius:6px;font-size:.7rem;cursor:pointer">Gastos</button>
+    </div>
+    <div class="bcv-stat-row" id="bcv-stats-row"></div>
+    <div id="bcv-history-list" style="margin-top:8px;max-height:380px;overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- ═══ CSV IMPORT MODAL ═══ -->
+<div class="modal-overlay" id="modal-csv-import" onclick="if(event.target===this)closeCSVImport()" style="z-index:10800">
+  <div class="modal-box" style="width:500px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="color:#58a6ff;font-size:.95rem">📂 Importar desde CSV</h3>
+      <button onclick="closeCSVImport()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div class="csv-drop-zone" id="csv-drop-zone" onclick="document.getElementById('csv-file-input').click()">
+      <div style="font-size:32px;margin-bottom:8px">📄</div>
+      <div style="font-size:14px;color:var(--text);font-weight:600;margin-bottom:4px">Arrastra o toca para subir CSV</div>
+      <div style="font-size:11px;color:var(--muted)">Exporta desde tu banco o usa el formato: fecha, descripción, monto</div>
+    </div>
+    <input type="file" id="csv-file-input" accept=".csv,.txt" style="display:none" onchange="loadCSVFile(event)">
+    <div id="csv-preview" style="margin-top:10px"></div>
+    <div id="csv-actions" style="display:none;margin-top:12px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px" id="csv-ai-status">🤖 La IA está mapeando las columnas...</div>
+      <button onclick="importCSV()" id="csv-import-btn" style="width:100%;background:var(--blue);color:#fff;border:none;padding:11px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">
+        📂 Importar movimientos
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ RECEIPT SCANNER MODAL ═══ -->
+<div class="modal-overlay" id="modal-receipt-scanner" onclick="if(event.target===this)closeReceiptScanner()" style="z-index:10800">
+  <div class="modal-box" style="width:460px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="color:#58a6ff;font-size:.95rem">📸 Escanear Recibo</h3>
+      <button onclick="closeReceiptScanner()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div class="receipt-upload-zone" id="receipt-upload-zone" onclick="document.getElementById('receipt-input').click()">
+      <div style="font-size:36px;margin-bottom:8px">📸</div>
+      <div style="font-size:14px;color:var(--text);font-weight:600;margin-bottom:4px">Toma foto o sube imagen del ticket</div>
+      <div style="font-size:11px;color:var(--muted)">La IA extraerá monto, descripción y fecha automáticamente</div>
+    </div>
+    <input type="file" id="receipt-input" accept="image/*" capture="environment" style="display:none" onchange="processReceipt(event)">
+    <img id="receipt-preview-img" class="receipt-preview" style="display:none">
+    <div id="receipt-status" style="text-align:center;padding:10px 0;font-size:12px;color:var(--muted)"></div>
+    <div id="receipt-result" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:6px"></div>
+    <button id="receipt-use-btn" onclick="applyReceiptData()" style="display:none;width:100%;background:var(--green);color:#000;border:none;padding:12px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;margin-top:10px">
+      ✓ Usar estos datos
+    </button>
+  </div>
+</div>
+
+<!-- ═══ TRAVEL MODE MODAL ═══ -->
+<div class="modal-overlay" id="modal-travel-mode" onclick="closeTravelModeIfOutside(event)" style="z-index:10800">
+  <div class="modal-box" style="width:400px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="color:#58a6ff;font-size:.95rem">✈️ Modo Viaje</h3>
+      <button onclick="closeTravelMode()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+      Activa una moneda temporal para viajes. Los montos se mostrarán también en esa moneda mientras estés de viaje.
+    </div>
+    <div class="form-group">
+      <label>Destino / Moneda</label>
+      <select id="travel-currency-select" style="width:100%;box-sizing:border-box">
+        <option value="">Seleccionar...</option>
+        <option value="COP">🇨🇴 COP — Peso Colombiano</option>
+        <option value="MXN">🇲🇽 MXN — Peso Mexicano</option>
+        <option value="PEN">🇵🇪 PEN — Sol Peruano</option>
+        <option value="CLP">🇨🇱 CLP — Peso Chileno</option>
+        <option value="BRL">🇧🇷 BRL — Real Brasileño</option>
+        <option value="ARS">🇦🇷 ARS — Peso Argentino</option>
+        <option value="EUR">🇪🇺 EUR — Euro</option>
+        <option value="USD">🇺🇸 USD — Dólar</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Tasa de cambio (1 USD = X <span id="travel-cur-label">moneda</span>)</label>
+      <input id="travel-rate-input" type="number" placeholder="ej: 4200 para COP" step="0.01">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button onclick="activateTravelMode()" style="flex:1;background:var(--blue);color:#fff;border:none;padding:11px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit">✈️ Activar</button>
+      <button onclick="disableTravelMode()" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:11px;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit">Desactivar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CATEGORY ICONS PANEL (bottom sheet) ═══ -->
+<!-- Input oculto temporal para el emoji picker -->
+<input type="hidden" id="__cat-icon-tmp">
+<div class="modal-overlay" id="modal-cat-icons" onclick="closeCatIconsIfOutside(event)" style="z-index:10800;align-items:flex-end">
+  <div style="width:100%;max-width:540px;background:#161b22;border-radius:20px 20px 0 0;border-top:1px solid #30363d;padding-bottom:calc(80px + env(safe-area-inset-bottom,0px));max-height:88vh;overflow-y:auto">
+    <!-- Handle -->
+    <div style="display:flex;justify-content:center;padding:12px 0 4px">
+      <div style="width:36px;height:4px;background:#30363d;border-radius:2px"></div>
+    </div>
+    <!-- Header -->
+    <div style="padding:4px 20px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #21262d">
+      <span style="font-size:.95rem;font-weight:700;color:var(--text)">🎨 Iconos de Categorías</span>
+      <button onclick="closeCatIcons()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:4px">✕</button>
+    </div>
+    <!-- Body -->
+    <div style="padding:16px 20px">
+      <div id="cat-icons-list"></div>
+      <button onclick="resetCatIcons()" style="width:100%;background:none;border:1px solid var(--border);color:var(--muted);padding:9px;border-radius:9px;font-size:12px;cursor:pointer;font-family:inherit;margin-top:14px">🔄 Restablecer todos los iconos</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PIN SETUP MODAL ═══ -->
+<div class="modal-overlay" id="modal-pin-setup" onclick="closePINSetupIfOutside(event)" style="z-index:10900">
+  <div class="modal-box" style="width:380px;text-align:center">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="color:var(--text);font-size:.95rem">🔢 Configurar PIN</h3>
+      <button onclick="closePINSetup()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:18px" id="pin-setup-sub">Elige un PIN de 6 dígitos</div>
+    <div class="pin-dots" style="justify-content:center" id="pin-setup-dots">
+      <div class="pin-dot" id="psd0"></div><div class="pin-dot" id="psd1"></div>
+      <div class="pin-dot" id="psd2"></div><div class="pin-dot" id="psd3"></div>
+      <div class="pin-dot" id="psd4"></div><div class="pin-dot" id="psd5"></div>
+    </div>
+    <div class="pin-grid" style="margin:0 auto">
+      <button class="pin-key" onclick="pinSetupKey('1')">1</button>
+      <button class="pin-key" onclick="pinSetupKey('2')">2</button>
+      <button class="pin-key" onclick="pinSetupKey('3')">3</button>
+      <button class="pin-key" onclick="pinSetupKey('4')">4</button>
+      <button class="pin-key" onclick="pinSetupKey('5')">5</button>
+      <button class="pin-key" onclick="pinSetupKey('6')">6</button>
+      <button class="pin-key" onclick="pinSetupKey('7')">7</button>
+      <button class="pin-key" onclick="pinSetupKey('8')">8</button>
+      <button class="pin-key" onclick="pinSetupKey('9')">9</button>
+      <button class="pin-key" onclick="closePINSetup()">✕</button>
+      <button class="pin-key" onclick="pinSetupKey('0')">0</button>
+      <button class="pin-key del" onclick="pinSetupDel()">⌫</button>
+    </div>
+    <button onclick="deletePIN()" id="btn-delete-pin" style="display:none;margin-top:14px;background:none;border:1px solid var(--red);color:var(--red);padding:8px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit">🗑 Eliminar PIN</button>
+  </div>
+</div>
+
+<script src="app-features.js"></script>
+
+<!-- ═══ CUENTAS V2 INTERFACE (como imagen) ═══ -->
+<div class="modal-overlay" id="modal-cuentas-v2-view" onclick="if(event.target===this)closeModalCuentasV2()" style="z-index:10900">
+  <div class="modal-box" style="max-width:480px;width:100%;min-height:80vh;padding:0;border-radius:22px;overflow:hidden;display:flex;flex-direction:column">
+    <!-- Header -->
+    <div style="padding:18px 18px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button onclick="closeModalCuentasV2()" style="background:var(--surface2);border:none;color:var(--text);width:34px;height:34px;border-radius:50%;font-size:14px;cursor:pointer;font-family:inherit">‹</button>
+        <h2 style="font-size:1.1rem;font-weight:800;color:var(--text)">Cuentas</h2>
+      </div>
+      <div style="display:flex;gap:6px" id="cuentas-v2-currency-pills">
+        <button class="cuentas-v2-pill active" id="cv2-usd" onclick="setCuentasV2Currency('USD')">$ USD</button>
+        <button class="cuentas-v2-pill" id="cv2-eur" onclick="setCuentasV2Currency('EUR')">€</button>
+        <button class="cuentas-v2-pill" id="cv2-bs" onclick="setCuentasV2Currency('BS')">₿</button>
+      </div>
+    </div>
+    <!-- Total -->
+    <div style="padding:18px 20px 12px;border-bottom:1px solid var(--border)">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Saldo total</div>
+      <div id="cuentas-v2-total" style="font-size:34px;font-weight:900;color:var(--text);letter-spacing:-.5px">$0.00</div>
+      <!-- Filter tabs -->
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="cuentas-v2-tab active" id="cv2-tab-todas" onclick="setCuentasV2Tab('todas')">🏦 Todas</button>
+        <button class="cuentas-v2-tab" id="cv2-tab-bs" onclick="setCuentasV2Tab('bs')">Bs</button>
+        <button class="cuentas-v2-tab" id="cv2-tab-usd" onclick="setCuentasV2Tab('usd')">$</button>
+      </div>
+    </div>
+    <!-- Cuentas list -->
+    <div style="padding:10px 14px;overflow-y:auto;flex:1">
+      <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:10px">Cuentas creadas</div>
+      <div id="cuentas-v2-list"></div>
+    </div>
+    <!-- Add button -->
+    <div style="padding:12px 14px 20px;display:flex;gap:8px">
+      <button onclick="openTransferRial();closeModalCuentasV2();" style="flex:1;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.25);color:#58a6ff;padding:11px;border-radius:12px;font-size:.78rem;font-weight:700;cursor:pointer">↔️ Transferir</button>
+      <button class="cuentas-v2-add-btn" onclick="openNuevaCuenta()" style="flex:2">+ Agregar cuenta</button>
+    </div>
+  </div>
+</div>
+
+<script src="app-cuentas-v2.js"></script>
+<!-- ══════════════════════════════════════════════════════
+     BATCH-G C10-C11: MODALES DEDICADOS CONFIGURACIÓN
+     ══════════════════════════════════════════════════════ -->
+
+<!-- MODAL CFG LIST — Tipos / Categorías / Subcategorías -->
+<div class="modal-overlay cfg-modal-overlay" id="modal-cfg-list" onclick="if(event.target===this)closeCfgListModal()" style="z-index:10800">
+  <div class="modal-box cfg-modal-box" style="width:min(500px,96vw);max-height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+    <div class="cfg-modal-header">
+      <h3 id="cfg-list-title">Lista</h3>
+      <button class="cfg-modal-close" onclick="closeCfgListModal()">✕</button>
+    </div>
+    <div id="cfg-list-body" style="flex:1;overflow-y:auto;padding:16px 14px"></div>
+  </div>
+</div>
+
+<!-- MODAL TIPO EDIT -->
+<div class="modal-overlay cfg-modal-overlay" id="modal-tipo-edit" onclick="if(event.target===this)closeTipoEditModal()" style="z-index:10850">
+  <div class="modal-box cfg-modal-box">
+    <div class="cfg-modal-header">
+      <h3 id="tipo-edit-title">✏️ Editar Tipo</h3>
+      <button class="cfg-modal-close" onclick="closeTipoEditModal()">✕</button>
+    </div>
+    <div class="cfg-modal-body">
+      <label class="cfg-label">Nombre del tipo</label>
+      <input id="tipo-edit-name" type="text" class="cfg-input" placeholder="Ej: Ingreso Freelance"
+        onkeydown="if(event.key==='Enter')saveTipoEdit()">
+    </div>
+    <div class="cfg-modal-footer">
+      <button class="btn-sm" onclick="closeTipoEditModal()" style="flex:1;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:9px;cursor:pointer;font-family:inherit">Cancelar</button>
+      <button class="btn-sm green" onclick="saveTipoEdit()" style="flex:2;padding:10px;border-radius:9px;cursor:pointer;font-size:.82rem;font-weight:700;font-family:inherit">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CATEGORÍA EDIT -->
+<div class="modal-overlay cfg-modal-overlay" id="modal-cat-edit" onclick="if(event.target===this)closeCatEditModal()" style="z-index:10850">
+  <div class="modal-box cfg-modal-box" style="max-width:370px;width:calc(100% - 32px)">
+    <div class="cfg-modal-header" style="padding:14px 16px 10px">
+      <h3 id="cat-edit-title" style="font-size:.92rem;font-weight:700;color:var(--text);margin:0">✏️ Editar Categoría</h3>
+      <button class="cfg-modal-close" onclick="closeCatEditModal()" style="background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;padding:4px">✕</button>
+    </div>
+
+    <div class="cfg-modal-body" style="padding:0 16px 14px">
+
+      <!-- Emoji + Nombre -->
+      <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px">
+        <div style="flex-shrink:0">
+          <div style="font-size:.68rem;color:var(--muted);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Icono</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input id="cat-edit-emoji" type="text" class="cfg-emoji-input" maxlength="4" placeholder="📌"
+              style="width:44px;height:44px;font-size:1.4rem;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text)">
+            <button onclick="openEmojiPicker('cat-edit-emoji')"
+              style="height:44px;padding:0 10px;background:var(--surface2);border:1px solid var(--border);color:var(--blue);border-radius:10px;cursor:pointer;font-size:.72rem;font-family:inherit;white-space:nowrap">🎨</button>
+          </div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:.68rem;color:var(--muted);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Nombre</div>
+          <input id="cat-edit-name" type="text" class="cfg-input"
+            placeholder="Ej: Alimentación" maxlength="60"
+            onkeydown="if(event.key==='Enter')saveCatEdit()"
+            style="width:100%;height:44px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:0 12px;font-size:.84rem;font-family:inherit;box-sizing:border-box">
+        </div>
+      </div>
+
+      <!-- Tipos — sección principal -->
+      <div style="font-size:.68rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">
+        ¿En qué tipo de movimiento aparece esta categoría?
+      </div>
+
+      <!-- Explicación rápida de tipos -->
+      <div style="background:#0d1117;border:1px solid #21262d;border-radius:9px;padding:9px 11px;margin-bottom:10px;font-size:.67rem;color:var(--muted);line-height:1.7">
+        💸 <b style="color:#f85149">Gasto</b> — dinero que sale (comida, servicios, etc.)<br>
+        💵 <b style="color:#3fb950">Ingreso Fijo</b> — sueldo, renta fija mensual<br>
+        💹 <b style="color:#3fb950">Ingreso Variable</b> — comisiones, extras, ventas<br>
+        🤝 <b style="color:#e3b341">Préstamo recibido</b> — te prestaron dinero<br>
+        💳 <b style="color:#e3b341">Préstamo pagado</b> — devolviste un préstamo
+      </div>
+
+      <!-- Checkboxes de tipos -->
+      <div id="cat-edit-tipos" style="display:flex;flex-direction:column;gap:7px"></div>
+
+      <div style="font-size:.63rem;color:#484f58;margin-top:8px;line-height:1.5">
+        ⚠️ Selecciona solo el tipo correcto. Si marcas Gasto e Ingreso a la vez la categoría aparecerá en ambos presupuestos.
+      </div>
+    </div>
+
+    <div class="cfg-modal-footer" style="padding:12px 16px;display:flex;gap:8px;border-top:1px solid var(--border)">
+      <button onclick="closeCatEditModal()"
+        style="flex:1;padding:11px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;cursor:pointer;font-family:inherit;font-size:.8rem">
+        Cancelar
+      </button>
+      <button onclick="saveCatEdit()"
+        style="flex:2;padding:11px;background:var(--green,#238636);border:none;color:#fff;border-radius:10px;cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:700">
+        💾 Guardar categoría
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SUBCATEGORÍA EDIT -->
+<div class="modal-overlay cfg-modal-overlay" id="modal-subcat-edit" onclick="if(event.target===this)closeSubcatEditModal()" style="z-index:10850">
+  <div class="modal-box cfg-modal-box">
+    <div class="cfg-modal-header">
+      <h3 id="subcat-edit-title">✏️ Editar Subcategoría</h3>
+      <button class="cfg-modal-close" onclick="closeSubcatEditModal()">✕</button>
+    </div>
+    <div class="cfg-modal-body">
+      <div style="font-size:.7rem;color:var(--muted);margin-bottom:10px">Categoría: <strong id="subcat-edit-cat-label" style="color:var(--text)"></strong></div>
+      <label class="cfg-label">Nombre</label>
+      <input id="subcat-edit-name" type="text" class="cfg-input" placeholder="Ej: Desayuno"
+        maxlength="60" onkeydown="if(event.key==='Enter')saveSubcatEdit()">
+    </div>
+    <div class="cfg-modal-footer">
+      <button class="btn-sm" onclick="closeSubcatEditModal()" style="flex:1;padding:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:9px;cursor:pointer;font-family:inherit">Cancelar</button>
+      <button class="btn-sm green" onclick="saveSubcatEdit()" style="flex:2;padding:10px;border-radius:9px;cursor:pointer;font-size:.82rem;font-weight:700;font-family:inherit">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EMOJI PICKER GLOBAL -->
+<div class="modal-overlay" id="modal-emoji-picker" onclick="if(event.target===this)closeEmojiPicker()" style="z-index:10900">
+  <div class="modal-box" style="width:340px;max-height:80vh;display:flex;flex-direction:column;padding:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h3 style="color:var(--text);font-size:.9rem">😀 Elegir Emoji</h3>
+      <button onclick="closeEmojiPicker()" style="background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer">✕</button>
+    </div>
+    <input id="emoji-search" type="text" placeholder="🔍 Buscar..." oninput="filterEmojis()"
+      style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-size:.82rem;outline:none;margin-bottom:10px;width:100%;font-family:inherit">
+    <div id="emoji-picker-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:4px;overflow-y:auto;flex:1;padding-right:4px"></div>
+  </div>
+</div>
+
+</div><!-- /app-shell -->
+
+<!-- ═══════════════════════════════════════════════════════
+     MODAL DE DOCUMENTACIÓN TÉCNICA — NO afecta funcionalidad
+     Acceso: Ajustes → Documentación  |  Atajo: Ctrl+Shift+D
+     ═══════════════════════════════════════════════════════ -->
+<div id="modal-app-docs" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:19000;overflow-y:auto;padding:16px" onclick="if(event.target===this)closeAppDocs()">
+  <div style="max-width:720px;margin:0 auto;background:#0d1117;border:1px solid #30363d;border-radius:14px;overflow:hidden">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;background:#161b22;border-bottom:1px solid #30363d;position:sticky;top:0;z-index:1">
+      <div>
+        <div style="font-size:1rem;font-weight:700;color:#e6edf3">📚 Documentación del sistema</div>
+        <div style="font-size:.68rem;color:#8b949e;margin-top:2px">Mis Finanzas 2026 · Batch-XX · SW v31</div>
+      </div>
+      <button onclick="closeAppDocs()" style="background:none;border:none;color:#8b949e;font-size:1.2rem;cursor:pointer;padding:4px 8px">✕</button>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display:flex;gap:0;overflow-x:auto;background:#161b22;border-bottom:1px solid #21262d" id="docs-tabs">
+      <button onclick="docsTab(0)" class="docs-tab-btn docs-tab-active" data-tab="0">🏗️ Arquitectura</button>
+      <button onclick="docsTab(1)" class="docs-tab-btn" data-tab="1">⚙️ Funciones</button>
+      <button onclick="docsTab(2)" class="docs-tab-btn" data-tab="2">🔴 Reglas</button>
+      <button onclick="docsTab(3)" class="docs-tab-btn" data-tab="3">🐛 Fixes</button>
+      <button onclick="docsTab(4)" class="docs-tab-btn" data-tab="4">🔒 Seguridad</button>
+      <button onclick="docsTab(5)" class="docs-tab-btn" data-tab="5">📋 Checklist</button>
+    </div>
+
+    <!-- Contenido de tabs -->
+    <div style="padding:20px" id="docs-content">
+
+      <!-- TAB 0: Arquitectura -->
+      <div class="docs-panel" data-panel="0">
+        <div class="docs-section">
+          <div class="docs-section-title">Visión general del sistema</div>
+          <p class="docs-p">PWA monolítica de gestión financiera personal para Anthony & Isabel Marte en Venezuela. Toda la app vive en un único <code>index.html</code> de ~700 KB con 12,623 líneas de HTML, CSS y JavaScript vanilla.</p>
+        </div>
+        <div class="docs-section">
+          <div class="docs-section-title">Archivos del proyecto</div>
+          <div class="docs-table">
+            <div class="docs-tr docs-th"><span>Archivo</span><span>Función</span></div>
+            <div class="docs-tr"><span>index.html</span><span>App completa: SPA con 11 bloques JS inline</span></div>
+            <div class="docs-tr"><span>service-worker.js</span><span>SW v16: caché inteligente, offline, push, sync</span></div>
+            <div class="docs-tr"><span>manifest.json</span><span>PWA: iconos, shortcuts de acceso rápido</span></div>
+            <div class="docs-tr"><span>_headers</span><span>CSP + HSTS + X-Frame-Options (Cloudflare Pages)</span></div>
+          </div>
+        </div>
+        <div class="docs-section">
+          <div class="docs-section-title">Tablas en Supabase</div>
+          <div class="docs-table">
+            <div class="docs-tr docs-th"><span>Tabla</span><span>Contenido</span></div>
+            <div class="docs-tr"><span>movimientos</span><span>Fuente de verdad: todas las transacciones</span></div>
+            <div class="docs-tr"><span>config_usuario</span><span>Tipos, categorías, presupuestos</span></div>
+            <div class="docs-tr"><span>tasas_cambio</span><span>rateBCV y rateEUR por mes</span></div>
+            <div class="docs-tr"><span>fondo_emergencia</span><span>Meta y progreso del fondo</span></div>
+            <div class="docs-tr"><span>cuentas</span><span>Cuentas bancarias y efectivo</span></div>
+            <div class="docs-tr"><span>registro_conexiones</span><span>Log de accesos para auditoría</span></div>
+          </div>
+        </div>
+        <div class="docs-section">
+          <div class="docs-section-title">Variables globales críticas</div>
+          <div class="docs-table">
+            <div class="docs-tr docs-th"><span>Variable</span><span>Descripción</span></div>
+            <div class="docs-tr"><span>sb</span><span>SupabaseClient — inicializado en bloque #3</span></div>
+            <div class="docs-tr"><span>currentUser</span><span>User | null — seteado en onLoginSuccess()</span></div>
+            <div class="docs-tr"><span>EXCEL_DATA</span><span>{mes:{ingresos,gastos,ahorros,transactions[]}}</span></div>
+            <div class="docs-tr"><span>CONFIG</span><span>Tipos, categorías, presupuestos (de Supabase)</span></div>
+            <div class="docs-tr"><span>CUENTAS</span><span>Array — .moneda solo "USD" o "BS"</span></div>
+            <div class="docs-tr"><span>rateBCV</span><span>Bs por 1 USD — API BCV o manual</span></div>
+            <div class="docs-tr"><span>currentMonth</span><span>Mes activo del dashboard ("Enero", etc.)</span></div>
+          </div>
+        </div>
+        <div class="docs-section">
+          <div class="docs-section-title">11 Bloques JavaScript inline</div>
+          <div class="docs-table">
+            <div class="docs-tr docs-th"><span>Bloque</span><span>Contenido principal</span></div>
+            <div class="docs-tr"><span>#1 ~L1875</span><span>Viewport adaptativo (IIFE, corre antes de render)</span></div>
+            <div class="docs-tr"><span>#2 ~L1974</span><span>Clase is-mobile al body — evita flash de layout</span></div>
+            <div class="docs-tr"><span>#3 ~L3154</span><span>🔴 CRÍTICO: sb, doLogin, onLoginSuccess, loadFromSupabase</span></div>
+            <div class="docs-tr"><span>#4 ~L6723</span><span>Dashboard: KPIs, Chart.js, recalcMonth, renderTxnTable</span></div>
+            <div class="docs-tr"><span>#5 ~L7200</span><span>Offline: setOfflineMode, cola movimientos, SW registration</span></div>
+            <div class="docs-tr"><span>#6 ~L7600</span><span>WebAuthn biométrico: initBiometric, doBiometricLogin</span></div>
+            <div class="docs-tr"><span>#7 ~L9000</span><span>Cuentas CRUD: renderWalletCards, transferencias</span></div>
+            <div class="docs-tr"><span>#8 ~L9600</span><span>Navegación: pwaNavRial, sidebar, FAB, modales</span></div>
+            <div class="docs-tr"><span>#9 ~L10100</span><span>IA Groq: askGroq, runIAInline, renderIAText, scanner OCR</span></div>
+            <div class="docs-tr"><span>#10 ~L11000</span><span>PIN lock, autolock, recurrentes, presupuestos, viaje</span></div>
+            <div class="docs-tr"><span>#11 ~L12400</span><span>Cuentas v2, export XLSX/PDF, Email backup, auditoría</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 1: Funciones clave -->
+      <div class="docs-panel" data-panel="1" style="display:none">
+        <div class="docs-section">
+          <div class="docs-section-title">Autenticación</div>
+          <div class="docs-table">
+            <div class="docs-tr docs-th"><span>Función</span><span>Descripción</span></div>
+            <div class="docs-tr"><span>doLogin()</span><span>Valida ALLOWED_EMAILS → signInWithPassword() → onLoginSuccess()</span></div>
+            <div class="docs-tr"><span>onLoginSuccess()</span><span>Oculta login, muestra app, lazy-carga Chart.js, llama loadFromSupabase()</span></div>
+            <div class="docs-tr"><span>loadFromSupabase()</span><span>5 queries paralelas → processMovimientosFromDB() → recalcMonth()</span></div>
+            <div class="docs-tr"><span>doBiometricLogin()</span><span>WebAuthn challenge → setSession() con refresh token guardado</span></div>
+            <div class="docs-tr"><span>doLogout()</span><span>signOut({scope:'local'}) → limpia estado → muestra login</span></div>
+          </div>
+        </div>
+        <div class="docs-section">
+          <div class="docs-section-title">Datos y cálculos</div>
+          <div class="docs-table">
+            <div class="docs-tr docs-th"><span>Función</span><span>Descripción</span></div>
+            <div class="docs-tr"><span>recalcMonth(mes?)</span><span>Recalcula TODOS los KPIs del mes activo y actualiza el DOM</span></div>
+            <div class="docs-tr"><span>calcFire()</span><span>Patrimonio = ahorros acumulados + balance actual. SIN localStorage.</span></div>
+            <div class="docs-tr"><span>sbSaveMov(mov)</span><span>upsert en Supabase. Si falla → pushOfflineQueue(). Llama recalcMonth().</span></div>
+            <div class="docs-tr"><span>sbDeleteMov(id)</span><span>Soft delete (deleted=true) en Supabase → recalcMonth()</span></div>
+            <div class="docs-tr"><span>renderTxnTable()</span><span>Genera HTML de la tabla de transacciones con filtros y paginación</span></div>
+            <div class="docs-tr"><span>renderWalletCards()</span><span>Tarjetas de cuentas con saldo en USD y Bs (usa rateBCV)</span></div>
+          </div>
+        </div>
+        <div class="docs-section">
+          <div class="docs-section-title">IA y utilidades</div>
+          <div class="docs-table">
+            <div class="docs-tr docs-th"><span>Función</span><span>Descripción</span></div>
+            <div class="docs-tr"><span>askGroq(messages)</span><span>POST a api.groq.com con Llama 3.3-70b. Retorna texto del assistant.</span></div>
+            <div class="docs-tr"><span>renderIAText(text)</span><span>Sanitiza markdown de Groq: ~, **, _, listas. OBLIGATORIO antes de innerHTML.</span></div>
+            <div class="docs-tr"><span>runIAInline()</span><span>Análisis financiero del mes activo → renderIAText() → DOM</span></div>
+            <div class="docs-tr"><span>showLoginError(msg)</span><span>Muestra/oculta #login-error con color rojo (error) o verde (ok)</span></div>
+            <div class="docs-tr"><span>pwaNavRial(section)</span><span>Navegación principal — cierra 8 modales antes de cambiar sección</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: Reglas críticas -->
+      <div class="docs-panel" data-panel="2" style="display:none">
+        <div class="docs-alert docs-alert-red">
+          🔴 <strong>calcFire()</strong> NO suma localStorage<br>
+          Usa ONLY <code>EXCEL_DATA[m].ahorros</code> — sumar <code>finanzas_cochinito_v2</code> de localStorage causaría doble conteo (resuelto en FIX-12).
+        </div>
+        <div class="docs-alert docs-alert-red">
+          🔴 <strong>Texto de IA → renderIAText() antes de innerHTML</strong><br>
+          Todo response de Groq DEBE pasar por renderIAText() o los caracteres ~, ** aparecen en pantalla.
+        </div>
+        <div class="docs-alert docs-alert-red">
+          🔴 <strong>CUENTAS[].moneda = "USD" | "BS" únicamente</strong><br>
+          El valor "internacional" NO existe en el schema. Usarlo en condicionales causa bugs en transferencias (FIX-17).
+        </div>
+        <div class="docs-alert docs-alert-red">
+          🔴 <strong>modal-cochinito NO existe</strong><br>
+          El cochinito es una card del dashboard, no un modal overlay. No hay id="modal-cochinito".
+        </div>
+        <div class="docs-alert docs-alert-yellow">
+          🟡 <strong>CACHE_VERSION → incrementar en cada deploy</strong><br>
+          service-worker.js: finanzas-v16 → v16 → v17... Sin este cambio el navegador sirve código viejo en caché.
+        </div>
+        <div class="docs-alert docs-alert-yellow">
+          🟡 <strong>const sb = supabase.createClient() — primera línea del bloque #3</strong><br>
+          No mover, no envolver en async, no condicionar. Si el CDN falló, el onerror del script tag activa el fallback a unpkg.
+        </div>
+        <div class="docs-alert docs-alert-yellow">
+          🟡 <strong>showCardInfo → solo una versión unificada</strong><br>
+          Nunca duplicar — la primera delega a _showCardInfoV2 para tipos dinámicos (FIX-4 Batch-D).
+        </div>
+        <div class="docs-alert docs-alert-blue">
+          🔵 <strong>openNuevaCuenta() cierra overlays antes de abrir</strong><br>
+          Siempre llamar el bloque de cierre de overlays al inicio para evitar modales superpuestos (FIX-16).
+        </div>
+      </div>
+
+      <!-- TAB 3: Historial de fixes -->
+      <div class="docs-panel" data-panel="3" style="display:none">
+        <div class="docs-section">
+          <div class="docs-section-title">Batch-D — Marzo 2026</div>
+          <div class="docs-table">
+            <div class="docs-tr docs-th"><span>Fix ID</span><span>Error resuelto</span><span>Archivo</span></div>
+            <div class="docs-tr"><span>FIX-1</span><span>Chart.js CDN onerror rompía login</span><span>index.html</span></div>
+            <div class="docs-tr"><span>FIX-2</span><span>Login sin feedback si data.user=null</span><span>index.html</span></div>
+            <div class="docs-tr"><span>FIX-6</span><span>Columna Acciones no sticky en scroll</span><span>index.html</span></div>
+            <div class="docs-tr"><span>FIX-9</span><span>Modales superpuestos al ir a Dashboard</span><span>index.html</span></div>
+            <div class="docs-tr"><span>FIX-12</span><span>Ahorro duplicado: +$215 extra en FIRE</span><span>index.html</span></div>
+            <div class="docs-tr"><span>FIX-13</span><span>Subcategorías vacías en Recurrentes</span><span>index.html</span></div>
+            <div class="docs-tr"><span>FIX-14</span><span>Nombre de perfil se vaciaba al guardar</span><span>index.html</span></div>
+            <div class="docs-tr"><span>FIX-15</span><span>Flash de pantalla negra al cargar</span><span>index.html</span></div>
+            <div class="docs-tr"><span>FIX-17</span><span>Transferencia siempre mostraba en Bs</span><span>index.html</span></div>
+            <div class="docs-tr"><span>FIX-BTN</span><span>Botón Entrar no respondía en iOS/Android</span><span>index.html</span></div>
+            <div class="docs-tr"><span>SW-FIX</span><span>CACHE_VERSION con doble ;; · bump a v14</span><span>service-worker.js</span></div>
+            <div class="docs-tr"><span>CDN-FIX</span><span>Supabase sin fallback si jsdelivr falla</span><span>index.html</span></div>
+            <div class="docs-tr"><span>CSP-FIX</span><span>script-src sin https:// · unpkg agregado</span><span>_headers</span></div>
+          </div>
+        </div>
+        <div class="docs-section">
+          <div class="docs-section-title">Plantilla para próximos fixes</div>
+          <div class="docs-code">Fix ID:     FIX-XX
+Fecha:      DD/MM/AAAA
+Error:      Descripción visible para el usuario
+Causa:      Función o línea exacta del bug
+Solución:   Cambio realizado (qué se reemplazó por qué)
+Archivo:    index.html / service-worker.js / _headers
+SW version: v14 → v15 (incrementar al aplicar)</div>
+        </div>
+      </div>
+
+      <!-- TAB 4: Seguridad -->
+      <div class="docs-panel" data-panel="4" style="display:none">
+        <div class="docs-table">
+          <div class="docs-tr docs-th"><span>Capa</span><span>Estado</span><span>Mecanismo</span></div>
+          <div class="docs-tr"><span>Auth JWT</span><span class="docs-ok">✅</span><span>Supabase Auth + ALLOWED_EMAILS whitelist (5 correos)</span></div>
+          <div class="docs-tr"><span>Biométrico</span><span class="docs-ok">✅</span><span>WebAuthn FIDO2 — clave privada nunca sale del dispositivo</span></div>
+          <div class="docs-tr"><span>HTTPS</span><span class="docs-ok">✅</span><span>HSTS max-age=31536000 + includeSubDomains + preload</span></div>
+          <div class="docs-tr"><span>XSS / CSP</span><span class="docs-ok">✅</span><span>default-src none + script-src https:// explícito</span></div>
+          <div class="docs-tr"><span>Clickjacking</span><span class="docs-ok">✅</span><span>X-Frame-Options: DENY</span></div>
+          <div class="docs-tr"><span>MIME sniff</span><span class="docs-ok">✅</span><span>X-Content-Type-Options: nosniff</span></div>
+          <div class="docs-tr"><span>PIN local</span><span class="docs-ok">✅</span><span>SHA-256 del PIN en localStorage (fin_pin_v2)</span></div>
+          <div class="docs-tr"><span>CDN fallback</span><span class="docs-ok">✅</span><span>onerror supabase-js → unpkg.com como respaldo</span></div>
+          <div class="docs-tr"><span>RLS Supabase</span><span class="docs-warn">⚠️</span><span>Verificar en Dashboard → Authentication → Policies</span></div>
+          <div class="docs-tr"><span>SRI hashes</span><span class="docs-warn">⚠️</span><span>CDN scripts sin integrity hash — recomendado en v15</span></div>
+        </div>
+        <div class="docs-section" style="margin-top:16px">
+          <div class="docs-section-title">Sobre la ANON_KEY visible en el código</div>
+          <p class="docs-p">Es intencional y seguro mientras RLS esté activo. El ANON_KEY no da acceso root — cada operación queda limitada por las políticas Row Level Security del proyecto de Supabase.</p>
+        </div>
+      </div>
+
+      <!-- TAB 5: Checklist -->
+      <div class="docs-panel" data-panel="5" style="display:none">
+        <div class="docs-section">
+          <div class="docs-section-title">Funcionalidad</div>
+          <div class="docs-table">
+            <div class="docs-tr docs-th"><span>Item</span><span>Estado</span></div>
+            <div class="docs-tr"><span>Login responde en iOS y Android</span><span class="docs-ok">✅ FIX-BTN</span></div>
+            <div class="docs-tr"><span>Login biométrico con sesión guardada</span><span class="docs-ok">✅ WebAuthn</span></div>
+            <div class="docs-tr"><span>Movimientos se guardan en Supabase</span><span class="docs-ok">✅ upsert+RLS</span></div>
+            <div class="docs-tr"><span>recalcMonth actualiza todos los KPIs</span><span class="docs-ok">✅ Verificado</span></div>
+            <div class="docs-tr"><span>Modo offline + sync al reconectar</span><span class="docs-warn">⚠️ Por verificar</span></div>
+            <div class="docs-tr"><span>Transferencia USD↔Bs correcta</span><span class="docs-ok">✅ FIX-17</span></div>
+            <div class="docs-tr"><span>Subcategorías en Recurrentes</span><span class="docs-ok">✅ FIX-13</span></div>
+            <div class="docs-tr"><span>Ahorro sin doble conteo</span><span class="docs-ok">✅ FIX-12</span></div>
+          </div>
+        </div>
+        <div class="docs-section">
+          <div class="docs-section-title">Seguridad</div>
+          <div class="docs-table">
+            <div class="docs-tr docs-th"><span>Item</span><span>Estado</span></div>
+            <div class="docs-tr"><span>CSP con https:// en script-src</span><span class="docs-ok">✅ CSP-FIX</span></div>
+            <div class="docs-tr"><span>HSTS 1 año activo</span><span class="docs-ok">✅</span></div>
+            <div class="docs-tr"><span>X-Frame-Options: DENY</span><span class="docs-ok">✅</span></div>
+            <div class="docs-tr"><span>RLS en Supabase</span><span class="docs-warn">⚠️ VERIFICAR</span></div>
+            <div class="docs-tr"><span>CDN con fallback (unpkg)</span><span class="docs-ok">✅ CDN-FIX</span></div>
+          </div>
+        </div>
+        <div class="docs-section">
+          <div class="docs-section-title">Rendimiento</div>
+          <div class="docs-table">
+            <div class="docs-tr docs-th"><span>Item</span><span>Estado</span></div>
+            <div class="docs-tr"><span>Chart.js lazy load post-login</span><span class="docs-ok">✅ FIX-1</span></div>
+            <div class="docs-tr"><span>SW v16 con estrategias correctas</span><span class="docs-ok">✅ SW-FIX</span></div>
+            <div class="docs-tr"><span>index.html con no-store</span><span class="docs-ok">✅ _headers</span></div>
+            <div class="docs-tr"><span>Página offline /__offline</span><span class="docs-ok">✅ SW install</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /docs-content -->
+
+    <div style="padding:12px 20px;text-align:center;border-top:1px solid #21262d;font-size:.65rem;color:#484f58">
+      Mis Finanzas 2026 · Batch-XXr4 · SW v34 · finanzasprueba.pages.dev · Atajo: Ctrl+Shift+D
+    </div>
+  </div>
+</div>
+
+
+
+<script src="app-docs.js"></script>
+
+
+<!-- ══════════════════════════════════════════════════════
+     NUMPAD — Teclado numérico custom (BUG-4A Batch-X)
+     Requerido para openNumpad(), openNumpadForTransfer()
+     ══════════════════════════════════════════════════════ -->
+<div id="numpad-overlay" onclick="if(event.target===this)closeNumpad()">
+  <div id="numpad-sheet">
+    <div class="numpad-header">
+      <div>
+        <div class="numpad-label" id="numpad-label">Monto</div>
+        <div style="font-size:11px;color:#484f58" id="numpad-sublabel">← Ingresa el valor</div>
+      </div>
+      <button class="numpad-close" onclick="closeNumpad()">✕</button>
+    </div>
+    <div class="numpad-display">
+      <div class="numpad-amount-row">
+        <span class="numpad-currency" id="numpad-curr-sym">$</span>
+        <span class="numpad-value" id="numpad-val">0</span>
+      </div>
+      <div class="numpad-bs-row">≈ Bs <span class="numpad-bs-val" id="numpad-bs">0.00</span></div>
+      <div class="numpad-toggle-row">
+        <button class="numpad-toggle-btn active" id="np-btn-usd" onclick="numpadSetMode('usd')">$ USD</button>
+        <button class="numpad-toggle-btn" id="np-btn-bs" onclick="numpadSetMode('bs')">Bs VEF</button>
+      </div>
+    </div>
+    <div class="numpad-grid">
+      <button class="numpad-key" onclick="numpadKey('7')">7</button>
+      <button class="numpad-key" onclick="numpadKey('8')">8</button>
+      <button class="numpad-key" onclick="numpadKey('9')">9</button>
+      <button class="numpad-key" onclick="numpadKey('4')">4</button>
+      <button class="numpad-key" onclick="numpadKey('5')">5</button>
+      <button class="numpad-key" onclick="numpadKey('6')">6</button>
+      <button class="numpad-key" onclick="numpadKey('1')">1</button>
+      <button class="numpad-key" onclick="numpadKey('2')">2</button>
+      <button class="numpad-key" onclick="numpadKey('3')">3</button>
+      <button class="numpad-key dot" onclick="numpadKey('.')">.</button>
+      <button class="numpad-key" onclick="numpadKey('0')">0</button>
+      <button class="numpad-key del" onclick="numpadKey('del')">⌫</button>
+    </div>
+    <div id="numpad-neg-row" style="display:none;padding:0 16px 4px">
+      <button onclick="numpadKey('-')" style="width:100%;background:#2d0f0f;border:1px solid #f85149;color:#f85149;border-radius:10px;padding:10px;font-size:.9rem;font-weight:700;cursor:pointer">
+        ± Cambiar a negativo
+      </button>
+    </div>
+    <div style="padding:0 16px 8px">
+      <button class="numpad-key ok" style="width:100%;border-radius:14px;padding:16px" onclick="numpadConfirm()">✓ Confirmar</button>
+    </div>
+  </div>
+</div>
+  <script src="/app-smart.js"></script>
+
+<!-- ═══ MODAL: OLVIDÉ MI CONTRASEÑA ═══ -->
+<div id="modal-forgot" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);align-items:center;justify-content:center">
+  <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;width:90%;max-width:340px">
+    <h3 style="color:#e6edf3;font-size:.95rem;font-weight:700;margin:0 0 6px">Restablecer contraseña</h3>
+    <p style="color:#8b949e;font-size:.72rem;margin:0 0 16px">Escribe tu correo y te enviaremos un enlace.</p>
+    <input id="forgot-email" type="email" placeholder="tu@correo.com" maxlength="100"
+      style="width:100%;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:9px 12px;border-radius:7px;font-size:.82rem;outline:none;box-sizing:border-box;margin-bottom:10px"
+      onkeydown="if(event.key==='Enter')doForgotPassword()">
+    <div id="forgot-msg" style="font-size:.72rem;min-height:18px;margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="closeForgotModal()" style="flex:1;background:none;border:1px solid #30363d;color:#8b949e;padding:9px;border-radius:7px;font-size:.8rem;cursor:pointer">Cancelar</button>
+      <button id="forgot-btn" onclick="doForgotPassword()" style="flex:2;background:#238636;color:#fff;border:none;padding:9px;border-radius:7px;font-size:.8rem;font-weight:600;cursor:pointer">Enviar enlace</button>
+    </div>
+  </div>
+</div>
+<script src="/app-calendar.js"></script>
+<script src="/vapid-push.js"></script>
+<script src="/gcal-integration.js"></script>
+
+</body>
+</html>

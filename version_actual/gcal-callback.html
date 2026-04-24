@@ -1,0 +1,67 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Google Calendar — Mis Finanzas</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0d1117;font-family:system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:16px;padding:32px;max-width:380px;width:100%;text-align:center}
+  .ico{font-size:3rem;margin-bottom:16px}
+  h2{color:#e6edf3;font-size:1.1rem;margin-bottom:8px}
+  p{color:#8b949e;font-size:.85rem;line-height:1.5}
+  .email{color:#58a6ff;font-weight:600;margin-top:4px}
+  .btn{display:inline-block;margin-top:20px;padding:10px 24px;background:#1a7f37;color:#fff;border-radius:8px;text-decoration:none;font-size:.9rem;font-weight:600;cursor:pointer;border:none}
+  .err{color:#f85149}
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="ico" id="ico">⏳</div>
+  <h2 id="title">Procesando...</h2>
+  <p id="msg">Conectando Google Calendar</p>
+  <button class="btn" id="btn" onclick="closeMe()" style="display:none">Cerrar</button>
+</div>
+<script>
+  const p = new URLSearchParams(location.search);
+  const status = p.get('status');
+  const email  = p.get('email');
+  const msg    = p.get('msg');
+
+  const ico   = document.getElementById('ico');
+  const title = document.getElementById('title');
+  const txt   = document.getElementById('msg');
+  const btn   = document.getElementById('btn');
+
+  if (status === 'success') {
+    ico.textContent   = '📅';
+    title.textContent = '¡Google Calendar conectado!';
+    txt.innerHTML     = `Los movimientos se sincronizarán automáticamente.<br><span class="email">${decodeURIComponent(email||'')}</span>`;
+    btn.style.display = 'inline-block';
+    // Notificar a la ventana padre (popup flow)
+    if (window.opener) {
+      window.opener.postMessage({ type: 'gcal-oauth-success', email: decodeURIComponent(email||'') }, '*');
+    }
+  } else {
+    ico.textContent   = '❌';
+    title.textContent = 'Error al conectar';
+    title.className   = 'err';
+    txt.textContent   = msg ? decodeURIComponent(msg) : 'No se pudo completar la autorización.';
+    btn.style.display = 'inline-block';
+    btn.style.background = '#da3633';
+  }
+
+  // Cerrar popup automáticamente si éxito (2s delay)
+  if (status === 'success' && window.opener) {
+    setTimeout(() => window.close(), 2000);
+  }
+
+  function closeMe() {
+    if (window.opener) window.close();
+    else history.back();
+  }
+</script>
+</body>
+</html>

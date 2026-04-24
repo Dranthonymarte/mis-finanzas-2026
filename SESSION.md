@@ -1,0 +1,434 @@
+# SESSION.md — Mis Finanzas 2026
+*Actualizar después de cada corrección considerable*
+
+---
+
+## SESIÓN — 23 Abr 2026 (REDISEÑO VISUAL 2026 — planning + decisiones firmes)
+
+### Qué se hizo
+1. **Handoff bundle recibido** — Anthony entregó zip `Mi aplicacion de finanzas-handoff.zip` (Claude Design export, 4,695 líneas de diseño).
+   - Extraído en `C:\Users\Anthony Marte\Downloads\handoff-temp\mi-aplicacion-de-finanzas\`
+   - Contenido: `tokens.css` (123), `styles.css` (2,913), `shell.jsx` (191), `dashboard.jsx` (390), `pages.jsx` (425), `mobile.jsx` (426), `charts.jsx` (151), `data.js` (77), `Mis Finanzas.html` (763KB)
+   - Sistema visual: paleta **amber + teal oxidado** sobre base `ink-0..4`, tipos **Instrument Serif** + **Inter** + **JetBrains Mono**, spacing 4-64px, **light + dark mode** completo, sidebar 240px + nav 64px.
+2. **Evaluación como CTO** — NO es factible en 1 sesión. Rediseño visual integral (no ajuste). JSX del bundle es prototipo React → trasladar a vanilla JS/HTML existente, no migrar framework.
+3. **Plan por fases acordado (7-10 sesiones)**:
+   | Fase | Alcance | Sesiones |
+   |---|---|---|
+   | F0 | Git init + snapshot baseline | 0.2 |
+   | F1 | Tokens CSS (paleta + tipos + spacing en `:root`) | 1 |
+   | F2 | Shell (sidebar + nav + topbar) | 1 |
+   | F3 | Dashboard (KPIs, cards, charts) | 1-2 |
+   | F4 | Páginas (movimientos, cuentas, presupuestos, analytics) | 2-3 |
+   | F5 | Mobile + responsive | 1 |
+   | F6 | Light mode + pulido | 1 |
+4. **Decisiones firmes confirmadas por Anthony**:
+   - ✅ Mantener **vanilla JS** (ya es top en performance, no migrar framework)
+   - ✅ **Self-host fonts** (Instrument Serif + Inter + JetBrains Mono, ~150KB precache PWA)
+   - ✅ **Light mode en F6** (último, no bloquea)
+   - ✅ **Feature freeze F1→F6** (solo bugs P0: data loss, auth roto, deploy caído)
+   - ✅ **Git init local hoy** (próxima sesión) — brecha crítica: sin git solo rollback por día vía `versiones_anteriores/`, no granular
+5. **Análisis de reversión** — Cloudflare Pages rollback nativo ✅, `versiones_anteriores/` ✅ (snapshots puntuales), **git ❌ no inicializado** → cubrirá en F0.
+6. **NO se tocó código** — sesión 100% planning/estratégica.
+
+### Estado split modular
+| Archivo | Estado |
+|---|---|
+| (ninguno) | — sesión de planning, 0 edits de código |
+
+### PRÓXIMO PASO EXACTO (próximo chat)
+```
+1. F0 — Git init local en raíz del proyecto:
+   - git init
+   - .gitignore: versiones_anteriores/, nocturno/, context/, .claude/, handoff-temp/
+   - git add version_actual/ CLAUDE.md SESSION.md BUGS.md PENDIENTES.md MORNING_BRIEF.md CONTEXT_ROUTE.md NEGOCIO.md
+   - git commit -m "baseline pre-redesign 2026-04-23"
+   - git branch redesign/phase-1-tokens
+2. F1 — Tokens CSS:
+   - Copiar tokens del bundle (handoff-temp/mi-aplicacion-de-finanzas/project/tokens.css) a version_actual/
+   - Self-host fonts: descargar Instrument Serif + Inter + JetBrains Mono → version_actual/fonts/
+   - Actualizar service-worker.js PRECACHE_URLS con fonts
+   - SW bump batch52→batch53 (los 3 archivos o ninguno)
+   - Reemplazar :root en styles.css (mantener resto intacto)
+   - deploy-check.js + wrangler deploy → PAUSAR → Anthony verifica incógnito
+3. Criterios "done" F1: paleta nueva aplicada, 0 regresiones de markup, Lighthouse ≥90
+```
+
+### Riesgos identificados
+- 🔴 Sin git = sin rollback granular (mitigado en F0)
+- 🔴 Romper PWA offline si fonts no entran a PRECACHE_URLS
+- 🟡 Chart.js requiere re-tematización en F3 (colores ejes/tooltips)
+- 🟡 Responsive: diseño asume sidebar 240px desktop — validar que no rompe móvil actual
+- 🟡 Deuda visual mixta si pausamos a mitad (fase dashboard nueva + páginas viejas = feo) → disciplina: no parar entre F2-F4
+
+### Referencias clave
+- Bundle: `C:\Users\Anthony Marte\Downloads\handoff-temp\mi-aplicacion-de-finanzas\`
+- README del bundle: instrucción explícita de **recrear pixel-perfect** en stack target, no copiar estructura del prototipo JSX
+- Inspiración declarada: Notion, Linear, Revolut (top 3 finanzas/productividad)
+
+```
+Contexto: CLAUDE.md + SESSION.md
+Tarea: F0 (git init + baseline commit) + F1 (tokens CSS + self-host fonts + SW bump batch53 + deploy) — rediseño visual 2026 fase 1
+```
+
+---
+
+## SESIÓN — 18 Abr 2026 noche-4 (batch52 — FIX BUG-1 deadlock SDK Supabase)
+
+### Qué se hizo
+1. **Anthony pegó logs `[AUTH-DEBUG]` de batch51** (primer login OK + post-F5 hang). Logs entregaron evidencia clave:
+   - Post-F5: `event: SIGNED_IN | session: YES | _appInitialized: false` → handler entra → `→ onLoginSuccess()`
+   - `_appInitialized=true después de 500ms` → confirma que `onLoginSuccess()` SÍ se invocó (setea flag línea 267 auth.js)
+   - **NO aparece**: `[Household]`, `[plantillas]`, `[dinero_fuera]`, `[Healthcheck]`, `[UnhandledPromise]`, `[Init] Error cargando datos`
+   - Splash safety 12s dispara → confirma hang silencioso (no throw, no error)
+2. **Causa raíz identificada**: queries `sb.from(...)` dentro de `resolveHouseholdId/loadFromSupabase` deadlockean con el lock interno del SDK Supabase porque `await onLoginSuccess()` se ejecuta DENTRO del callback `onAuthStateChange` mientras el SDK aún corre su `_initialize()` en auto-restore post-F5. Patrón documentado en supabase/auth-js#762. Primer login no rompe porque ahí el evento se dispara desde `signInWithPassword()` (fuera del lock).
+3. **Fix quirúrgico `init.js:222-232`** — desacoplar `onLoginSuccess()` del callback con `setTimeout(0)`:
+   - `setTimeout(async () => { try { await onLoginSuccess(); } catch(e) {...} }, 0)` libera el call stack del callback
+   - SDK termina `_initialize()` → lock libre → queries proceden
+   - Agregado `try/catch` para capturar futuras fallas silenciosas + log nuevo `Defer 0ms ejecutado`
+4. **SW bump batch51→batch52** (`service-worker.js` CACHE_VERSION + `sw-loader.js` SW_EXPECTED_VERSION + comentario AI-CONTEXT actualizado).
+5. **Deploy batch52 ✅** — URL: https://abaeea19.finanzasprueba.pages.dev. 3 archivos subidos.
+
+### Estado split modular
+| Archivo | Estado |
+|---|---|
+| init.js | ✅ Fix deadlock — `setTimeout(0)` defer en handler SIGNED_IN/INITIAL_SESSION |
+| service-worker.js | ✅ CACHE_VERSION batch52 (deployed) |
+| sw-loader.js | ✅ SW_EXPECTED_VERSION batch52 (deployed) |
+
+### PRÓXIMO PASO EXACTO
+```
+1. Anthony verifica incógnito: abrir https://finanzasprueba.pages.dev/ → login → ver datos OK → F5
+2. Post-F5 esperar logs en consola:
+   - [AUTH-DEBUG] Handler: ...→ defer onLoginSuccess()
+   - [AUTH-DEBUG] Defer 0ms ejecutado → onLoginSuccess()
+   - [Household] membresía activa: fa3f7b3b-...
+   - [plantillas] cargadas...
+   - [dinero_fuera] ✅ deudas: ...
+   - [Healthcheck] ✅
+3. Si datos cargan post-F5 → BUG-1 cerrado definitivamente
+4. Si persiste hang → log nuevo [AUTH-DEBUG] Defer 0ms ejecutado dirá si entró al setTimeout o no
+```
+
+```
+Contexto: CLAUDE.md + SESSION.md
+Tarea: Anthony verifica batch52 incógnito — F5 logueado debe mantener datos (BUG-1 deadlock fix)
+```
+
+---
+
+## SESIÓN — 18 Abr 2026 noche-3 (batch51 — INSTRUMENTACIÓN BUG-1)
+
+### Qué se hizo
+1. **Anthony reportó bug persistente post-batch49/50**: primer load OK (logs completos Household + data), pero post-F5 solo aparecen `[Init] supabase-js OK ✓` + `[SW-Loader] Registrado` + splash safety 12s. NO aparece ningún log de `[Household]`, ni del handler `onLoginSuccess`, ni del safety timer 8s de init.js.
+2. **Verificación producción**: `curl` confirmó que batch50 SÍ está deployed en Cloudflare. El bug NO es de deploy faltante.
+3. **Hipótesis formada (no confirmada)**: `sb.auth.getSession()` queda pending post-F5 y `onAuthStateChange` no dispara `INITIAL_SESSION`. Timer 8s de init.js tampoco loggea "[SAFETY] Timeout 3s" — raro.
+4. **Opción A elegida por Anthony**: instrumentar antes de fix a ciegas.
+5. **Snapshot** a `versiones_anteriores/2026-04-18_batch51_prep/` (init.js + service-worker.js + sw-loader.js).
+6. **Instrumentación `init.js`** — agregados logs `[AUTH-DEBUG]`:
+   - DOMContentLoaded start + dump de keys de localStorage con auth
+   - Safety timer 8s: log al registrar + log cuando dispara + log cuando cancela
+   - `onAuthStateChange`: loguea TODOS los eventos (SIGNED_IN, INITIAL_SESSION, TOKEN_REFRESHED, etc.) con session y `_appInitialized`
+   - Handler branches: cada rama loguea qué ruta tomó
+   - 500ms await: log antes y después
+   - getSession() envuelto en `Promise.race` con timeout 3s → si timeout, cae al catch con `getSession_timeout_3s`
+   - Fallback en catch: lee localStorage directamente, loguea, fuerza login screen
+7. **SW bump batch50→batch51** (service-worker.js + sw-loader.js).
+8. **`deploy-check.js`**: 4/4 OK, 0 errores.
+9. **Deploy batch51 ✅** — URL: https://a36884ea.finanzasprueba.pages.dev. 3 archivos subidos.
+
+### Estado split modular
+| Archivo | Estado |
+|---|---|
+| init.js | ✅ Instrumentación [AUTH-DEBUG] + timeout 3s en getSession + fallback localStorage |
+| service-worker.js | ✅ CACHE_VERSION batch51 (deployed) |
+| sw-loader.js | ✅ SW_EXPECTED_VERSION batch51 (deployed) |
+
+### PRÓXIMO PASO EXACTO
+```
+1. Anthony verifica incógnito: DevTools abierta ANTES de F5 → F5 → copiar TODOS los logs [AUTH-DEBUG]
+2. Con logs concretos identificar dónde se cuelga:
+   - Si localStorage vacío → bug distinto (algo sigue borrándolo)
+   - Si onAuthStateChange solo dispara TOKEN_REFRESHED fallido → fix refresh token
+   - Si getSession timeout 3s → bug SDK colgado, fallback forzar login con tokens de localStorage
+   - Si safety timer 8s nunca dispara → bug del event loop
+3. Fix quirúrgico batch52 con evidencia
+```
+
+```
+Contexto: CLAUDE.md + SESSION.md + context/chat_2026-04-18_batch51.txt
+Tarea: Anthony pega logs [AUTH-DEBUG] post-F5; diseñar fix quirúrgico batch52
+```
+
+---
+
+## SESIÓN — 18 Abr 2026 noche-2 (batch49 — BUG-1 FIX DEFINITIVO)
+
+### Qué se hizo
+1. **BUG-1 causa raíz real identificada por logs de consola** — con evidencia empírica por primera vez:
+   - Logs post-F5 mostraron: `[Splash] Safety timeout activado` sin ningún log de `[Household]` ni datos
+   - localStorage completamente vacío después del F5 (usuario confirmó)
+   - **Culpable encontrado**: `app-offline.js:20-31` — `unhandledrejection` handler que llamaba `localStorage.removeItem('sb-jcgoccaisemrfsuwwrrl-auth-token')` + `window._supabase.auth.signOut()` al detectar cualquier error de "refresh_token"
+   - Race condition: Supabase SDK interno y nuestro `setSession()` en init.js usaban el mismo refresh_token concurrentemente → segundo intento falla con "Invalid Refresh Token" → handler dispara → `signOut()` global invalida el token server-side → localStorage borrado
+   - En F5 siguiente: no hay sesión restaurable → login screen
+2. **Fix quirúrgico `app-offline.js`** — eliminados `removeItem()` + `signOut()` del handler; solo queda `e.preventDefault()` + hide del login-error banner
+3. **SW bump batch48→batch49** — `service-worker.js` (CACHE_VERSION) + `sw-loader.js` (SW_EXPECTED_VERSION)
+4. **Deploy batch49 ✅** — URL: https://ab445866.finanzasprueba.pages.dev. 3 archivos subidos.
+
+### Estado split modular
+| Archivo | Estado |
+|---|---|
+| app-offline.js | ✅ signOut() + removeItem() eliminados del unhandledrejection handler |
+| service-worker.js | ✅ CACHE_VERSION batch49 (deployed) |
+| sw-loader.js | ✅ SW_EXPECTED_VERSION batch49 (deployed) |
+
+### PRÓXIMO PASO EXACTO
+```
+1. Anthony verifica incógnito: abrir https://finanzasprueba.pages.dev/, iniciar sesión, ver datos, hacer F5 → datos deben mantenerse (no login screen)
+2. Si OK → BUG-1 cerrado. Próxima sesión: Phase 1 tokens-css
+3. Si persiste → reportar consola post-F5 (¿sigue apareciendo "Invalid Refresh"? ¿nuevo error?)
+```
+
+```
+Contexto: CLAUDE.md + SESSION.md
+Tarea: Anthony verifica batch49 incógnito — F5 debe mantener datos sin login screen
+```
+
+---
+
+## SESIÓN — 18 Abr 2026 noche (batch48 deploy + pre-deploy validator + diagnóstico revisado)
+
+### Qué se hizo
+1. **Diagnóstico revisado — SessionMD estaba parcialmente equivocado**:
+   - NO hay `<link rel="preload">` en index.html — el warning del browser venía del SW PRECACHE (cache.addAll)
+   - `<script src="config.js">` y `<script src="app-core.js">` SÍ están presentes en líneas 1598-1599 ✅
+   - La causa real del "balance $0" / "no logs app-core.js": el safety timer de 3s en `init.js` puede disparar antes de que `_sbLoadPromise` resuelva en móvil lento → muestra login screen prematuramente
+   - `onLoginSuccess()` eventualmente SÍ corre (cuando CDN carga), pero usuario abandona antes de verlo
+2. **SW bump batch47→batch48** — `service-worker.js` (CACHE_VERSION) + `sw-loader.js` (SW_EXPECTED_VERSION) actualizados.
+3. **Deploy batch48 ✅** — URL: https://6f77e5a2.finanzasprueba.pages.dev. 3 archivos subidos.
+4. **Validador pre-deploy creado** — `version_actual/deploy-check.js` (Node.js, ~55 líneas):
+   - Verifica CACHE_VERSION === SW_EXPECTED_VERSION
+   - Detecta orphan preloads en index.html
+   - Verifica que scripts locales referenciados existen como archivos
+   - Verifica que módulos están en PRECACHE_URLS
+   - Bloqueante (exit code 1) si hay errores
+   - Corrida actual: 4/4 OK, 0 errores
+
+### CAUSA RAÍZ ACTUALIZADA
+La safety timer de 3s en `init.js` (línea 180) dispara antes de que el CDN de Supabase cargue en conexiones lentas de móvil, mostrando la login screen. El usuario ve la pantalla de login y piensa que el app falló — pero en realidad la sesión SE RESTAURA SOLA 2-5s después cuando el CDN carga y onAuthStateChange dispara INITIAL_SESSION.
+
+**Fix definitivo pendiente**: aumentar el safety timer de 3s a 8-10s, o mostrar un spinner "restaurando sesión..." en vez de login screen, para evitar que el usuario interrumpa el proceso de auto-restore.
+
+### Estado split modular
+| Archivo | Estado |
+|---|---|
+| service-worker.js | ✅ CACHE_VERSION batch48 (deployed) |
+| sw-loader.js | ✅ SW_EXPECTED_VERSION batch48 (deployed) |
+| deploy-check.js | ✅ NUEVO — validador pre-deploy Node.js |
+| index.html | ✅ Sin cambios — scripts correctamente ordenados (config.js:1598, app-core.js:1599) |
+
+### PRÓXIMO PASO EXACTO
+```
+1. Anthony verifica móvil: F5 logueado → esperar 8-10s → consola debe mostrar:
+   - [SW-Loader] Nuevo SW activo — recargando  (solo primera vez, después de esto recarga automática)
+   - [Init] supabase-js OK ✓
+   - [Household] membresía activa: fa3f7b3b-...
+   - [loadFromSupabase] ...  ← estos son los logs de app-core.js
+   - Balance real (no $0)
+2. Si OK → Fix del safety timer (3s→8s) como Fase 0.5
+3. Luego → Fase 1: tokens-css (design tokens sin cambios visuales)
+```
+
+### Instrucción al validador pre-deploy
+Para integrarlo en el skill deploy, agregar antes del wrangler:
+```bash
+node version_actual/deploy-check.js || exit 1
+```
+
+```
+Contexto: CLAUDE.md + SESSION.md
+Tarea: Fix safety timer init.js (3s→8s) para evitar login screen prematura en móvil
+```
+
+---
+
+## SESIÓN — 18 Abr 2026 tarde (batch47 deploy + NUEVA causa raíz BUG-1 identificada)
+
+### Qué se hizo
+1. **Duplicado SW eliminado** — `app-offline.js` líneas 98-116 (bloque `navigator.serviceWorker.register()` duplicado) eliminado. Grep confirma que solo queda el registro canónico en `sw-loader.js:45`.
+2. **SW bump batch46→batch47** — `service-worker.js` (CACHE_VERSION + comentario AI-CONTEXT) y `sw-loader.js` (SW_EXPECTED_VERSION) actualizados.
+3. **Deploy batch47 ✅** — `wrangler pages deploy version_actual/ --project-name finanzasapp`. 3 archivos subidos, 38 cacheados. URL: https://b24f068f.finanzasprueba.pages.dev
+4. **Verificación — bug persiste en móvil Y desktop** (Anthony confirmó). Logs de consola post-F5 revelan **nueva causa raíz real**:
+   ```
+   ⚠ app-core.js was preloaded ... but not used within a few seconds
+   ⚠ config.js was preloaded ... but not used within a few seconds
+   ⚠ [Splash] Safety timeout activado
+   ```
+   **Ningún log de app-core.js en consola** (otros módulos sí: calendar, vapid-push, init, voice, features). app-core.js NO se ejecuta → `loadFromSupabase()` no existe → no hay estado → splash safety fires → balance $0.
+
+### CAUSA RAÍZ REAL (CONFIRMADA POR LOGS)
+`index.html` tiene `<link rel="preload" href="/app-core.js">` y `<link rel="preload" href="/config.js">` **sin `<script src>` correspondiente que los consuma**, o con orden incorrecto. Bug de *plumbing* HTML, NO de lógica JS.
+
+### Estado split modular
+| Archivo | Estado |
+|---|---|
+| app-offline.js | ✅ registro SW duplicado eliminado |
+| service-worker.js | ✅ CACHE_VERSION batch47 (deployed) |
+| sw-loader.js | ✅ SW_EXPECTED_VERSION batch47 (deployed) |
+| index.html | 🔴 **orphan preload app-core.js + config.js — BUG-1 raíz real** |
+
+### Decisión arquitectónica (Anthony + Claude)
+Roadmap acordado, sin descarrilamiento:
+- **Fase 0**: Fix quirúrgico `index.html` (5 min) + validador pre-deploy (50 líneas Node que bloquea deploy si hay orphan preload / SW desincronizado / módulo huérfano) + hook en skill `deploy`.
+- **Fase 1**: Design tokens primero (skill `tokens-css`) — extraer colores/spacing/tipo del zip referencia a `:root`, 0 cambios visuales.
+- **Fase 2**: UIX incremental pantalla por pantalla (login → dashboard → cuentas → movimientos → analytics → features). Un deploy por pantalla, verificar 24h, luego siguiente.
+- **Regla de oro**: un tipo de cambio por deploy. Nunca mezclar fix + UIX + feature.
+
+### PRÓXIMO PASO EXACTO
+```
+1. Leer sección <head> + final de <body> de index.html (identificar desalineación preload↔script)
+2. Fix: agregar/reordenar <script src="/config.js"> y <script src="/app-core.js"> para que ejecuten
+3. SW bump batch47→batch48
+4. Deploy wrangler → PAUSAR
+5. Anthony verifica móvil: F5 logueado → consola debe mostrar log de app-core.js + balance real (no $0)
+6. Si OK → diseñar validador pre-deploy (Node script + skill deploy hook)
+```
+
+### Riesgos / guards
+- NO copiar styles.css del zip entero (regresión garantizada)
+- NO migrar UIX big-bang — pantalla por pantalla
+- Validador pre-deploy debe incluir: preload↔script alignment + SW version match + PRECACHE_URLS sync
+
+```
+Contexto: CLAUDE.md + SESSION.md
+Tarea: Leer head + end-of-body de index.html, identificar orphan preload app-core.js/config.js, agregar <script src> faltante, bump batch48, deploy, Anthony verifica móvil
+```
+
+---
+
+## SESIÓN — 18 Abr 2026 PM (batch46 + root cause real BUG-1)
+
+### Qué se hizo
+1. **Ghost files eliminados** de `version_actual/`:
+   - `sw.js` (SW v4 viejo, cache-first JS, servía `init.js` obsoleto con BUG-1)
+   - `index.ts`, `vapid-push-index.ts`, `calendar-sync-edge-function.ts` (fuentes TS no usadas)
+2. **sw-loader.js v13** — agregado desregistro automático del SW viejo `/sw.js`:
+   - Itera `getRegistrations()` en `load`
+   - Si `scriptURL` contiene `/sw.js` y NO `service-worker` → `unregister()`
+   - Evita que navegadores con SW v4 previo sirvan `init.js` cacheado
+3. **Deploy batch46 ✅** — `CACHE_VERSION = finanzas-v59-batch46` + `SW_EXPECTED_VERSION = finanzas-v59-batch46` (service-worker.js + sw-loader.js bumped y subidos a Cloudflare Pages).
+4. **Verificación en navegador — bug persiste en móvil (Anthony confirmó)**:
+   - Scripts ejecutan **5 veces** al cargar (timestamps idénticos 9:12:29)
+   - `HOUSEHOLD_ID = null` aunque `_appInitialized = true` y `currentUser` seteado
+   - `sessionStorage.sw_reloaded_*` activo pero log "Nuevo SW activo — recargando" NO aparece
+   - Performance API: `type=reload`, `redirectCount=0` (no son redirects, son re-ejecuciones)
+5. **CAUSA RAÍZ REAL DESCUBIERTA** — `app-offline.js` líneas 98-116 registra `/service-worker.js` una **segunda vez**, compitiendo con `sw-loader.js`:
+   - Dos `navigator.serviceWorker.register()` simultáneos → múltiples eventos `controllerchange`
+   - Reload loop (5× ejecución de scripts) → `resolveHouseholdId()` no completa → `HOUSEHOLD_ID` queda null
+   - `data-load.js` query con `user_id = null` → balance $0
+
+### Estado split modular
+| Archivo | Estado |
+|---|---|
+| sw-loader.js | ✅ v13 — desregistro sw.js viejo + SW_EXPECTED_VERSION batch46 |
+| service-worker.js | ✅ CACHE_VERSION batch46 (deployed) |
+| app-offline.js | 🔴 **líneas 98-116 = bug raíz** — registro SW duplicado pendiente eliminar |
+| sw.js | ✅ eliminado (ghost file) |
+
+### PRÓXIMO PASO EXACTO
+```
+1. Eliminar bloque 'if ("serviceWorker" in navigator)' completo en app-offline.js líneas 98-116
+   (sw-loader.js ya hace el register — app-offline.js NO debe registrar SW otra vez)
+2. SW bump batch46→batch47 (service-worker.js + sw-loader.js)
+3. Deploy wrangler pages → finanzasapp
+4. PAUSAR. Anthony verifica en móvil: F5 logueado → datos cargan (no $0)
+5. Si bug persiste → revisar por qué scripts ejecutan 5×
+```
+
+### Riesgos / guards
+- `app-offline.js` probablemente también contiene lógica de offline-queue → eliminar SOLO el register, no el archivo entero
+- Verificar que no haya otro módulo registrando SW (grep `navigator.serviceWorker.register`)
+- Mantener guard `sessionStorage.sw_reloaded_*` en sw-loader.js (protege contra loop)
+
+```
+Contexto: CLAUDE.md + SESSION.md
+Tarea: Eliminar registro SW duplicado en app-offline.js:98-116, bump a batch47, deploy, Anthony verifica móvil
+```
+
+---
+
+## SESIÓN — 18 Abr 2026 (batch45 deploy + setup depuración nocturna)
+
+### Qué se hizo
+1. **Deploy batch45 ✅** — SW bump 44→45 + wrangler pages deploy a `finanzasapp` (project name correcto, no `finanzasprueba`). Incluye BUG-1 safety timer fix. URL: https://64dd6135.finanzasprueba.pages.dev. Verificación pendiente por Anthony.
+2. **Consolidación CLAUDE.md** — de 407→~180 líneas. Eliminadas 10 incongruencias (fallback Supabase temporal, offsets obsoletos, duplicados BUGS/PENDIENTES, etc.). Nueva sección DISCIPLINA DE TOKENS.
+3. **Archivos de estado extraídos**: `PENDIENTES.md`, `NEGOCIO.md`, `MORNING_BRIEF.md` (template), `CONTEXT_ROUTE.md` (ruta de lectura por tarea).
+4. **Infraestructura nocturna**: carpetas `nocturno/`, `versiones_anteriores/2026-04-18_depuracion/{01-04}/`, `propuestas/ux-referencia/` (zip UX extraído, 8 JSX + tokens.css).
+5. **6 Triggers CronCreate programados** (19-Abr 01:07 / 02:07 / 03:07 / 04:07 / 05:07 / 05:47) + backup manual `nocturno/PROMPTS.md` por incertidumbre en persistencia de crones (CronList devuelve vacío).
+
+### PRÓXIMO PASO EXACTO
+```
+1. Anthony verifica incógnito batch45: login → datos cargan (no $0) + F5 mantiene datos
+2. Mañana 19-Abr al despertar: abrir MORNING_BRIEF.md
+   - Si corrió: seguir plan del brief
+   - Si no: pegar prompts de nocturno/PROMPTS.md (T01→T06, ~15 min)
+3. Con reportes: decidir Fase 4 (destino de app-core.js)
+4. Fase 5 quirúrgica: 1 archivo por deploy con verificación
+```
+
+### Requisitos overnight
+- Laptop prendida, Windows sin suspender
+- Claude Code abierto en esta carpeta con esta sesión
+- No cerrar la ventana (crones mueren si se cierra)
+
+```
+Contexto: CLAUDE.md + MORNING_BRIEF.md + CONTEXT_ROUTE.md
+Tarea: Revisar reportes nocturnos y decidir Fase 4
+```
+
+---
+
+## SESIÓN — 16 Abr 2026 PM (batch42-44 + BUG-1 fix real)
+
+### Qué se hizo
+1. **Post-deploy batch41** — fixes detectados en consola:
+   - `app-features.js:457`: `let RECURRENTES` eliminado (doble declaración con globals-init.js → SyntaxError)
+   - `notificaciones-panel.js`: aliases `window.openNotifPanel` / `window.closeNotifPanel` agregados
+   - → batch42 deployed ✅
+2. **BUG-1 diagnóstico real** — datos $0 en login:
+   - Causa: lock contention en Supabase auth token — `setSession()` + `getSession()` competían con `INITIAL_SESSION`
+   - Fix 1: `await new Promise(r=>setTimeout(r,0))` en init.js antes de setSession (deja que INITIAL_SESSION procese primero)
+   - Fix 2: guard `!_appInitialized` en bloque setSession → batch43 deployed ✅
+   - Fix 3: guard `!_appInitialized` en bloque getSession → batch44 deployed ✅
+   - Fix 4 (CAUSA RAÍZ REAL): safety timer reseteaba `_appInitialized=false` mientras `onLoginSuccess()` corría → agregado `if(_appInitialized) return` al timer
+   - → **batch45 PENDIENTE DEPLOY** (solo SW bump + deploy)
+3. **Regla permanente agregada**: después de deploy Cloudflare → pausar, esperar instrucción de Anthony para verificar
+
+### Estado split modular
+| Archivo | Estado |
+|---|---|
+| app-features.js | ✅ RECURRENTES doble-decl eliminada |
+| notificaciones-panel.js | ✅ aliases openNotifPanel/closeNotifPanel |
+| init.js | ✅ BUG-1 fixes × 4 (lock + safety timer) |
+| SW | finanzas-v59-batch44 en version_actual — **batch45 PENDIENTE DEPLOY** |
+
+### PRÓXIMO PASO EXACTO
+```
+1. SW bump batch44→batch45 + deploy wrangler
+2. Anthony verifica en incógnito: login → datos reales cargan (no $0)
+3. F5 logueado → datos se mantienen
+4. Botón Google Calendar visible (BUG-2)
+```
+
+### Pendientes post-deploy
+- BUG-SEC2: hCaptcha → Supabase Dashboard → Auth → Attack Protection
+- BUG-3: Push móvil → handler push en service-worker.js
+- BUG-4: CDN verificar
+- Google OAuth: anthonymarte12@gmail.com → Cloud Console test user
+- tokens.css → PRIORIDAD elevada (PREREQ diseño)
+
+---
+
+```
+Contexto: CLAUDE.md + context/chat_2026-04-16_09-33.txt
+Tarea: SW bump batch44→batch45, deploy, luego Anthony verifica incógnito: datos cargando en login (BUG-1 fix)
+```

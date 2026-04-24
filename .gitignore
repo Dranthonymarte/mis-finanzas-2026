@@ -1,0 +1,42 @@
+# Snapshots y backups
+versiones_anteriores/
+
+# Reportes nocturnos (se regeneran)
+nocturno/
+
+# Logs de sesiones previas (consolidados en MORNING_BRIEF)
+context/
+
+# Claude Code local settings + flags
+.claude/
+
+# Bundle de diseño externo
+handoff-temp/
+
+# Cloudflare Wrangler cache
+.wrangler/
+
+# Carpetas de trabajo antiguas (pre-13-Abr)
+Mi aplicacion de finanzas/
+Mi aplicacion de finanzas.zip
+Supabase/
+contexto/
+movimientos/
+recordatorios/
+reportes/
+skills/
+
+# Propuestas (no producción)
+propuestas/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Node (por si aparece)
+node_modules/
+npm-debug.log*

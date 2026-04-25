@@ -1,25 +1,27 @@
 
 *{margin:0;padding:0;box-sizing:border-box}
 :root {
-  /* ── Colors ───────────────────────────────── */
-  --bg:         #0d1117;
-  --surface:    #161b22;
-  --surface2:   #1c2128;
-  --border:     #30363d;
-  --border-soft:#21262d;
-  --green:      #3fb950;
-  --green-dim:  #1a3626;
-  --red:        #f85149;
-  --red-dim:    #3d1a1a;
-  --blue:       #58a6ff;
-  --gold:       #e3b341;
+  /* ── Colors — ALIASES a tokens 2026 (F1 rediseño) ─────
+     Valores reales en tokens.css. Aquí solo mapeo retro-compat.
+     ───────────────────────────────────────────────────── */
+  --bg:         var(--ink-0);
+  --surface:    var(--ink-2);
+  --surface2:   var(--ink-3);
+  --border:     var(--ink-4);
+  --border-soft:var(--line);
+  --green:      var(--pos);
+  --green-dim:  var(--pos-d);
+  --red:        var(--neg);
+  --red-dim:    var(--neg-d);
+  --blue:       var(--info);
+  --gold:       var(--amber);
   --purple:     #bc8cff;
-  --teal:       #39d353;
-  --orange:     #ff8c42;
-  --text:       #e6edf3;
-  --muted:      #8b949e;
-  --muted2:     #6e7681;
-  --accent:     #238636;
+  --teal:       var(--teal-2026);
+  --orange:     var(--amber-s);
+  --text:       var(--fg);
+  --muted:      var(--fg-dim);
+  --muted2:     var(--fg-mute);
+  --accent:     var(--amber);
 
   /* ── Type scale (5 sizes only) ────────────── */
   --font-2xs:  .62rem;   /* 9.9px  — fechas, labels mínimos   */

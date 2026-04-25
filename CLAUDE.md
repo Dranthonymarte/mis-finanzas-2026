@@ -41,8 +41,8 @@ Dual-currency USD/VES | RLS activo
 | app-smart.js | 98KB | Groq IA, OCR |
 | app-cuentas.js | 53KB | Cuentas CRUD, transferencias |
 | styles.css | 132KB | — |
-| service-worker.js | 6.4KB | CACHE_VERSION actual: `finanzas-v59-batch51` |
-| sw-loader.js | 3.6KB | SW_EXPECTED_VERSION actual: `finanzas-v59-batch51` |
+| service-worker.js | 6.4KB | CACHE_VERSION actual: `finanzas-v59-batch54` |
+| sw-loader.js | 3.6KB | SW_EXPECTED_VERSION actual: `finanzas-v59-batch54` |
 
 Detalle de módulos split → tabla completa al final.
 

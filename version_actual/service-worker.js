@@ -1,12 +1,12 @@
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  AI-CONTEXT — service-worker.js · Mis Finanzas 2026                 ║
-// ║  VERSIÓN: finanzas-v59-batch52                                       ║
-// ║  FIX batch52: defer onLoginSuccess() con setTimeout(0) en init.js    ║
-// ║  para evitar deadlock con lock interno SDK Supabase post-F5          ║
-// ║  (ref: supabase/auth-js#762)                                         ║
+// ║  VERSIÓN: finanzas-v59-batch54                                       ║
+// ║  F1.1 batch54: self-host fonts (Instrument Serif + Inter +          ║
+// ║  JetBrains Mono) — @font-face en tokens.css + precache /fonts/*.    ║
+// ║  PWA offline-first con ~100KB de fuentes locales (sin Google CDN).  ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 
-const CACHE_VERSION = 'finanzas-v59-batch52';
+const CACHE_VERSION = 'finanzas-v59-batch54';
 const CDN_CACHE     = 'finanzas-cdn-v44';
 
 const PRECACHE_URLS = [
@@ -15,8 +15,12 @@ const PRECACHE_URLS = [
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
+  '/tokens.css',
   '/styles.css',
   '/styles-desktop.css',
+  '/fonts/instrument-serif-400.woff2',
+  '/fonts/inter-var.woff2',
+  '/fonts/jetbrains-mono-var.woff2',
   '/config.js',
   '/globals-init.js',
   '/auth.js',

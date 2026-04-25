@@ -3,6 +3,136 @@
 
 ---
 
+## SESIÓN — 24 Abr 2026 PM (F1.1 batch54 DEPLOYED + verificado ✅ — fonts self-hosted live)
+
+### Qué se hizo
+1. **Anthony verificó batch53 incógnito ✅** — paleta amber + teal oxidado + ink-0..4 aplicada sin regresión de markup.
+2. **F1.1 batch54 ejecutado en dir principal** (worktree `nifty-clarke-b8dce6` stale en batch52):
+   - `tokens.css`: 3 reglas `@font-face` con `font-display: swap` para Instrument Serif (400), Inter (variable 100-900), JetBrains Mono (variable 100-800). Formato `woff2-variations` + fallback `woff2`.
+   - `service-worker.js`: `+3` entradas en `PRECACHE_URLS` (`/fonts/instrument-serif-400.woff2`, `/fonts/inter-var.woff2`, `/fonts/jetbrains-mono-var.woff2`); `CACHE_VERSION` bump batch53→batch54; AI-CONTEXT actualizado.
+   - `sw-loader.js`: `SW_EXPECTED_VERSION` bump batch53→batch54.
+3. **deploy-check.js** → 4/4 OK, 0 errores, 0 warnings.
+4. **Deploy batch54 ✅** — `wrangler pages deploy version_actual/ --project-name finanzasapp`. URL: https://c4b2b68d.finanzasprueba.pages.dev. 3 archivos nuevos + 43 cacheados + `_headers` + `_redirects`.
+5. **Anthony verificó batch54 incógnito ✅** — fonts self-hosted cargan sin FOUT extremo, offline mantiene tipografías (precache OK), 0 regresión visual vs batch53.
+6. **Commit baseline batch54** ejecutado en `master` desde dir principal (captura batch53 + batch54 juntos — primer commit post-baseline `c717800`).
+
+### Estado split modular
+| Archivo | Estado |
+|---|---|
+| `version_actual/tokens.css` | ✅ DEPLOYED — 3 @font-face rules self-hosted |
+| `version_actual/service-worker.js` | ✅ DEPLOYED — PRECACHE +3 fonts + CACHE_VERSION batch54 |
+| `version_actual/sw-loader.js` | ✅ DEPLOYED — SW_EXPECTED_VERSION batch54 |
+| `version_actual/fonts/*.woff2` | ✅ DEPLOYED — 3 archivos latin-only (~100KB) |
+| `version_actual/styles.css` | ✅ DEPLOYED — :root delegando a tokens.css (batch53) |
+| `version_actual/index.html` | ✅ DEPLOYED — `<link tokens.css>` activo (batch53) |
+
+### PRÓXIMO PASO EXACTO
+```
+1. F2 — Shell visual (sesión nueva recomendada por consumo de contexto):
+   - Sidebar 240px (logo + nav vertical + footer user)
+   - Topbar (búsqueda + acciones + avatar)
+   - Bottom nav móvil 64px
+   - Referencia: handoff-temp/mi-aplicacion-de-finanzas/project/shell.jsx
+2. Crear branch `redesign/phase-2-shell` desde master post-batch54
+3. Feature freeze sigue activo hasta F6 (solo bugs P0)
+```
+
+### Notas / divergencia
+- **Worktree stale**: `nifty-clarke-b8dce6` (batch52) y `stoic-chebyshev-067ff9` (esta sesión) deben limpiarse o rebasearse contra master post-batch54.
+- **CLAUDE.md tabla SW**: actualizada a batch54.
+- **Branch `redesign/phase-1-tokens`** quedó sin uso — F1 se ejecutó directo en `master`. Eliminar o reciclar.
+
+```
+Contexto: CLAUDE.md + SESSION.md
+Tarea: F2 — shell visual (sidebar 240px + topbar + nav móvil 64px) sobre baseline batch54 verificado
+```
+
+---
+
+## SESIÓN — 23 Abr 2026 PM (F0 completo + F1 parcial — fonts descargadas)
+
+### Qué se hizo
+1. **F0 COMPLETADO ✅** — Git init local en raíz del proyecto:
+   - `git init` — repo inicializado (Windows, git 2.53.0)
+   - `.gitignore` creado con: `versiones_anteriores/`, `nocturno/`, `context/`, `.claude/`, `handoff-temp/`, `.wrangler/`, carpetas viejas (`Mi aplicacion de finanzas/`, `Supabase/`, etc.), `propuestas/`, OS files
+   - `git config --local user.name "Anthony Marte"` + `user.email "anthonymarte12@gmail.com"` (solo local, NO global)
+   - `git add` de 9 items: `.gitignore` + 7 MDs + `version_actual/`
+   - `git commit -m "baseline pre-redesign 2026-04-23"` → hash `c717800`, 52 archivos, 31,469 inserciones
+   - `git branch redesign/phase-1-tokens` creada (aún en `master`, sin checkout)
+2. **F1 PARCIAL** — solo fase de descarga de fonts completada:
+   - `version_actual/fonts/` folder creado
+   - Google Fonts CSS descargado con User-Agent Chrome moderno → WOFF2 URLs extraídas
+   - Solo subset **latin** descargado (Español no requiere cyrillic/greek/vietnamese)
+   - 3 archivos WOFF2 en `version_actual/fonts/`:
+     - `instrument-serif-400.woff2` — 21KB
+     - `inter-var.woff2` — 48KB (variable font cubre 400/500/600/700)
+     - `jetbrains-mono-var.woff2` — 31KB (variable font cubre 400/500)
+   - **Total: ~100KB** (bajo el budget de 150KB)
+   - Validez verificada: los 3 empiezan con magic bytes `wOF2` ✅
+3. **F1 NO ejecutado aún** (pendiente para próxima sesión):
+   - `tokens.css` no creado
+   - `:root` de `styles.css` no modificado
+   - `<link tokens.css>` no agregado en `index.html`
+   - `PRECACHE_URLS` sin actualizar
+   - SW sigue en `batch52` (NO deployed batch53)
+   - Deploy NO ejecutado
+
+### Estado split modular
+| Archivo | Estado |
+|---|---|
+| `.gitignore` | ✅ NUEVO — excluye carpetas no-fuente |
+| `.git/` | ✅ NUEVO — repo local iniciado, commit `c717800` en `master`, branch `redesign/phase-1-tokens` creada |
+| `version_actual/fonts/*.woff2` | ✅ NUEVOS — 3 archivos latin-only (100KB total) |
+| `version_actual/tokens.css` | ⏳ PENDIENTE — no creado todavía |
+| `version_actual/styles.css` | ⏳ PENDIENTE — `:root` sin reemplazar |
+| `version_actual/index.html` | ⏳ PENDIENTE — sin `<link tokens.css>` |
+| `version_actual/service-worker.js` | ⏳ batch52 (sin bump, sin fonts en PRECACHE) |
+| `version_actual/sw-loader.js` | ⏳ batch52 (sin bump) |
+
+### Decisiones tomadas
+- **Config git = local**, no global (para no afectar otros proyectos del usuario)
+- **Fonts latin-only** para reducir payload; Inter y JetBrains Mono son variable fonts → 1 archivo cubre múltiples pesos
+- **Instrument Serif italic** no descargado en F1 (agregar si F2+ lo requiere)
+- Branch `redesign/phase-1-tokens` creada pero **sin checkout** — trabajo F1 se hará allí en próxima sesión
+
+### PRÓXIMO PASO EXACTO (próximo chat)
+```
+1. git checkout redesign/phase-1-tokens
+2. Crear version_actual/tokens.css:
+   - :root con nuevos tokens (--ink-0..4, --fg, --amber, --teal, --pos/neg, --t-*, --s-1..16, --r-*)
+   - @font-face para 3 fonts locales (/fonts/instrument-serif-400.woff2, /fonts/inter-var.woff2, /fonts/jetbrains-mono-var.woff2)
+   - Aliases legacy: --bg→var(--ink-1), --surface→var(--ink-2), --text→var(--fg), --green→var(--pos), --red→var(--neg), --gold→var(--amber), --font-base→var(--t-md), --space-N→var(--s-N), --radius-N→var(--r-N)
+   - NO incluir [data-theme="light"] (eso es F6)
+   - Fuente bundle: handoff-temp/mi-aplicacion-de-finanzas/project/tokens.css (ya leído en contexto)
+3. Editar version_actual/styles.css:
+   - Reemplazar :root completo (líneas 3-72) con aliases que delegan a var(--ink-*/fg/amber/...)
+   - Conservar --glass-*, --nav-h, --vp-* tal cual
+   - body { font-family: var(--f-ui); } (migrar de 'Segoe UI',system-ui a var)
+4. Editar version_actual/index.html:
+   - Línea 5-6: agregar <link rel="stylesheet" href="/tokens.css"> ANTES de styles.css (tokens deben definirse primero)
+5. Editar version_actual/service-worker.js PRECACHE_URLS:
+   - Agregar '/tokens.css'
+   - Agregar '/fonts/instrument-serif-400.woff2', '/fonts/inter-var.woff2', '/fonts/jetbrains-mono-var.woff2'
+6. SW bump batch52→batch53 (service-worker.js CACHE_VERSION + sw-loader.js SW_EXPECTED_VERSION)
+7. node version_actual/deploy-check.js (debe pasar 4/4)
+8. wrangler pages deploy version_actual/ --project-name finanzasapp
+9. PAUSAR. Anthony verifica incógnito: login → paleta nueva (ink + amber + teal) visible, 0 regresión de markup
+10. Criterios "done" F1: paleta aplicada, 0 markup rotos, Lighthouse ≥90
+```
+
+### Riesgos para próxima sesión
+- 🔴 Romper variables en styles.css si los aliases no son exactos — probar antes de deploy con grep `var(--bg` etc.
+- 🟡 fonts cargan pero no se usan todavía → `body { font-family: var(--f-ui) }` necesario
+- 🟡 PWA offline — si fonts no entran en PRECACHE se ven fallback hasta primera carga online
+
+### Prompt de continuación
+```
+Contexto: CLAUDE.md + SESSION.md + context/chat_2026-04-23_F0-F1exec.txt
+Tarea: Completar F1 (tokens.css + aliases en styles.css + link index.html + PRECACHE + SW bump batch53 + deploy)
+```
+
+---
+
 ## SESIÓN — 23 Abr 2026 (REDISEÑO VISUAL 2026 — planning + decisiones firmes)
 
 ### Qué se hizo

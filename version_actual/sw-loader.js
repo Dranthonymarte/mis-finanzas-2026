@@ -26,7 +26,7 @@
 })();
 
 // VERSIÓN ESPERADA — debe coincidir con CACHE_VERSION en service-worker.js
-const SW_EXPECTED_VERSION = 'finanzas-v59-batch54';
+const SW_EXPECTED_VERSION = 'finanzas-v59-batch55';
 
 if ('serviceWorker' in navigator) {
 

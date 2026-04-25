@@ -1,12 +1,11 @@
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  AI-CONTEXT — service-worker.js · Mis Finanzas 2026                 ║
-// ║  VERSIÓN: finanzas-v59-batch54                                       ║
-// ║  F1.1 batch54: self-host fonts (Instrument Serif + Inter +          ║
-// ║  JetBrains Mono) — @font-face en tokens.css + precache /fonts/*.    ║
-// ║  PWA offline-first con ~100KB de fuentes locales (sin Google CDN).  ║
+// ║  VERSIÓN: finanzas-v59-batch55                                       ║
+// ║  F2 batch55: shell visual redesign — sidebar 240px + topbar +       ║
+// ║  bottom nav 64px. shell.css nuevo archivo, SVG icons, tokens 2026.  ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 
-const CACHE_VERSION = 'finanzas-v59-batch54';
+const CACHE_VERSION = 'finanzas-v59-batch55';
 const CDN_CACHE     = 'finanzas-cdn-v44';
 
 const PRECACHE_URLS = [
@@ -18,6 +17,7 @@ const PRECACHE_URLS = [
   '/tokens.css',
   '/styles.css',
   '/styles-desktop.css',
+  '/shell.css',
   '/fonts/instrument-serif-400.woff2',
   '/fonts/inter-var.woff2',
   '/fonts/jetbrains-mono-var.woff2',

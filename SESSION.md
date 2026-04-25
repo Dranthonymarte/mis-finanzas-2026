@@ -3,6 +3,115 @@
 
 ---
 
+## SESIÓN — 24 Abr 2026 NOCHE-2 (F2 batch55 — Deploy ejecutado, cambios NO visibles en cliente)
+
+### Qué se hizo
+1. **Diagnóstico CSS cascade** — identificada causa raíz del nav verde: `index.html` línea 208 tenía `<link rel="stylesheet" href="styles.css">` duplicado, cargándose DESPUÉS de shell.css. Las reglas `.pwa-nav-btn.active { color: #3fb950 !important; }` (L1096, L2525 de styles.css) ganaban por source order.
+2. **Fix aplicado** — eliminada línea 208 duplicada de index.html. shell.css consolidado: selectores defensivos reducidos de 4 a 1 limpio, agregada regla pill amber-glow.
+3. **Git commit c9fba85** — F2 batch55: shell visual redesign. Archivos: shell.css (NUEVO) + index.html (sidebar HTML + pwa-nav SVG + eliminado duplicado styles.css + link shell.css) + service-worker.js (batch55 + /shell.css PRECACHE) + sw-loader.js (batch55).
+4. **Deploy wrangler ejecutado ✅** — 40 files nuevos + 7 cacheados en 4.16s. URL: https://6ea64da5.finanzasprueba.pages.dev. Alias: claude-interesting-franklin.finanzasprueba.pages.dev. Cloudflare dashboard muestra commit batch55.
+5. **Verificación incógnito por Anthony** — logueado, datos cargan (logs [Household], [plantillas], [dinero_fuera], [Healthcheck] visibles en consola). **PERO:** UI sigue igual a batch54 — NO aparece sidebar 240px desktop, NO cambió nav móvil a amber SVG. Cambios visuales completamente ausentes.
+6. **Diagnóstico cliente** — Anthony abre DevTools. Consola muestra logs del worktree (shell.css, sv-loader.js, deploy-check nuevo). **Pero CSS/HTML visualmente NO aplica.** Causa probable: SW cache sigue sirviendo archivos viejos de antes del deploy.
+
+### Hipótesis
+El deploy SÍ subió los archivos a Cloudflare (wrangler success + Cloudflare UI muestra batch55 commit). Pero el SW activo en el cliente sigue sirviendo archivos pre-deploy del cache local. Necesario unregister SW + hard refresh para forzar fetch de nuevos archivos.
+
+### Estado split modular
+| Archivo | Estado |
+|---|---|
+| `version_actual/shell.css` | ✅ DEPLOYED — consolidado amber selectors |
+| `version_actual/index.html` | ✅ DEPLOYED — duplicado styles.css L208 eliminado |
+| `version_actual/service-worker.js` | ✅ DEPLOYED — CACHE_VERSION batch55 + /shell.css PRECACHE |
+| `version_actual/sw-loader.js` | ✅ DEPLOYED — SW_EXPECTED_VERSION batch55 |
+| Cloudflare Pages | ✅ Actualizado a batch55 (verified en dashboard) |
+| Cliente local | 🔴 SW cache stale — cambios NO visibles a pesar de deploy |
+
+### PRÓXIMO PASO EXACTO
+```
+1. Anthony:
+   a) DevTools → Application → Service Workers → clic en "Unregister"
+   b) Cierra completamente pestaña finanzasprueba.pages.dev
+   c) Abre nueva pestaña incógnita → https://finanzasprueba.pages.dev
+   d) Espera 5 segundos (SW se re-registra con batch55)
+   e) DevTools → Application → Service Workers → verifica que diga "finanzas-v59-batch55"
+   f) ¿Aparece sidebar 240px desktop? ¿Nav móvil SVG + amber? ✅ = éxito, 🔴 = problema deploy
+
+2. Si SIGUE sin cambios tras unregister + nueva pestaña:
+   → Verificar que los archivos se subieron a Cloudflare
+   → Posible: worktree files != deployment files (git status issue)
+   → Re-deploy si es necesario
+
+3. Si APARECEN cambios:
+   → F2 batch55 ✅ COMPLETADO
+   → Próxima sesión: monitoreo 24h, luego F3 Dashboard
+```
+
+### Notas técnicas
+- **Commit:** `c9fba85` en rama `claude/interesting-franklin-7148be`
+- **Deploy URL producción:** https://finanzasprueba.pages.dev
+- **Deploy URL staging:** https://6ea64da5.finanzasprueba.pages.dev
+- **SW cambio crítico:** batch54→batch55, PRECACHE incluye shell.css, index.html sin duplicado styles.css
+- **Riesgo bajo:** eliminación de duplicado styles.css es no-op (ya estaba cargado en L6)
+
+```
+Contexto: CLAUDE.md + context/chat_2026-04-24_F2-shell.txt
+Tarea: F2 batch55 — unregister SW + hard refresh, verificar cambios visuales
+```
+
+---
+
+## SESIÓN — 24 Abr 2026 NOCHE (F2 batch55 — Shell Visual Rediseño, PENDIENTE DEPLOY)
+
+### Qué se hizo
+1. **shell.css creado** — nuevo archivo en `version_actual/` (worktree). Reglas clave:
+   - `#desktop-sidebar`: 240px `!important`, `var(--ink-1)` bg, `position: fixed`, z-index 200
+   - `.sb2-logo-icon`: gradient amber 135°; `.sb2-logo-text`: Instrument Serif 18px
+   - `.sidebar-item.active`: `var(--ink-3)` bg + `::before` amber strip 2px izquierda
+   - `.sidebar-avatar`: gradient teal→amber, 32px, border-radius 10px
+   - `#pwa-nav`: `var(--ink-1)` bg, border-top `var(--line)`, altura `var(--nav-h-2026)` 64px
+   - Activo amber fix: 4 selectores `!important` para superar duplicate `styles.css` post-shell.css
+2. **index.html reemplazado** — nuevo HTML en `#desktop-sidebar`: logo gradient SVG, nav 6 items (inicio/movimientos/cuentas/presupuesto/análisis/IA) + sección Otros (lista/dinero/respaldo/config/logout) + footer profile con avatar gradiente. `#pwa-nav`: emojis → inline SVG (4 botones: inicio/movimientos/IA/config). `<link rel="stylesheet" href="/shell.css">` añadido después de styles-desktop.css.
+3. **SW bump batch54→batch55** — `service-worker.js`: `CACHE_VERSION = 'finanzas-v59-batch55'` + `/shell.css` en PRECACHE_URLS + AI-CONTEXT actualizado. `sw-loader.js`: `SW_EXPECTED_VERSION = 'finanzas-v59-batch55'`.
+4. **deploy-check.js → 4/4 OK** — validación pre-deploy pasada antes del cierre.
+5. **Git commit pendiente** — cambios en worktree sin commit.
+6. **Deploy pendiente** — `wrangler pages deploy version_actual/ --project-name finanzasapp`.
+
+### Estado split modular
+| Archivo | Estado |
+|---|---|
+| `version_actual/shell.css` | ✅ NUEVO — 240px sidebar + 64px nav + tokens 2026 |
+| `version_actual/index.html` | ✅ Sidebar HTML nuevo + pwa-nav SVGs + link shell.css |
+| `version_actual/service-worker.js` | ⏳ batch55 local — **pendiente deploy** |
+| `version_actual/sw-loader.js` | ⏳ batch55 local — **pendiente deploy** |
+
+### PRÓXIMO PASO EXACTO
+```
+1. Verificar nav active color: abrir en browser, inspeccionar .pwa-nav-btn.active
+   - Si aún verde: buscar en index.html el <style> inline con .pwa-nav-btn.active y sobreescribir ahí
+   - Si amber: OK, continuar
+2. Git commit en worktree:
+   git add version_actual/shell.css version_actual/index.html version_actual/service-worker.js version_actual/sw-loader.js
+   git commit -m "F2 batch55: shell visual redesign — sidebar 240px + SVG icons + bottom nav 64px"
+3. Deploy: wrangler pages deploy version_actual/ --project-name finanzasapp
+4. PAUSAR. Anthony verifica incógnito:
+   - Desktop ≥820px: sidebar visible 240px, logo amber gradient, nav items con SVG, activo amber strip
+   - Móvil: bottom nav 64px, SVG icons, activo amber (NO verde)
+   - 0 regresión dashboard/datos
+```
+
+### Diagnóstico pendiente: nav active color
+- **Síntoma**: `.pwa-nav-btn.active` muestra `rgb(82, 214, 104)` (verde) en lugar de `var(--amber)` `rgb(224, 168, 74)`
+- **Causa raíz**: index.html tiene `<link href="/styles.css">` duplicado — el segundo carga DESPUÉS de shell.css y tiene `.pwa-nav-btn.active { color: #3fb950 !important; }` que gana por source order
+- **Fix aplicado en shell.css**: 4 selectores con `!important` (`body .pwa-nav-btn.active`, etc.) — **no verificado al cierre**
+- **Si no funciona**: buscar en index.html `<style>` inline (posición ~5 en styleSheets) con `.pwa-nav-btn.active` y sobreescribir directamente ahí
+
+```
+Contexto: CLAUDE.md + SESSION.md
+Tarea: F2 batch55 — verificar nav amber active, git commit worktree, deploy, PAUSAR para Anthony incógnito
+```
+
+---
+
 ## SESIÓN — 24 Abr 2026 PM (F1.1 batch54 DEPLOYED + verificado ✅ — fonts self-hosted live)
 
 ### Qué se hizo

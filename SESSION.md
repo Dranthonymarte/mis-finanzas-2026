@@ -3,6 +3,106 @@
 
 ---
 
+## SESIÓN — 15 May 2026 (F3-F6 rediseño completo + GitHub/Cloudflare CI)
+
+📊 **Modelo próxima sesión: Sonnet 4.6** (verificación/ajuste visual) — sube a Opus solo si hay bug de arquitectura.
+
+### Qué se hizo
+1. **GitHub conectado**: repo `Dranthonymarte/mis-finanzas-2026`. Remote `origin`. Push `master`+`develop`. Token clásico usado y limpiado de URL (Anthony debe revocarlo).
+2. **Cloudflare Pages → GitHub**: proyecto `mis-finanzas-2026`, production branch `main`, build output `version_actual`. Flujo: push develop=preview, push main=producción. Reemplaza wrangler manual.
+3. **Reparación crítica**: `.git/HEAD` corrupto (24 espacios vs `ref: refs/heads/develop`). Reparado. Commits/refs/objects intactos.
+4. **F3 batch56** (`54c4960`): `dashboard.css` hero Instrument Serif+gradient amber, KPI cards tokens. `tokens.css` +aliases `--teal/-s/-d`. SW batch56.
+5. **F4 batch56** (`d52bbe7`): `pages.css` re-estiliza clases base DRY (`.modal-overlay/.modal/.modal-box/.form-group/inputs/botones/.note/chips/tablas`) → todos los paneles consistentes.
+6. **F5**: media queries móvil (dashboard.css) + pages.css bottom-sheet (modales fullscreen móvil top-3).
+7. **F6**: `theme.js` NUEVO — módulo lógica-UI aislado (toggle light/dark, localStorage, prefers-color-scheme, anti-FOUC head). Botón hero-meta-row.
+8. **CLAUDE.md/memoria** +reglas: modelo por tarea + trabajo equipo + GitHub sin cambios destructivos sin confirmación.
+
+### Arquitectura (separación estricta — top-3)
+Tokens(`tokens.css`) · Presentación(`shell/dashboard/pages.css`) · Lógica-UI(`theme.js` aislado) · Negocio(`app-core.js` **INTACTO**).
+
+### DECISIÓN: pixel-perfect en curso (Anthony pidió réplica EXACTA del bundle)
+F3-F6 (CSS re-vestido) NO basta — Anthony quiere markup idéntico al bundle JSX.
+Plan por fases con punto de reversa por fase. Tag `pre-pixel-perfect` creado.
+- ✅ **Fase A1** (`c196449` batch57): `charts-ui.js` — Sparkline/BarMini/Donut/LineChart/Pill/CatDot vanilla (window.ChartsUI). Cargado antes de app-core.js.
+- ✅ **Fase A2.1** (`d3a129c` batch58): hero markup anatomía exacta bundle (`hero-card-inner` wrapper relative, `hero-chart-wrap`). IDs hero-symbol/int/dec/bs/pills + multi-moneda + micro botones PRESERVADOS. Placeholder honesto `#hero-balance-chart:empty` (sin datos falsos).
+- ⏳ **Fase A2.2**: cablear LineChart balance con serie real + reescribir markup KPI strip / flow / categories / txn / accounts / goals (resto dashboard.jsx).
+- ⏳ Fase B: páginas (pages.jsx). Fase C: mobile (mobile.jsx). Fase D: pulido.
+
+### ⚠️ FEEDBACK CRÍTICO ANTHONY (15 May tarde)
+- "La UIX no se parece en nada" → enfoque re-pintar CSS sobre markup viejo NO FUNCIONA.
+  Hay que IMPLEMENTAR EL MARKUP del bundle, no re-skinear. Error de enfoque mío.
+- Modo claro rompía la app (styles.css 132KB hex hardcoded). MITIGADO `7e81422` batch60:
+  dark forzado + toggle oculto hasta migrar estilos a tokens.
+- Bottom nav móvil del bundle NO implementado (es lo que más se nota).
+- **Bundle NUEVO actualizado** descomprimido en:
+  `C:\Users\Anthony Marte\Downloads\handoff-new\mi-aplicacion-de-finanzas\`
+  Tiene componentes MÓVIL dedicados: `m-shell/m-main/m-modals/m-secondary/m-settings/m-auth/m-detail.jsx`
+  + `Mobile UIX.html` (FUENTE DE VERDAD primaria) + README.
+
+### PRÓXIMO PASO EXACTO — Implementar Mobile UIX pixel-perfect (SESIÓN FRESCA, Opus para arranque)
+```
+README del bundle (leído) ordena: leer "Mobile UIX.html" COMPLETO + seguir sus imports,
+recrear pixel-perfect en vanilla JS. NO screenshots. Aclarar ambigüedad antes de implementar.
+
+1. Read C:\...\Downloads\handoff-new\mi-aplicacion-de-finanzas\project\Mobile UIX.html (COMPLETO)
+2. Seguir imports: m-shell.jsx, m-main.jsx, m-modals.jsx, m-secondary.jsx,
+   m-settings.jsx, m-auth.jsx, m-detail.jsx, tokens.css (NUEVO), data.js
+3. Comparar tokens.css nuevo vs version_actual/tokens.css → actualizar tokens
+4. CLAVE: implementar el MARKUP/ESTRUCTURA del bundle móvil (bottom nav, shell,
+   pantallas) en index.html — NO solo CSS. Preservar IDs de datos (k-*, hero-int,
+   wallet-cards-container, mobile-recent-list) que la lógica distribuida alimenta.
+5. Bottom nav móvil: 5 items + FAB central (ver m-shell.jsx). Es la prioridad visual.
+6. Light mode: solo reactivar cuando TODO use tokens (migrar styles.css crítico o
+   crear override completo). Por ahora queda desactivado (batch60).
+7. SW bump por fase. Commit/push por fase a develop. Cloudflare auto-deploy.
+
+ENFOQUE CORRECTO: markup del bundle, no re-skin. Decisión arquitectura: ¿reemplazar
+vista móvil completa preservando hooks de datos? Confirmar scope con Anthony primero.
+Rollback: git tag pre-pixel-perfect. Commits: ...d3a129c 485cbf1 7e81422.
+```
+
+### (obsoleto) Plan A2.2 anterior — superado por feedback Anthony
+
+```
+Objetivo: completar dashboard pixel-perfect. Hero (A2.1) ya hecho.
+
+PASO 1 — Mapear estructura de datos real (greps quirúrgicos, NUNCA leer módulos completos):
+  - Grep en app-analytics.js: "k-ingresos|k-gastos|k-balance" → cómo/dónde pone KPIs
+  - Grep en app-cuentas.js o app-core.js: "wallet-cards-container|renderWalletCards"
+  - Grep "mobile-recent-list" en todos los app-*.js → módulo que renderiza txns
+  - Grep variables globales serie balance: "balanceHistor|serieBalance|window.movimientos|MOVIMIENTOS"
+  - Objetivo: saber qué dato global existe para alimentar charts SIN re-query Supabase
+PASO 2 — Cablear charts (módulo nuevo dashboard-charts.js, responsabilidad única, defensivo):
+  - #hero-balance-chart → ChartsUI.lineChart(serieBalance) si existe; si no, dejar :empty
+  - KPI strip: añadir <div data-spark> en cada .kpi → ChartsUI.sparkline
+  - Categorías: ChartsUI.donut. Flujo: ChartsUI.barMini
+  - Registrar en index.html (antes app-core) + SW PRECACHE + bump batch59
+PASO 3 — Markup pixel-perfect resto dashboard (ref: propuestas/ux-referencia/dashboard.jsx):
+  estructura: grid gap18 → [Hero 1.1fr | QuickActions 1fr] → [KPI x4] →
+  [FlowCard 1.5fr | Categories 1fr] → [TxnTable 1.5fr | Accounts+Goals 1fr]
+  PRESERVAR IDs: k-* / wallet-cards-container / mobile-recent-list / metas-cards-container
+  (mover nodos, no eliminarlos — la lógica distribuida los alimenta)
+PASO 4 — dashboard.css: grid exacto bundle. SW bump. Commit "Fase A2.2". Push develop.
+PASO 5 — Fase B (páginas pages.jsx), C (mobile.jsx), D (pulido). 1 commit/fase.
+
+Rollback por fase: git tag pre-pixel-perfect. Commits: 54c4960 d52bbe7 c196449 d3a129c.
+Pendiente Anthony: verificar preview (d3a129c), revocar token GitHub,
+limpiar proyecto wrangler viejo cuando GitHub-CI OK.
+```
+
+### Notas técnicas
+- Commits develop: `54c4960`(F3) + `d52bbe7`(F4-F6) en origin/develop.
+- Rollback: `git tag pre-F3-backup`.
+- Shell Claude Code (Windows): sin `cat/ls/find/node/grep` — usar Glob/Grep/Read; git OK; commits con `-m` múltiple (no heredoc).
+- Rediseño = 100% presentación + 1 módulo UI aislado. Cero cambios negocio/auth/datos.
+
+```
+Contexto: CLAUDE.md + SESSION.md
+Tarea: Anthony verifica preview develop; si OK merge→main CON confirmación
+```
+
+---
+
 ## SESIÓN — 26 Abr 2026 (Extractos BDV Isabel abril — carga completada)
 
 ### Qué se hizo

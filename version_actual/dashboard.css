@@ -428,19 +428,78 @@
   }
 }
 
-/* ─── 11. MÓVIL (<768px) — F5 responsive ─────────────────── */
+/* ─── 11. MÓVIL (<768px) — pixel-perfect mobile.jsx ──────────
+   Anatomía exacta del bundle MobHome: padding lateral 20px,
+   hero 56px, cards ink-2 radius-lg, spacing generoso. CSS puro. */
 @media (max-width: 767px) {
-  .kpi-strip {
-    grid-template-columns: 1fr 1fr !important;
-  }
+
+  /* Hero móvil: bundle padding 18px 22px, número 56px */
   #hero-balance-section .hero-card {
-    padding: var(--s-5) !important;
+    padding: 18px 22px !important;
+    border-radius: var(--r-lg) !important;
   }
-  #mobile-quick-actions {
-    grid-template-columns: repeat(4, 1fr) !important;
+  #hero-balance-section .hero-amount {
+    font-size: 56px !important;
+    line-height: 1 !important;
+    letter-spacing: -.02em !important;
   }
+  #hero-balance-section .hero-symbol { font-size: .5em !important; }
+  #hero-balance-section .hero-dec    { font-size: .45em !important; }
+  #hero-balance-section .hero-chart-wrap,
+  #hero-balance-section #hero-balance-chart:empty {
+    min-height: 56px !important;
+  }
+
+  /* Padding lateral consistente 20px (bundle) */
+  #dash-hero-unit,
+  #mobile-quick-actions,
+  #wallet-section,
+  #mobile-recent-txn,
+  #smart-actions-row,
+  .metas-section {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  /* Income/expense 2 col */
   #mobile-inc-exp {
     grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  /* Quick actions 4 col (bundle MobHome) */
+  #mobile-quick-actions {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* KPI 2x2 (bundle) */
+  .kpi-strip {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .kpi { padding: 14px !important; }
+  .kpi-val { font-size: 18px !important; }
+
+  /* Recent txns: card contenedora ink-2 (bundle MobHome) */
+  #mobile-recent-list {
+    background: var(--ink-2) !important;
+    border: 1px solid var(--line) !important;
+    border-radius: var(--r-lg) !important;
+    padding: 6px !important;
+  }
+  #mobile-recent-list > * + * {
+    border-top: 1px solid var(--line) !important;
+  }
+
+  /* Títulos de sección estilo bundle (font-display) */
+  .wallet-section-title {
+    font-family: var(--f-display) !important;
+    font-size: 18px !important;
+    font-weight: 400 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    color: var(--fg) !important;
   }
 }
 

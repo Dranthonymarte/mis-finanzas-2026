@@ -483,29 +483,34 @@ function onHcaptchaLoad() {
   <span class="drag-handle" style="position:absolute;top:8px;right:8px;z-index:2;font-size:14px;color:#484f58;cursor:grab;user-select:none;opacity:.6" title="Mover bloque">⠿</span>
   <div id="hero-balance-section">
     <div class="hero-card">
-      <div class="hero-meta-row">
-        <div class="hero-label" style="margin-bottom:0">Balance Total</div>
-        <div style="display:flex;gap:4px">
-          <button class="hero-micro-btn" id="theme-toggle-btn" title="Cambiar tema claro/oscuro"
-            onclick="toggleTheme()" aria-label="Cambiar a modo claro">🌙</button>
-          <button class="hero-micro-btn" id="btn-hide-balance" title="Ocultar/mostrar cifras"
-            onclick="toggleHideAmounts()">👁️</button>
-          <button class="hero-micro-btn" title="¿Qué es el balance total?"
-            onclick="showCardInfo('kpi-balance')">ℹ️</button>
-          <button class="hero-micro-btn" title="Analizar con IA"
-            onclick="openIAWithAnalysis()">🤖</button>
+      <div class="hero-card-inner">
+        <div class="hero-meta-row">
+          <div class="hero-label" style="margin-bottom:0">Balance Total · USD</div>
+          <div class="hero-micro-actions">
+            <button class="hero-micro-btn" id="theme-toggle-btn" title="Cambiar tema claro/oscuro"
+              onclick="toggleTheme()" aria-label="Cambiar a modo claro">🌙</button>
+            <button class="hero-micro-btn" id="btn-hide-balance" title="Ocultar/mostrar cifras"
+              onclick="toggleHideAmounts()">👁️</button>
+            <button class="hero-micro-btn" title="¿Qué es el balance total?"
+              onclick="showCardInfo('kpi-balance')">ℹ️</button>
+            <button class="hero-micro-btn" title="Analizar con IA"
+              onclick="openIAWithAnalysis()">🤖</button>
+          </div>
         </div>
-      </div>
-      <div class="hero-amount">
-        <span class="hero-symbol" id="hero-symbol">$</span>
-        <span class="hero-int" id="hero-int">0</span>
-        <span class="hero-dec" id="hero-dec">.00</span>
-      </div>
-      <div class="hero-bs" id="hero-bs">Bs —</div>
-      <div class="hero-pills" id="hero-pills">
-        <div class="hero-pill active" id="pill-USD" onclick="heroSetCurrency('USD')">USD</div>
-        <div class="hero-pill" id="pill-BS"  onclick="heroSetCurrency('BS')">Bs</div>
-        <div class="hero-pill" id="pill-EUR" onclick="heroSetCurrency('EUR')">EUR</div>
+        <div class="hero-amount num">
+          <span class="hero-symbol" id="hero-symbol">$</span>
+          <span class="hero-int" id="hero-int">0</span>
+          <span class="hero-dec" id="hero-dec">.00</span>
+        </div>
+        <div class="hero-bs" id="hero-bs">Bs —</div>
+        <div class="hero-pills" id="hero-pills">
+          <div class="hero-pill active" id="pill-USD" onclick="heroSetCurrency('USD')">USD</div>
+          <div class="hero-pill" id="pill-BS"  onclick="heroSetCurrency('BS')">Bs</div>
+          <div class="hero-pill" id="pill-EUR" onclick="heroSetCurrency('EUR')">EUR</div>
+        </div>
+        <div class="hero-chart-wrap">
+          <div id="hero-balance-chart" data-chart="balance-series"></div>
+        </div>
       </div>
     </div>
   </div>

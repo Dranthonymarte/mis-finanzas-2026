@@ -30,6 +30,33 @@
   pointer-events: none;
 }
 
+/* Wrapper interno sobre el gradient ::before (bundle: div position relative) */
+#hero-balance-section .hero-card-inner {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+#hero-balance-section .hero-micro-actions {
+  display: flex !important;
+  gap: var(--s-1) !important;
+}
+
+/* Contenedor del LineChart de balance (bundle: marginTop 20) */
+#hero-balance-section .hero-chart-wrap {
+  margin-top: var(--s-5) !important;
+  min-height: 110px !important;
+}
+#hero-balance-section #hero-balance-chart {
+  width: 100% !important;
+}
+#hero-balance-section #hero-balance-chart:empty {
+  /* sin datos aún: reserva el espacio sin romper (no datos falsos) */
+  min-height: 110px !important;
+  border-radius: var(--r-md) !important;
+  background: linear-gradient(180deg, var(--ink-3) 0%, transparent 100%) !important;
+  opacity: .35 !important;
+}
+
 #hero-balance-section .hero-label {
   font-family: var(--f-ui) !important;
   font-size: 11px !important;

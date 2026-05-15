@@ -1,11 +1,11 @@
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  AI-CONTEXT — service-worker.js · Mis Finanzas 2026                 ║
-// ║  VERSIÓN: finanzas-v59-batch57                                       ║
-// ║  batch57: pixel-perfect Fase A1 — charts-ui.js (Sparkline/Donut/    ║
-// ║  LineChart/BarMini SVG vanilla, port 1:1 bundle). +F3-F6 batch56.   ║
+// ║  VERSIÓN: finanzas-v59-batch58                                       ║
+// ║  batch58: pixel-perfect Fase A2.1 — hero markup anatomía exacta     ║
+// ║  bundle (hero-card-inner, chart-wrap), IDs/multi-moneda preservados.║
 // ╚══════════════════════════════════════════════════════════════════════╝
 
-const CACHE_VERSION = 'finanzas-v59-batch57';
+const CACHE_VERSION = 'finanzas-v59-batch58';
 const CDN_CACHE     = 'finanzas-cdn-v44';
 
 const PRECACHE_URLS = [

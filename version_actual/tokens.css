@@ -51,6 +51,10 @@
   --teal-2026:   #3d8b82;
   --teal-2026-s: #5fb3a8;
   --teal-2026-d: #0e2422;
+  /* Aliases cortos para compatibilidad con bundle y componentes futuros */
+  --teal:   var(--teal-2026);
+  --teal-s: var(--teal-2026-s);
+  --teal-d: var(--teal-2026-d);
 
   /* ── Semánticos ── */
   --pos:    #58b26a;      /* ingresos / positivo */

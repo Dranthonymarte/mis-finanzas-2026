@@ -1,11 +1,12 @@
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  AI-CONTEXT — service-worker.js · Mis Finanzas 2026                 ║
-// ║  VERSIÓN: finanzas-v59-batch55                                       ║
-// ║  F2 batch55: shell visual redesign — sidebar 240px + topbar +       ║
-// ║  bottom nav 64px. shell.css nuevo archivo, SVG icons, tokens 2026.  ║
+// ║  VERSIÓN: finanzas-v59-batch56                                       ║
+// ║  F3 batch56: dashboard redesign — hero Instrument Serif + gradient  ║
+// ║  amber, KPI cards ink-2 + tokens, quick-actions grid, cards 2026.  ║
+// ║  dashboard.css nuevo archivo. tokens.css +aliases --teal.           ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 
-const CACHE_VERSION = 'finanzas-v59-batch55';
+const CACHE_VERSION = 'finanzas-v59-batch56';
 const CDN_CACHE     = 'finanzas-cdn-v44';
 
 const PRECACHE_URLS = [
@@ -18,6 +19,7 @@ const PRECACHE_URLS = [
   '/styles.css',
   '/styles-desktop.css',
   '/shell.css',
+  '/dashboard.css',
   '/fonts/instrument-serif-400.woff2',
   '/fonts/inter-var.woff2',
   '/fonts/jetbrains-mono-var.woff2',

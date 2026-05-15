@@ -41,8 +41,9 @@ Dual-currency USD/VES | RLS activo
 | app-smart.js | 98KB | Groq IA, OCR |
 | app-cuentas.js | 53KB | Cuentas CRUD, transferencias |
 | styles.css | 132KB | — |
-| service-worker.js | 6.4KB | CACHE_VERSION actual: `finanzas-v59-batch55` |
-| sw-loader.js | 3.6KB | SW_EXPECTED_VERSION actual: `finanzas-v59-batch55` |
+| service-worker.js | 6.4KB | CACHE_VERSION actual: `finanzas-v59-batch56` |
+| sw-loader.js | 3.6KB | SW_EXPECTED_VERSION actual: `finanzas-v59-batch56` |
+| dashboard.css | ~8KB | F3 batch56 — dashboard redesign 2026 |
 
 Detalle de módulos split → tabla completa al final.
 
@@ -69,6 +70,25 @@ Detalle de módulos split → tabla completa al final.
 - ✅ Antes de Read → verificar si el dato ya está en contexto o en MORNING_BRIEF
 - ✅ Reportar redundancia detectada al usuario (auto-monitoreo)
 - ✅ Si detectas gasto inusual → avisar con estimado antes de ejecutar
+
+### Modelo recomendado por tipo de tarea
+Antes de cada planeación o tarea nueva, anunciar en 1 línea:
+> 📊 **Modelo recomendado: [Haiku 4.5 / Sonnet 4.6 / Opus 4.7]** — [razón corta]
+
+Guía de selección:
+- **Haiku 4.5** → mecánicas: SW bumps, find-and-replace, snapshots, correr scripts ya escritos, lecturas puntuales
+- **Sonnet 4.6** → implementación con criterio: features CSS/HTML/JS con referencia, refactors, debugging común, re-tematización
+- **Opus 4.7** → razonamiento crítico: arquitectura mayor, debugging profundo (concurrencia/race conditions), planning multi-fase, decisiones top-3
+
+Incluir `📊 Modelo: [X]` en el prompt de continuación de SESSION.md para que la sesión siguiente arranque con el modelo correcto.
+Nota: el cambio de modelo lo ejecuta Anthony con `/model [nombre]` — no es automático.
+
+### Trabajo en equipo — tareas manuales paralelas
+Cuando hay acciones que Anthony puede ejecutar mientras Claude trabaja → indicarlas con:
+> 🤝 **PUEDES HACER EN PARALELO:** [instrucción exacta 1-3 pasos]
+
+Aplica para: deploys `wrangler`, verificaciones DevTools/SW, checks en browser, Supabase dashboard.
+Esta regla maximiza eficiencia: Anthony y Claude trabajan simultáneamente sin esperar.
 
 ### Umbrales de contexto (activados cuando usuario reporta %)
 - ≥25% → "⚠ Contexto al X%. Recomiendo cerrar pronto."
@@ -213,6 +233,7 @@ Cloudflare Worker: telegramcron → scheduled_notifications → Telegram
 - `BUGS.md` — detalle de bugs activos
 - `SESSION.md` — última sesión + próximo paso
 - `NEGOCIO.md` — monetización (no ejecución)
+- `SUPABASE_SCHEMA.md` — **schema cache** de Supabase (tablas, columnas, queries de referencia). Consultar SIEMPRE antes de queries/features. Si código contradice → re-query MCP + actualizar el doc en el mismo cambio. Evita gastar tokens releyendo BD.
 
 ---
-*Versión: 18 Abr 2026 — consolidación post-depuración*
+*Versión: 25 Abr 2026 — schema cache + redesign F3 dashboard*

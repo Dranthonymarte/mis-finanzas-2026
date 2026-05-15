@@ -3,6 +3,49 @@
 
 ---
 
+## SESIÓN — 26 Abr 2026 (Extractos BDV Isabel abril — carga completada)
+
+### Qué se hizo
+1. **Diagnóstico previo al plan** — La tarea `/tareamovimiento` tenía esquema incorrecto (columnas `referencia`, `hora`, `monto_bs`, `categoria_id` no existen en la tabla real). El esquema real usa: `id text`, `tipo` en español (Gasto/Ingreso Variable/Transferencia Interna), `cat` texto, `amount` USD, `amount_bs` VES, sin campo referencia.
+2. **Estado verificado sin re-leer** — `_inbox/Anthony/2026-04/`: 19 imgs (ya en Supabase de sesión anterior). `_inbox/Isabel/2026-04/`: 29 imgs, JSON OCR en `_estado/extraccion_isabel.json`. Isabel tenía 122 filas en DB hasta 2026-04-08.
+3. **Tasas BCV consultadas** — 04-09: 475.96, 04-10: 476.43, 04-11→04-15: 477.15, 04-16: 479.78.
+4. **INSERT Batch A** — 36 filas Isabel 2026-04-09 a 2026-04-11. ✅
+5. **INSERT Batch B** — 39 filas Isabel 2026-04-12 a 2026-04-16. ✅
+6. **Resultado final** — Isabel: **197 movimientos totales** (2026-03-21 → 2026-04-16, saldo final 1031.04 Bs).
+7. **Move archivos** — `_inbox/Anthony/2026-04/` → `_procesados/Anthony/2026-04/` (19 jpgs). `_inbox/Isabel/2026-04/` → `_procesados/Isabel/2026-04/` (29 jpgs). Ambos inbox vacíos.
+8. **REPORTE.log** — append en `_procesados/REPORTE.log` ✅.
+
+### Reglas fijadas esta sesión
+- **Sin JSON intermedio**: flujo correcto = imagen → OCR en memoria → INSERT Supabase → mover img. `extraccion_*.json` son legacy.
+- **ID format**: `bk_{ref}_i` (estándar), `bk_{ref}_{YYYYMMDD}_i` para refs que ya existen en DB, `bk_{ref}_{n}_i` para dups dentro del mismo batch.
+- **tareamovimiento.md** necesita actualización (columnas incorrectas, regla no-JSON) — PENDIENTE.
+
+### Pendiente próxima sesión
+1. Actualizar `tareamovimiento.md` con esquema real + regla no-JSON
+2. Limpiar worktrees viejos: `eloquent-shannon-4b5c1f` y `silly-aryabhata-4996a4` (confirmar con Anthony antes)
+3. F2 batch55 verificación SW (carried over): unregister SW → hard refresh → confirmar visual
+4. F3 Dashboard
+
+### Estado _inbox
+| Carpeta | Archivos | Estado |
+|---|---|---|
+| `_inbox/Anthony/2026-04/` | 0 | ✅ vacío |
+| `_inbox/Isabel/2026-04/` | 0 | ✅ vacío |
+| `_procesados/Anthony/2026-04/` | 19 jpgs | ✅ |
+| `_procesados/Isabel/2026-04/` | 29 jpgs | ✅ |
+
+### Notas técnicas duplicados BDV
+- `9802400294254` (tarjeta débito): ref reutilizada en múltiples fechas. En DB existía desde 04-04. Nuevas ocurrencias usan sufijo fecha: `bk_9802400294254_20260410_i`, etc.
+- `9570200294254`: 3 ocurrencias el 04-12 → `bk_9570200294254_i`, `_2_i`, `_3_i`.
+- `9754600294254` (BIOPAGO): 5 ocurrencias (04-09, 04-13×3, 04-15) → sufijos `_2` a `_5`.
+
+```
+Contexto: CLAUDE.md + context/chat_2026-04-26_extractos-isabel.txt
+Tarea: Actualizar tareamovimiento.md + limpiar worktrees + F2 batch55 SW verify
+```
+
+---
+
 ## SESIÓN — 24 Abr 2026 NOCHE-2 (F2 batch55 — Deploy ejecutado, cambios NO visibles en cliente)
 
 ### Qué se hizo

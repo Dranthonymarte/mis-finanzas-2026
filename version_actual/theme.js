@@ -36,31 +36,27 @@
     }
   }
 
-  // API pública mínima — único punto de entrada para alternar tema
+  // ── LIGHT MODE DESACTIVADO TEMPORALMENTE ───────────────────────────
+  // Causa: styles.css legacy (132KB) tiene colores hex hardcoded que NO
+  // responden a [data-theme="light"] → mitad clara / mitad oscura = roto.
+  // El light mode se REACTIVA cuando el rediseño pixel-perfect (bundle
+  // Mobile UIX) migre todos los estilos a tokens. Hasta entonces: dark
+  // forzado + botón oculto. Mejor sin feature que rompiendo la app.
+  // ───────────────────────────────────────────────────────────────────
   window.toggleTheme = function () {
-    var next = current() === 'light' ? 'dark' : 'light';
-    apply(next);
-    writeStored(next);
-    syncButton(next);
+    // No-op intencional hasta rediseño completo (evita app rota).
+    apply('dark');
   };
 
-  // ── Init: preferencia guardada > preferencia del sistema > oscuro ──
-  var stored = readStored();
-  var initial;
-  if (stored === 'light' || stored === 'dark') {
-    initial = stored;
-  } else if (window.matchMedia &&
-             window.matchMedia('(prefers-color-scheme: light)').matches) {
-    initial = 'light';
-  } else {
-    initial = 'dark';
-  }
-  apply(initial);
+  apply('dark'); // dark forzado: único tema consistente hoy
 
-  // Sincronizar botón cuando el DOM esté listo
+  function hideToggle() {
+    var btn = document.getElementById('theme-toggle-btn');
+    if (btn) btn.style.display = 'none';
+  }
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { syncButton(current()); });
+    document.addEventListener('DOMContentLoaded', hideToggle);
   } else {
-    syncButton(current());
+    hideToggle();
   }
 })();

@@ -1,12 +1,11 @@
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  AI-CONTEXT — service-worker.js · Mis Finanzas 2026                 ║
-// ║  VERSIÓN: finanzas-v59-batch56                                       ║
-// ║  F3 batch56: dashboard redesign — hero Instrument Serif + gradient  ║
-// ║  amber, KPI cards ink-2 + tokens, quick-actions grid, cards 2026.  ║
-// ║  dashboard.css nuevo archivo. tokens.css +aliases --teal.           ║
+// ║  VERSIÓN: finanzas-v59-batch57                                       ║
+// ║  batch57: pixel-perfect Fase A1 — charts-ui.js (Sparkline/Donut/    ║
+// ║  LineChart/BarMini SVG vanilla, port 1:1 bundle). +F3-F6 batch56.   ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 
-const CACHE_VERSION = 'finanzas-v59-batch56';
+const CACHE_VERSION = 'finanzas-v59-batch57';
 const CDN_CACHE     = 'finanzas-cdn-v44';
 
 const PRECACHE_URLS = [
@@ -22,6 +21,7 @@ const PRECACHE_URLS = [
   '/dashboard.css',
   '/pages.css',
   '/theme.js',
+  '/charts-ui.js',
   '/fonts/instrument-serif-400.woff2',
   '/fonts/inter-var.woff2',
   '/fonts/jetbrains-mono-var.woff2',

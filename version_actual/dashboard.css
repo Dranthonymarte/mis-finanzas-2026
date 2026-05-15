@@ -400,3 +400,25 @@
     grid-template-columns: repeat(8, 1fr) !important;
   }
 }
+
+/* ─── 11. MÓVIL (<768px) — F5 responsive ─────────────────── */
+@media (max-width: 767px) {
+  .kpi-strip {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  #hero-balance-section .hero-card {
+    padding: var(--s-5) !important;
+  }
+  #mobile-quick-actions {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+  #mobile-inc-exp {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .kpi-strip {
+    grid-template-columns: 1fr !important;
+  }
+}

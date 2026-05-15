@@ -1,0 +1,333 @@
+/* ═══════════════════════════════════════════════════════════
+   MIS FINANZAS 2026 — Páginas / Modales / Paneles (F4 batch56)
+   Fuente: bundle Claude Design 23 Abr 2026 (pages.jsx)
+   CAPA: presentación pura. NO toca lógica JS ni datos.
+   Estrategia DRY: re-estiliza clases base compartidas por
+   TODOS los paneles → consistencia global con 1 fuente.
+   Gana cascade sobre styles.css.
+   Disciplina: NUNCA hardcoded — siempre var(--token).
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─── 1. OVERLAY ──────────────────────────────────────────── */
+
+.modal-overlay {
+  background: rgba(8, 9, 11, 0.78) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* ─── 2. CONTENEDOR MODAL ─────────────────────────────────── */
+
+.modal,
+.modal-box {
+  background: var(--ink-2) !important;
+  border: 1px solid var(--ink-4) !important;
+  border-radius: var(--r-xl) !important;
+  box-shadow: var(--shadow-lg) !important;
+  color: var(--fg) !important;
+}
+
+/* Títulos de modal */
+.modal h3,
+.modal-box h3,
+.modal h2,
+.modal-box h2 {
+  font-family: var(--f-display) !important;
+  font-weight: 400 !important;
+  letter-spacing: -.01em !important;
+  color: var(--fg) !important;
+}
+
+/* ─── 3. FORMULARIOS ──────────────────────────────────────── */
+
+.form-group label,
+.modal label,
+.modal-box label {
+  font-family: var(--f-ui) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--fg-dim) !important;
+  letter-spacing: .02em !important;
+}
+
+.modal input:not([type="checkbox"]):not([type="radio"]),
+.modal select,
+.modal textarea,
+.modal-box input:not([type="checkbox"]):not([type="radio"]),
+.modal-box select,
+.modal-box textarea {
+  background: var(--ink-3) !important;
+  border: 1px solid var(--ink-4) !important;
+  border-radius: var(--r-md) !important;
+  color: var(--fg) !important;
+  font-family: var(--f-ui) !important;
+  font-size: 14px !important;
+  transition: border-color .12s, box-shadow .12s !important;
+}
+
+.modal input:focus,
+.modal select:focus,
+.modal textarea:focus,
+.modal-box input:focus,
+.modal-box select:focus,
+.modal-box textarea:focus {
+  border-color: var(--amber) !important;
+  box-shadow: 0 0 0 3px var(--amber-d) !important;
+  outline: none !important;
+}
+
+.modal input::placeholder,
+.modal textarea::placeholder,
+.modal-box input::placeholder,
+.modal-box textarea::placeholder {
+  color: var(--fg-mute) !important;
+}
+
+/* ─── 4. BOTONES ──────────────────────────────────────────── */
+
+.modal-btns {
+  display: flex !important;
+  gap: var(--s-2) !important;
+  margin-top: var(--s-4) !important;
+}
+
+.modal-btns button,
+.modal .btn,
+.modal-box .btn {
+  font-family: var(--f-ui) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  border-radius: var(--r-md) !important;
+  padding: 10px 18px !important;
+  cursor: pointer !important;
+  transition: filter .12s, background .12s !important;
+  border: 1px solid transparent !important;
+}
+
+/* Primario = amber */
+.modal-btns button[onclick*="guardar"],
+.modal-btns button[onclick*="save"],
+.modal-btns button.primary,
+.modal .btn-primary,
+.modal-box .btn-primary,
+.btn-guardar {
+  background: var(--amber) !important;
+  color: var(--ink-0) !important;
+  font-weight: 600 !important;
+}
+.modal-btns button[onclick*="guardar"]:hover,
+.modal .btn-primary:hover,
+.modal-box .btn-primary:hover {
+  filter: brightness(1.08) !important;
+}
+
+/* Secundario = ink */
+.modal-btns button.secondary,
+.modal .btn-secondary,
+.modal-box .btn-secondary,
+.btn-cancelar {
+  background: var(--ink-3) !important;
+  color: var(--fg-dim) !important;
+  border: 1px solid var(--ink-4) !important;
+}
+.modal-btns button.secondary:hover,
+.modal .btn-secondary:hover {
+  background: var(--ink-4) !important;
+}
+
+/* ─── 5. NOTAS / AVISOS ───────────────────────────────────── */
+
+.note,
+.modal .note,
+.modal-box .note {
+  background: var(--ink-3) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--r-md) !important;
+  color: var(--fg-dim) !important;
+  font-size: 12.5px !important;
+}
+
+/* ─── 6. TRANSFERENCIAS ───────────────────────────────────── */
+
+.transfer-accounts {
+  display: flex !important;
+  align-items: center !important;
+  gap: var(--s-2) !important;
+}
+.transfer-select {
+  flex: 1 !important;
+}
+.transfer-arrow {
+  color: var(--amber) !important;
+  font-size: 18px !important;
+}
+
+/* ─── 7. FILTROS / CHIPS ──────────────────────────────────── */
+
+.filter-chip,
+.chip,
+button.filtro,
+.filter-btn {
+  font-family: var(--f-ui) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  padding: 7px 14px !important;
+  border-radius: var(--r-full) !important;
+  background: var(--ink-3) !important;
+  color: var(--fg-dim) !important;
+  border: 1px solid var(--line) !important;
+  cursor: pointer !important;
+  transition: all .12s !important;
+}
+.filter-chip.active,
+.chip.active,
+button.filtro.active,
+.filter-btn.active {
+  background: var(--amber-d) !important;
+  color: var(--amber) !important;
+  border-color: var(--amber) !important;
+}
+
+/* ─── 8. TABLAS DE DETALLE (movimientos) ──────────────────── */
+
+.txn-table-header,
+.detail-table-header {
+  font-size: 10px !important;
+  color: var(--fg-mute) !important;
+  letter-spacing: .12em !important;
+  text-transform: uppercase !important;
+  border-bottom: 1px solid var(--line) !important;
+  font-family: var(--f-ui) !important;
+}
+
+.txn-detail-row,
+.detail-row {
+  border-bottom: 1px solid var(--line) !important;
+  font-family: var(--f-ui) !important;
+  transition: background .1s !important;
+}
+.txn-detail-row:hover,
+.detail-row:hover {
+  background: var(--ink-3) !important;
+}
+
+/* ─── 9. CUENTAS — tarjetas estilo bundle ─────────────────── */
+
+.cuenta-card,
+.account-card,
+.wallet-card-item {
+  background: var(--ink-2) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--r-xl) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+.cuenta-card .cuenta-tipo,
+.account-card .account-type {
+  font-size: 10px !important;
+  letter-spacing: .12em !important;
+  text-transform: uppercase !important;
+  color: var(--fg-mute) !important;
+  font-family: var(--f-ui) !important;
+}
+.cuenta-card .cuenta-nombre,
+.account-card .account-name {
+  font-family: var(--f-display) !important;
+  font-size: 20px !important;
+  color: var(--fg) !important;
+}
+.cuenta-card .cuenta-balance,
+.account-card .account-balance {
+  font-family: var(--f-display) !important;
+  font-size: 26px !important;
+  letter-spacing: -.01em !important;
+  color: var(--fg) !important;
+}
+
+/* ─── 10. PRESUPUESTO — barras de progreso ────────────────── */
+
+.budget-bar-track,
+.progress-track {
+  background: var(--ink-3) !important;
+  border-radius: var(--r-full) !important;
+  overflow: hidden !important;
+}
+.budget-bar-fill,
+.progress-fill {
+  background: linear-gradient(90deg, var(--amber), var(--amber-s)) !important;
+  border-radius: var(--r-full) !important;
+}
+.budget-bar-fill.over,
+.progress-fill.over {
+  background: var(--neg) !important;
+}
+
+/* ─── 11. CHAT IA — burbujas ──────────────────────────────── */
+
+.ia-msg-user,
+.chat-msg.user {
+  background: var(--amber) !important;
+  color: var(--ink-0) !important;
+  border-radius: 16px 16px 4px 16px !important;
+  font-family: var(--f-ui) !important;
+}
+.ia-msg-bot,
+.chat-msg.bot {
+  background: var(--ink-3) !important;
+  color: var(--fg) !important;
+  border-radius: 16px 16px 16px 4px !important;
+  font-family: var(--f-ui) !important;
+}
+.ia-suggestion-chip {
+  background: var(--amber-d) !important;
+  color: var(--amber) !important;
+  border-radius: var(--r-full) !important;
+  border: 1px solid transparent !important;
+  font-size: 11.5px !important;
+  font-family: var(--f-ui) !important;
+}
+
+/* ─── 12. SCROLLBARS (detalle top-3) ─────────────────────── */
+
+.modal ::-webkit-scrollbar,
+.modal-box ::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+.modal ::-webkit-scrollbar-thumb,
+.modal-box ::-webkit-scrollbar-thumb {
+  background: var(--ink-4) !important;
+  border-radius: var(--r-full) !important;
+}
+.modal ::-webkit-scrollbar-track,
+.modal-box ::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+/* ─── 13. MÓVIL — bottom sheet (F5, patrón top-3) ─────────── */
+@media (max-width: 600px) {
+  .modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .modal,
+  .modal-box {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92vh !important;
+    border-radius: var(--r-xl) var(--r-xl) 0 0 !important;
+    border-bottom: none !important;
+    animation: sheet-up .22s cubic-bezier(.32, .72, 0, 1) !important;
+  }
+  @keyframes sheet-up {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  .modal-btns {
+    flex-direction: column-reverse !important;
+  }
+  .modal-btns button {
+    width: 100% !important;
+  }
+}

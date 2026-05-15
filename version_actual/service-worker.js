@@ -20,6 +20,8 @@ const PRECACHE_URLS = [
   '/styles-desktop.css',
   '/shell.css',
   '/dashboard.css',
+  '/pages.css',
+  '/theme.js',
   '/fonts/instrument-serif-400.woff2',
   '/fonts/inter-var.woff2',
   '/fonts/jetbrains-mono-var.woff2',

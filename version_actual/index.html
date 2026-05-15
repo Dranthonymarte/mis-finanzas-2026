@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="/styles-desktop.css">
   <link rel="stylesheet" href="/shell.css">
   <link rel="stylesheet" href="/dashboard.css">
+  <link rel="stylesheet" href="/pages.css">
+  <script src="/theme.js"></script>
 <head>
 <meta charset="UTF-8">
 <title>Mis Finanzas 2026 — Anthony &amp; Isabel</title>
@@ -484,6 +486,8 @@ function onHcaptchaLoad() {
       <div class="hero-meta-row">
         <div class="hero-label" style="margin-bottom:0">Balance Total</div>
         <div style="display:flex;gap:4px">
+          <button class="hero-micro-btn" id="theme-toggle-btn" title="Cambiar tema claro/oscuro"
+            onclick="toggleTheme()" aria-label="Cambiar a modo claro">🌙</button>
           <button class="hero-micro-btn" id="btn-hide-balance" title="Ocultar/mostrar cifras"
             onclick="toggleHideAmounts()">👁️</button>
           <button class="hero-micro-btn" title="¿Qué es el balance total?"

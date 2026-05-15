@@ -34,19 +34,21 @@ Plan por fases con punto de reversa por fase. Tag `pre-pixel-perfect` creado.
 - Modo claro rompía la app (styles.css 132KB hex hardcoded). MITIGADO `7e81422` batch60:
   dark forzado + toggle oculto hasta migrar estilos a tokens.
 - Bottom nav móvil del bundle NO implementado (es lo que más se nota).
-- **Bundle NUEVO actualizado** descomprimido en:
-  `C:\Users\Anthony Marte\Downloads\handoff-new\mi-aplicacion-de-finanzas\`
-  Tiene componentes MÓVIL dedicados: `m-shell/m-main/m-modals/m-secondary/m-settings/m-auth/m-detail.jsx`
-  + `Mobile UIX.html` (FUENTE DE VERDAD primaria) + README.
+- **Bundle NUEVO** (permanente en el proyecto, NO depende de Downloads):
+  `propuestas/ux-referencia-v2/mi-aplicacion-de-finanzas/project/`
+  + README en `propuestas/ux-referencia-v2/mi-aplicacion-de-finanzas/README.md`
+  Componentes MÓVIL dedicados: `m-shell/m-main/m-modals/m-secondary/m-settings/m-auth/m-detail.jsx`
+  + `Mobile UIX.html` (FUENTE DE VERDAD primaria, leer COMPLETO).
 
 ### PRÓXIMO PASO EXACTO — Implementar Mobile UIX pixel-perfect (SESIÓN FRESCA, Opus para arranque)
 ```
 README del bundle (leído) ordena: leer "Mobile UIX.html" COMPLETO + seguir sus imports,
 recrear pixel-perfect en vanilla JS. NO screenshots. Aclarar ambigüedad antes de implementar.
 
-1. Read C:\...\Downloads\handoff-new\mi-aplicacion-de-finanzas\project\Mobile UIX.html (COMPLETO)
-2. Seguir imports: m-shell.jsx, m-main.jsx, m-modals.jsx, m-secondary.jsx,
-   m-settings.jsx, m-auth.jsx, m-detail.jsx, tokens.css (NUEVO), data.js
+1. Read COMPLETO: propuestas/ux-referencia-v2/mi-aplicacion-de-finanzas/project/Mobile UIX.html
+   (+ README en propuestas/ux-referencia-v2/mi-aplicacion-de-finanzas/README.md)
+2. Seguir imports (misma carpeta project/): m-shell.jsx, m-main.jsx, m-modals.jsx,
+   m-secondary.jsx, m-settings.jsx, m-auth.jsx, m-detail.jsx, tokens.css (NUEVO), data.js
 3. Comparar tokens.css nuevo vs version_actual/tokens.css → actualizar tokens
 4. CLAVE: implementar el MARKUP/ESTRUCTURA del bundle móvil (bottom nav, shell,
    pantallas) en index.html — NO solo CSS. Preservar IDs de datos (k-*, hero-int,

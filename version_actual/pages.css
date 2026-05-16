@@ -188,6 +188,65 @@ button.filtro.active,
   border-color: var(--amber) !important;
 }
 
+/* ═══ F3 · Mobile UIX bundle — ScreenTxn (modal-search → pantalla móvil) ═══
+   Re-tematiza el modal de Movimientos a la gramática del bundle ScreenTxn:
+   sheet full-screen, tokens, campos y resultados como lista-card.
+   Scoped #modal-search + solo móvil. IDs/handlers intactos. */
+@media (max-width: 819px) {
+  #modal-search { padding: 0 !important; }
+  #modal-search .modal {
+    width: 100% !important; max-width: 100% !important;
+    height: 100% !important; max-height: 100% !important;
+    margin: 0 !important; border-radius: 0 !important;
+    background: var(--ink-1) !important; border: none !important;
+    display: flex !important; flex-direction: column !important;
+    padding: 14px 16px calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow-y: auto !important;
+  }
+  #modal-search .modal > div:first-child h3 {
+    font-family: var(--f-display) !important; font-weight: 400 !important;
+    font-size: 26px !important; color: var(--fg) !important;
+  }
+  #modal-search label {
+    color: var(--fg-mute) !important; font-size: 11px !important;
+    letter-spacing: .02em !important;
+  }
+  #modal-search input,
+  #modal-search select {
+    background: var(--ink-2) !important; border: 1px solid var(--line) !important;
+    color: var(--fg) !important; border-radius: 10px !important;
+    font-family: var(--f-ui) !important; font-size: 13px !important;
+    padding: 9px 12px !important;
+  }
+  #modal-search input:focus,
+  #modal-search select:focus {
+    border-color: var(--amber) !important; outline: none !important;
+  }
+  #modal-search .scroll-wrap {
+    max-height: none !important; flex: 1 !important;
+    background: var(--ink-2) !important; border: 1px solid var(--line) !important;
+    border-radius: 14px !important; overflow: auto !important; margin-top: 4px !important;
+  }
+  #modal-search .txn-table {
+    width: 100% !important; border-collapse: collapse !important; font-size: 12.5px !important;
+  }
+  #modal-search .txn-table thead { display: none !important; }
+  #modal-search .txn-table tbody tr { border-bottom: 1px solid var(--line) !important; }
+  #modal-search .txn-table tbody td {
+    padding: 11px 10px !important; color: var(--fg) !important;
+    border: none !important; vertical-align: middle !important;
+  }
+  #modal-search .txn-table tbody tr:last-child td { border-bottom: none !important; }
+  #modal-search .modal > div:last-child {
+    color: var(--fg-mute) !important; padding-top: 12px !important;
+  }
+  #modal-search .btn-cancel {
+    background: var(--amber) !important; color: var(--ink-0) !important;
+    border: none !important; border-radius: 999px !important;
+    padding: 8px 18px !important; font-weight: 600 !important;
+  }
+}
+
 /* ─── 8. TABLAS DE DETALLE (movimientos) ──────────────────── */
 
 .txn-table-header,

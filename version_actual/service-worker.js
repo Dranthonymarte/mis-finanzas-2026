@@ -1,11 +1,11 @@
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  AI-CONTEXT — service-worker.js · Mis Finanzas 2026                 ║
-// ║  VERSIÓN: finanzas-v59-batch62                                       ║
-// ║  batch62: F3 ScreenTxn · F4 ScreenAccounts · F5 ScreenAI · F6       ║
-// ║  ScreenMore/Settings (bundle Mobile UIX). CSS scoped; IDs intactos. ║
+// ║  VERSIÓN: finanzas-v59-batch63                                       ║
+// ║  batch63: F7+F8 una sola gramatica — modales/detalles/auth como     ║
+// ║  sheets bundle. Mobile UIX completo (F1-F8). CSS scoped; IDs ok.    ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 
-const CACHE_VERSION = 'finanzas-v59-batch62';
+const CACHE_VERSION = 'finanzas-v59-batch63';
 const CDN_CACHE     = 'finanzas-cdn-v44';
 
 const PRECACHE_URLS = [

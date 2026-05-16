@@ -1310,8 +1310,17 @@ body.is-mobile .modal-overlay > .modal-box {
 */
 @media (max-width: 819px) {
   #modal-mov > .modal {
-    overflow-y: auto !important;
-    padding: 0 0 24px !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: 92vh !important;
+  }
+  /* Scrollable body inside modal-mov */
+  #modal-mov .m-mov-body {
+    overflow-y: auto;
+    flex: 1;
+    padding-bottom: 28px;
   }
   /* Tipo de movimiento selector tabs */
   .m-tipo-tabs {
@@ -1395,6 +1404,163 @@ body.is-mobile .modal-overlay > .modal-box {
   .m-mov-toggle-content { flex: 1; }
   .m-mov-toggle-label { font-size: 13.5px; }
   .m-mov-toggle-sub { font-size: 11px; color: var(--fg-mute); margin-top: 1px; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   23. FORMFIELD HELPERS · modal-mov amount · modal-ia sheet
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-modals.jsx FormField · ScreenNewTxn · m-main.jsx ScreenAI
+*/
+@media (max-width: 819px) {
+
+  /* ── Naked input inside .m-form-field ── */
+  .m-form-field-input {
+    background: none !important;
+    border: none !important;
+    outline: none !important;
+    color: var(--fg) !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    font-family: var(--f-ui, inherit) !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin-top: 2px !important;
+  }
+
+  /* ── Naked select inside .m-form-field ── */
+  .m-form-field-select {
+    background: none !important;
+    border: none !important;
+    outline: none !important;
+    color: var(--fg) !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    font-family: var(--f-ui, inherit) !important;
+    width: 100% !important;
+    padding: 2px 0 0 !important;
+    cursor: pointer !important;
+  }
+
+  /* ── Amount big input — 52px font-display ── */
+  .m-mov-amount-input {
+    background: none !important;
+    border: none !important;
+    outline: none !important;
+    font-family: var(--f-display, 'Instrument Serif', serif) !important;
+    font-size: 52px !important;
+    font-weight: 400 !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1 !important;
+    text-align: left !important;
+    color: var(--neg) !important;
+    width: auto !important;
+    min-width: 60px !important;
+    max-width: 62vw !important;
+    caret-color: transparent !important;
+    cursor: pointer !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  /* ── BCV / EUR rate inputs ── */
+  .m-rate-input {
+    width: 68px !important;
+    background: var(--ink-2) !important;
+    border: 1px solid var(--amber) !important;
+    color: var(--amber) !important;
+    padding: 3px 6px !important;
+    border-radius: 6px !important;
+    font-size: .71rem !important;
+    outline: none !important;
+    font-weight: 600 !important;
+    font-family: var(--f-ui, inherit) !important;
+  }
+
+  /* ── Currency tabs (USD / VES / EUR) ── */
+  .m-mov-currency-tabs {
+    display: inline-flex;
+    gap: 4px;
+    margin-top: 12px;
+    background: var(--ink-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 2px;
+  }
+  .m-mov-currency-tab {
+    padding: 5px 14px;
+    font-size: 11.5px;
+    border-radius: 6px;
+    font-weight: 500;
+    background: transparent;
+    color: var(--fg-dim);
+    border: none;
+    cursor: pointer;
+    font-family: var(--f-ui);
+    transition: background .15s, color .15s;
+  }
+  .m-mov-currency-tab.active {
+    background: var(--amber);
+    color: var(--ink-0);
+  }
+
+  /* ── Full-width CTA Guardar ── */
+  .m-mov-save-btn {
+    width: 100% !important;
+    background: linear-gradient(135deg, var(--amber), #c8922e) !important;
+    color: var(--ink-0, #010409) !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+    border: none !important;
+    border-radius: 14px !important;
+    padding: 16px !important;
+    cursor: pointer !important;
+    font-family: var(--f-ui, inherit) !important;
+    letter-spacing: .01em !important;
+  }
+
+  /* ── modal-ia: sheet + chat overrides ── */
+  #modal-ia > .modal {
+    max-height: 92vh !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+  #modal-ia #ia-chat {
+    background: var(--ink-0, #010409) !important;
+    border: none !important;
+    border-radius: 0 !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    flex: 1 !important;
+    overflow-y: auto !important;
+    padding: 14px 16px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  /* ia-quick-btns → horizontal scroll pills */
+  #modal-ia #ia-quick-btns {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    gap: 6px !important;
+    padding: 6px 16px !important;
+    scrollbar-width: none !important;
+  }
+  #modal-ia #ia-quick-btns::-webkit-scrollbar { display: none !important; }
+  #modal-ia #ia-quick-btns .ia-quick {
+    white-space: nowrap !important;
+    padding: 6px 10px !important;
+    font-size: 11px !important;
+    color: var(--amber) !important;
+    background: var(--amber-d, rgba(224,168,74,.12)) !important;
+    border-radius: 999px !important;
+    border: none !important;
+    cursor: pointer !important;
+    font-family: var(--f-ui) !important;
+    flex-shrink: 0 !important;
+  }
 }
 
 

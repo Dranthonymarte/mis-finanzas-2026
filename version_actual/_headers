@@ -16,12 +16,12 @@
 # ── App shell: network-first ──────────────────────────────────────────
 /index.html
   Cache-Control: no-store, no-cache, must-revalidate
-  # Preload de módulos críticos — reduce tiempo de carga ~400ms en mobile
-  Link: <config.js>; rel=preload; as=script, <app-core.js>; rel=preload; as=script
+  # Preload con rutas absolutas — evita warnings en mobile y Safari
+  Link: </config.js>; rel=preload; as=script, </globals-init.js>; rel=preload; as=script, </init.js>; rel=preload; as=script
 
 /
   Cache-Control: no-store, no-cache, must-revalidate
-  Link: <config.js>; rel=preload; as=script, <app-core.js>; rel=preload; as=script
+  Link: </config.js>; rel=preload; as=script, </globals-init.js>; rel=preload; as=script, </init.js>; rel=preload; as=script
 
 # ── Módulos JS: cache 1h, revalidar ───────────────────────────────────
 # stale-while-revalidate: sirve caché al instante, actualiza en background
@@ -110,4 +110,4 @@
   Permissions-Policy: camera=(self), microphone=(self), geolocation=(), payment=(), usb=()
   # Vary: Accept-Encoding → Cloudflare sirve Brotli automáticamente si el cliente lo soporta
   Vary: Accept-Encoding
-  Content-Security-Policy: default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://fonts.googleapis.com https://js.hcaptcha.com https://newassets.hcaptcha.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://newassets.hcaptcha.com; connect-src 'self' https://jcgoccaisemrfsuwwrrl.supabase.co wss://jcgoccaisemrfsuwwrrl.supabase.co https://api.groq.com https://api.emailjs.com https://open.er-api.com https://api.frankfurter.app https://www.google.com https://*.workers.dev https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://hcaptcha.com https://*.hcaptcha.com; img-src 'self' data: blob: https://www.google.com https://*.gstatic.com https://*.supabase.co https://www.paypalobjects.com https://newassets.hcaptcha.com https://bancamiga.com https://*.bancamiga.com; font-src 'self' data: https://fonts.gstatic.com; media-src 'self' blob:; manifest-src 'self'; worker-src 'self' blob:; frame-src https://newassets.hcaptcha.com; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://fonts.googleapis.com https://js.hcaptcha.com https://newassets.hcaptcha.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://newassets.hcaptcha.com; connect-src 'self' https://jcgoccaisemrfsuwwrrl.supabase.co wss://jcgoccaisemrfsuwwrrl.supabase.co https://api.groq.com https://api.emailjs.com https://open.er-api.com https://api.frankfurter.app https://www.google.com https://*.workers.dev https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://hcaptcha.com https://*.hcaptcha.com https://bancamiga.com https://www.bancamiga.com https://*.bancamiga.com https://bancamiga.com.ve https://www.bancamiga.com.ve https://www.bancodevenezuela.com https://www.bancoexterior.com https://bbva.com https://zinli.com; img-src 'self' data: blob: https://www.google.com https://*.gstatic.com https://*.supabase.co https://www.paypalobjects.com https://newassets.hcaptcha.com https://bancamiga.com https://www.bancamiga.com https://*.bancamiga.com https://bancamiga.com.ve https://www.bancamiga.com.ve https://www.bancodevenezuela.com https://www.bancoexterior.com https://bbva.com https://zinli.com; font-src 'self' data: https://fonts.gstatic.com; media-src 'self' blob:; manifest-src 'self'; worker-src 'self' blob:; frame-src https://newassets.hcaptcha.com; frame-ancestors 'none'

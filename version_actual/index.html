@@ -998,164 +998,266 @@ function onHcaptchaLoad() {
   </div>
 </div>
 
+<!-- setMovTipo: sync tipo tabs ↔ hidden select ↔ onTipoChange() -->
+<script>
+function setMovTipo(val) {
+  const activeMap = {
+    'Gasto': 'active-gasto', 'Ajuste': 'active-gasto',
+    'Ingreso Fijo': 'active-ingreso', 'Ingreso Variable': 'active-ingreso',
+    'Prestamo recibido': 'active-ingreso', 'Prestamo pagado': 'active-gasto',
+    'Transferencia Interna': 'active-transferencia',
+    'Ahorro en efectivo': 'active-ahorro'
+  };
+  const sel = document.getElementById('f-tipo');
+  if (sel) sel.value = val;
+  document.querySelectorAll('#modal-mov .m-tipo-tab').forEach(t => {
+    t.className = 'm-tipo-tab' + (t.dataset.tipo === val ? ' ' + (activeMap[val] || '') : '');
+  });
+  if (typeof onTipoChange === 'function') onTipoChange();
+}
+</script>
+
+<!-- ═══ MODAL: NUEVO MOVIMIENTO — ScreenNewTxn bundle anatomy ═══ -->
 <div class="modal-overlay" id="modal-mov" onclick="closeModalMovIfOutside(event)">
-  <div class="modal">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-      <h3 style="margin:0">➕ <span id="modal-mov-title">Nuevo Movimiento</span></h3>
-      <button onclick="closeModalMov()" style="background:none;border:none;color:#8b949e;font-size:1.2rem;cursor:pointer;line-height:1;padding:2px 6px" title="Cerrar">✕</button>
-    </div>
+  <div class="modal" style="width:100%;max-width:540px;border-radius:20px 20px 0 0">
+
+    <!-- Sheet handle -->
+    <div class="m-sheet-handle"></div>
+
+    <!-- Hidden inputs — preservados para JS -->
+    <select id="f-tipo" aria-hidden="true" style="display:none" onchange="onTipoChange()">
+      <option value="Gasto">Gasto</option>
+      <option value="Ingreso Fijo">Ingreso Fijo</option>
+      <option value="Ingreso Variable">Ingreso Variable</option>
+      <option value="Ahorro en efectivo">Ahorro</option>
+      <option value="Transferencia Interna">Transferencia Interna</option>
+      <option value="Prestamo recibido">Préstamo recibido</option>
+      <option value="Prestamo pagado">Préstamo pagado</option>
+      <option value="Ajuste">Ajuste</option>
+    </select>
     <input type="hidden" id="edit-mov-id" value="">
-    <div class="form-grid">
-      <div class="form-group form-full">
-        <label style="display:flex;justify-content:space-between;align-items:center">
-          Descripción
-          <button type="button" onclick="openOCRCamera()" title="Foto del recibo" style="background:#1c2128;border:1px solid #bc8cff;color:#bc8cff;padding:3px 8px;border-radius:5px;font-size:.65rem;cursor:pointer">📷 Foto recibo</button>
-        </label>
-        <input type="text" id="f-desc" placeholder="Ej: Mercado, Salario..." maxlength="200" oninput="autoCategorizarDesc(this.value)">
-        <div id="autocateg-hint" style="display:none;font-size:.62rem;color:#3fb950;margin-top:2px;padding:3px 6px;background:#0d1117;border-radius:4px;border:1px solid #1a3626"></div>
+
+    <!-- AppHeader compact -->
+    <div class="m-app-header" style="flex-shrink:0">
+      <button class="m-app-header-icon-btn" onclick="closeModalMov()" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M6 18 18 6"/></svg>
+      </button>
+      <div class="m-app-header-info" style="text-align:center">
+        <div class="m-app-header-title" id="modal-mov-title">Nuevo Movimiento</div>
       </div>
-      <div class="form-group">
-        <label>Tipo</label>
-        <select id="f-tipo" onchange="onTipoChange()">
-          <option value="Gasto">Gasto</option>
-          <option value="Ingreso Fijo">Ingreso Fijo</option>
-          <option value="Ingreso Variable">Ingreso Variable</option>
-          <option value="Ahorro en efectivo">Ahorro</option>
-          <option value="Transferencia Interna">🔄 Transferencia Interna</option>
-          <option value="Prestamo recibido">Préstamo recibido</option>
-          <option value="Prestamo pagado">Préstamo pagado</option>
-          <option value="Ajuste">Ajuste</option>
-        </select>
+      <button class="m-app-header-icon-btn" onclick="saveMovimiento()" aria-label="Guardar" style="color:var(--amber);font-size:.82rem;font-weight:700;width:auto;padding:0 4px">Guardar</button>
+    </div>
+
+    <!-- Tipo tabs -->
+    <div class="m-tipo-tabs">
+      <button class="m-tipo-tab active-gasto" data-tipo="Gasto" onclick="setMovTipo('Gasto')">Gasto</button>
+      <button class="m-tipo-tab" data-tipo="Ingreso Fijo" onclick="setMovTipo('Ingreso Fijo')">Ingreso</button>
+      <button class="m-tipo-tab" data-tipo="Transferencia Interna" onclick="setMovTipo('Transferencia Interna')">Traslado</button>
+      <button class="m-tipo-tab" data-tipo="Ahorro en efectivo" onclick="setMovTipo('Ahorro en efectivo')">Ahorro</button>
+    </div>
+
+    <!-- Amount display -->
+    <div class="m-mov-amount-display">
+      <div class="m-mov-amount-label">MONTO</div>
+      <div class="m-mov-amount-big">
+        <span class="m-mov-amount-sym">$</span>
+        <input type="text" inputmode="none" id="f-amount-usd" class="m-mov-amount-input" placeholder="0.00" maxlength="10" autocomplete="off"
+          oninput="onAmountUSD();updateTravelConversion()"
+          onfocus="this.blur();openNumpadForField('usd')"
+          onclick="openNumpadForField('usd')"
+          ontouchstart="this.blur();event.preventDefault();openNumpadForField('usd')">
       </div>
-      <div class="form-group">
-        <label>Categoría</label>
-        <select id="f-cat" onchange="onCatChange()"></select>
+      <!-- Bs sub-line -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:5px">
+        <span style="font-size:12px;color:var(--fg-mute)">Bs</span>
+        <input type="text" inputmode="none" id="f-amount-bs"
+          style="background:none;border:none;outline:none;font-size:13px;color:var(--fg-dim);text-align:left;caret-color:transparent;cursor:pointer;width:80px"
+          placeholder="0.00" maxlength="10" autocomplete="off"
+          oninput="onAmountBS()"
+          onfocus="this.blur();openNumpadForField('bs')"
+          onclick="openNumpadForField('bs')"
+          ontouchstart="this.blur();event.preventDefault();openNumpadForField('bs')">
       </div>
-      <div class="form-group">
-        <label>Subcategoría</label>
-        <select id="f-subcat"></select>
+      <!-- Currency tabs -->
+      <div class="m-mov-currency-tabs" style="margin-top:10px">
+        <button class="m-mov-currency-tab active" onclick="(function(el){document.querySelectorAll('.m-mov-currency-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active')})(this)">USD</button>
+        <button class="m-mov-currency-tab" onclick="(function(el){document.querySelectorAll('.m-mov-currency-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active')})(this)">VES</button>
+        <button class="m-mov-currency-tab" onclick="(function(el){document.querySelectorAll('.m-mov-currency-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active')})(this)">EUR</button>
       </div>
-      <div class="form-group">
-        <label>Método de Pago</label>
-        <select id="f-method">
+    </div>
+
+    <!-- Travel conv row — preservado para modo viaje -->
+    <div id="travel-conv-row" style="display:none;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.2);border-radius:8px;padding:8px 12px;font-size:.78rem;color:#58a6ff;margin:0 18px 8px">
+      ✈️ <span id="travel-conv-label">—</span>
+    </div>
+
+    <!-- Scrollable body -->
+    <div class="m-mov-body">
+
+      <!-- Descripción -->
+      <div class="m-form-field">
+        <div class="m-form-field-label">Descripción</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="text" id="f-desc" class="m-form-field-input" placeholder="Ej: Mercado, Salario..." maxlength="200" oninput="autoCategorizarDesc(this.value)">
+          <button type="button" onclick="openOCRCamera()" style="background:var(--ink-2);border:1px solid rgba(188,140,255,.4);color:#bc8cff;padding:3px 8px;border-radius:6px;font-size:.62rem;cursor:pointer;flex-shrink:0;font-family:inherit">📷</button>
+        </div>
+        <div id="autocateg-hint" style="display:none;font-size:.62rem;color:var(--pos,#3fb950);margin-top:4px;padding:3px 6px;background:rgba(63,185,80,.06);border-radius:4px;border:1px solid rgba(63,185,80,.2)"></div>
+      </div>
+
+      <!-- Categoría -->
+      <div class="m-form-field">
+        <div class="m-form-field-label">Categoría</div>
+        <select id="f-cat" class="m-form-field-select" onchange="onCatChange()"></select>
+      </div>
+
+      <!-- Subcategoría -->
+      <div class="m-form-field">
+        <div class="m-form-field-label">Subcategoría</div>
+        <select id="f-subcat" class="m-form-field-select"></select>
+      </div>
+
+      <!-- Método de Pago -->
+      <div class="m-form-field">
+        <div class="m-form-field-label">Método de Pago</div>
+        <select id="f-method" class="m-form-field-select">
           <option value="Pago móvil">Pago móvil</option>
           <option value="Tarjeta de débito">Tarjeta de débito</option>
           <option value="Efectivo en dólares">Efectivo en dólares</option>
           <option value="Efectivo en bolívares">Efectivo en bolívares</option>
         </select>
       </div>
-      <div class="form-group" id="f-cuenta-row">
-        <label>💳 Cuenta / Billetera</label>
-        <select id="f-cuenta">
+
+      <!-- Cuenta / Billetera -->
+      <div class="m-form-field" id="f-cuenta-row">
+        <div class="m-form-field-label">💳 Cuenta / Billetera</div>
+        <select id="f-cuenta" class="m-form-field-select">
           <option value="">— Sin cuenta —</option>
         </select>
       </div>
-      <!-- TRANSFERENCIA ENTRE CUENTAS -->
-      <div id="transfer-cuenta-row" class="form-group">
-        <label>🔄 Transferencia entre cuentas</label>
-        <div class="transfer-accounts">
-          <select id="f-transfer-from" class="transfer-select">
-            <option value="">Origen</option>
-          </select>
-          <span class="transfer-arrow">→</span>
-          <select id="f-transfer-to" class="transfer-select">
-            <option value="">Destino</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Fecha</label>
-        <input type="date" id="f-date" onchange="onDateChange()">
-      </div>
-      <div class="note" id="rate-note-box" style="display:flex;flex-direction:column;gap:6px">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="font-size:.67rem;color:var(--muted);white-space:nowrap">&#x1f4b1; Tasas mov.:</span>
-          <div style="display:flex;align-items:center;gap:4px">
-            <label style="font-size:.64rem;color:#e3b341;white-space:nowrap">BCV</label>
-            <input type="number" id="rn-bcv-input" style="width:70px;background:#0d1117;border:1px solid #e3b341;color:#e3b341;padding:2px 5px;border-radius:4px;font-size:.71rem;outline:none;font-weight:600" oninput="onEditModalRate()" placeholder="431.01">
-            <label style="font-size:.64rem;color:#8b949e">Bs/$</label>
-          </div>
-          <div style="display:flex;align-items:center;gap:4px">
-            <label style="font-size:.64rem;color:#e3b341;white-space:nowrap">EUR</label>
-            <input type="number" id="rn-eur-input" style="width:70px;background:#0d1117;border:1px solid #e3b341;color:#ebb343;padding:2px 5px;border-radius:4px;font-size:.71rem;outline:none;font-weight:600" oninput="onEditModalRate()" placeholder="499.62">
-            <label style="font-size:.64rem;color:#8b949e">Bs/&#x20ac;</label>
-          </div>
-          <button onclick="syncModalRatesFromGlobal()" title="Cargar tasas del dashboard" style="background:#1c2128;border:1px solid #e3b341;color:#e3b341;padding:2px 7px;border-radius:4px;font-size:.62rem;cursor:pointer">&#x1f504; Actualizar</button>
-        </div>
 
-        <div style="font-size:.59rem;color:#484f58">&#128197; <span id="rn-fecha-label">&#8212;</span> &middot; bcv.org.ve</div>
-        <div id="rate-date-warning" style="display:none;color:#f85149;font-size:.68rem">&#x26a0;&#xfe0f; La fecha del movimiento difiere de la última tasa registrada.</div></div>
-      <div style="display:flex;justify-content:flex-end;margin-bottom:4px;gap:6px;align-items:center">
-        <!-- Normal voice button -->
-        <button id="btn-voice" onclick="startVoiceInput()" style="background:#1c2128;border:1px solid #bc8cff;color:#bc8cff;padding:4px 10px;border-radius:20px;font-size:.7rem;cursor:pointer;display:flex;align-items:center;gap:4px">🎙️ Registrar por voz</button>
-        <!-- Recording UI (WhatsApp style) -->
-        <div id="form-voice-rec" style="display:none;align-items:center;gap:8px;background:#1c2128;border:1px solid #f85149;border-radius:22px;padding:5px 12px;flex:1">
-          <span style="color:#f85149;font-size:.85rem">🔴</span>
-          <span id="form-voice-timer" style="font-size:.75rem;font-weight:700;color:#f85149;min-width:34px">0:00</span>
+      <!-- Transferencia entre cuentas -->
+      <div id="transfer-cuenta-row" class="m-form-field" style="display:none">
+        <div class="m-form-field-label">🔄 Transferencia</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <select id="f-transfer-from" class="m-form-field-select" style="flex:1"><option value="">Origen</option></select>
+          <span style="color:var(--fg-mute);flex-shrink:0;font-size:.8rem">→</span>
+          <select id="f-transfer-to" class="m-form-field-select" style="flex:1"><option value="">Destino</option></select>
+        </div>
+      </div>
+
+      <!-- Fecha -->
+      <div class="m-form-field">
+        <div class="m-form-field-label">Fecha</div>
+        <input type="date" id="f-date" class="m-form-field-input" onchange="onDateChange()">
+      </div>
+
+      <!-- Tasas del movimiento -->
+      <div class="m-form-field" id="rate-note-box">
+        <div class="m-form-field-label">💱 Tasas del movimiento</div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px">
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="font-size:.64rem;color:var(--amber)">BCV</span>
+            <input type="number" id="rn-bcv-input" class="m-rate-input" oninput="onEditModalRate()" placeholder="431.01">
+            <span style="font-size:.62rem;color:var(--fg-mute)">Bs/$</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="font-size:.64rem;color:var(--amber)">EUR</span>
+            <input type="number" id="rn-eur-input" class="m-rate-input" oninput="onEditModalRate()" placeholder="499.62">
+            <span style="font-size:.62rem;color:var(--fg-mute)">Bs/€</span>
+          </div>
+          <button onclick="syncModalRatesFromGlobal()" style="background:var(--ink-2);border:1px solid var(--amber);color:var(--amber);padding:3px 8px;border-radius:6px;font-size:.62rem;cursor:pointer;font-family:inherit">🔄</button>
+        </div>
+        <div style="font-size:.59rem;color:var(--fg-mute);margin-top:6px">📅 <span id="rn-fecha-label">—</span> · bcv.org.ve</div>
+        <div id="rate-date-warning" style="display:none;color:var(--neg,#f85149);font-size:.68rem;margin-top:2px">⚠️ La fecha del movimiento difiere de la última tasa registrada.</div>
+      </div>
+
+      <!-- Ajuste note -->
+      <div id="ajuste-note" class="m-form-field" style="display:none">
+        <div style="background:rgba(188,140,255,.08);border:1px solid rgba(188,140,255,.25);border-radius:8px;padding:10px 12px;font-size:.74rem;color:#bc8cff">
+          ℹ️ Los ajustes corrigen el balance sin afectar ingresos, gastos ni ahorros. Puede ser positivo o negativo.
+        </div>
+      </div>
+
+      <!-- Plantillas rápidas -->
+      <div class="m-form-field" id="template-section">
+        <div class="m-form-field-label">⚡ Plantillas rápidas</div>
+        <div class="template-cards-scroll" id="template-list"></div>
+      </div>
+
+      <!-- Voz -->
+      <div style="padding:4px 18px;display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <button id="btn-voice" onclick="startVoiceInput()" style="background:var(--ink-2);border:1px solid rgba(188,140,255,.4);color:#bc8cff;padding:7px 14px;border-radius:20px;font-size:.72rem;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:inherit">🎙️ Voz</button>
+        <div id="form-voice-rec" style="display:none;flex:1;align-items:center;gap:8px;background:var(--ink-2);border:1px solid var(--neg,#f85149);border-radius:22px;padding:5px 12px">
+          <span style="color:var(--neg,#f85149)">🔴</span>
+          <span id="form-voice-timer" style="font-size:.75rem;font-weight:700;color:var(--neg,#f85149);min-width:34px">0:00</span>
           <div class="ia-voice-wave" style="flex:1">
             <div class="ia-voice-bar"></div><div class="ia-voice-bar"></div>
             <div class="ia-voice-bar"></div><div class="ia-voice-bar"></div>
             <div class="ia-voice-bar"></div>
           </div>
-          <button onclick="stopFormVoice()" style="background:#3fb950;border:none;color:#fff;width:26px;height:26px;border-radius:50%;font-size:.75rem;cursor:pointer;flex-shrink:0">✓</button>
-          <button onclick="cancelFormVoice()" style="background:#21262d;border:1px solid #30363d;color:#8b949e;width:26px;height:26px;border-radius:50%;font-size:.75rem;cursor:pointer;flex-shrink:0">✕</button>
+          <button onclick="stopFormVoice()" style="background:var(--pos,#3fb950);border:none;color:#fff;width:26px;height:26px;border-radius:50%;font-size:.75rem;cursor:pointer;flex-shrink:0">✓</button>
+          <button onclick="cancelFormVoice()" style="background:var(--ink-3);border:1px solid var(--line);color:var(--fg-mute);width:26px;height:26px;border-radius:50%;font-size:.75rem;cursor:pointer;flex-shrink:0">✕</button>
         </div>
       </div>
-      <div class="monto-row">
-        <div class="form-group">
-          <label>Monto en USD ($)</label>
-          <input type="text" inputmode="none" id="f-amount-usd" placeholder="0.00" maxlength="10" autocomplete="off" oninput="onAmountUSD();updateTravelConversion()" onfocus="this.blur();openNumpadForField('usd')" onclick="openNumpadForField('usd')" ontouchstart="this.blur();event.preventDefault();openNumpadForField('usd')" style="cursor:pointer;caret-color:transparent">
-        </div>
-        <div class="form-group">
-          <label>Monto en Bs (Bolívares)</label>
-          <input type="text" inputmode="none" id="f-amount-bs" placeholder="0.00" maxlength="10" autocomplete="off" oninput="onAmountBS()" onfocus="this.blur();openNumpadForField('bs')" onclick="openNumpadForField('bs')" ontouchstart="this.blur();event.preventDefault();openNumpadForField('bs')" style="cursor:pointer;caret-color:transparent">
-        </div>
+
+      <!-- Acciones secundarias -->
+      <div style="display:flex;gap:6px;padding:0 18px;margin-bottom:12px">
+        <button class="btn-template" id="btn-template" onclick="toggleTemplate()" style="flex:1">⭐ Plantilla</button>
+        <button onclick="openReceiptFromModal()" style="background:var(--ink-2);border:1px solid var(--line);color:var(--fg-mute);padding:7px 12px;border-radius:8px;font-size:.72rem;cursor:pointer;font-family:inherit">📸 Recibo</button>
       </div>
-      <!-- Modo viaje: conversión en tiempo real -->
-      <div id="travel-conv-row" style="display:none;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.2);border-radius:8px;padding:8px 12px;font-size:.78rem;color:#58a6ff;margin-bottom:4px">
-        ✈️ <span id="travel-conv-label">—</span>
+
+      <!-- CTA Guardar -->
+      <div style="padding:0 18px">
+        <button class="btn-save m-mov-save-btn" onclick="saveMovimiento()">Guardar</button>
       </div>
-      <div class="form-group form-full" id="ajuste-note" style="display:none">
-        <div class="rate-note" style="border-color:var(--purple);color:var(--purple)">
-          ℹ️ Los ajustes corrigen el balance sin afectar ingresos, gastos ni ahorros. Puede ser positivo o negativo.
-        </div>
-      </div>
-      <div class="form-group form-full" id="template-section">
-        <label>⚡ Plantillas rápidas</label>
-        <div class="template-cards-scroll" id="template-list"></div>
-      </div>
-    </div>
-    <div class="modal-btns">
-      <button class="btn-save" onclick="saveMovimiento()">💾 Guardar</button>
-      <button class="btn-template" id="btn-template" onclick="toggleTemplate()">⭐ Guardar plantilla</button>
-      <button style="background:none;border:1px solid #30363d;color:#58a6ff;padding:6px 10px;border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit;margin-left:4px" onclick="openReceiptFromModal()" title="Escanear recibo con cámara">📸 Recibo</button>
-      <button class="btn-cancel" onclick="closeModalMov()">Cancelar</button>
-    </div>
+
+    </div><!-- /.m-mov-body -->
   </div>
 </div>
 
 <!-- MODAL: BÚSQUEDA -->
 
-<!-- ═══ MODAL: GEMINI IA ═══ -->
+<!-- ═══ MODAL: ASISTENTE IA — ScreenAI bundle anatomy ═══ -->
 <div class="modal-overlay" id="modal-ia" onclick="closeIAIfOutside(event)" style="z-index:310">
-  <div class="modal-box" style="width:620px;max-height:85vh;display:flex;flex-direction:column">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <h3 style="color:#bc8cff;font-size:.9rem;display:flex;align-items:center;gap:7px">🤖 <span>Llama 3.3 — Asistente</span><span class="ia-model-badge" title="Modelo activo">70b</span></h3>
-      <div style="display:flex;gap:5px;align-items:center">
-        <button onclick="setIAMode('analisis')" id="ia-tab-analisis" class="ia-tab active-ia-tab">📊 Análisis</button>
-        <button onclick="setIAMode('corrector')" id="ia-tab-corrector" class="ia-tab">🛠️ Corrector</button>
-        <div style="width:1px;height:20px;background:#30363d;margin:0 2px"></div>
-        <button onclick="closeIA()" style="background:rgba(248,81,73,.1);border:1px solid #f85149;color:#f85149;font-size:.75rem;cursor:pointer;padding:3px 8px;border-radius:5px;font-weight:600">✕ Cerrar</button>
+  <div class="modal" style="width:100%;max-width:620px;border-radius:20px 20px 0 0">
+
+    <!-- Sheet handle -->
+    <div class="m-sheet-handle"></div>
+
+    <!-- AppHeader compact -->
+    <div class="m-app-header" style="flex-shrink:0">
+      <button class="m-app-header-icon-btn" onclick="closeIA()" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M6 18 18 6"/></svg>
+      </button>
+      <div class="m-app-header-info" style="text-align:center">
+        <div class="m-app-header-title" style="display:flex;align-items:center;justify-content:center;gap:6px">
+          🤖 Asistente IA <span class="ia-model-badge" title="Modelo activo">70b</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
+        <button onclick="setIAMode('analisis')" id="ia-tab-analisis" class="ia-tab active-ia-tab" style="font-size:.65rem;padding:3px 7px">📊</button>
+        <button onclick="setIAMode('corrector')" id="ia-tab-corrector" class="ia-tab" style="font-size:.65rem;padding:3px 7px">🛠️</button>
       </div>
     </div>
 
     <!-- Modo Análisis -->
-    <div id="ia-analisis-panel" style="display:flex;flex-direction:column;flex:1;min-height:0">
-      <div id="ia-chat" style="flex:1;overflow-y:auto;background:#0a0e14;border:1px solid #30363d;border-radius:10px 10px 0 0;min-height:180px;max-height:320px"></div>
+    <div id="ia-analisis-panel" style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden">
+      <!-- Chat -->
+      <div id="ia-chat"></div>
+
+      <!-- Sugerencias rápidas — scroll horizontal -->
+      <div id="ia-quick-btns">
+        <button class="ia-quick" onclick="askGroq('Dame un resumen completo de mis finanzas este mes con números exactos.')">📈 Resumen mes</button>
+        <button class="ia-quick" onclick="askGroq('¿Cuánto ingresé y gasté esta semana aproximadamente?')">📅 Esta semana</button>
+        <button class="ia-quick" onclick="askGroq('¿En qué gasté más dinero y cómo puedo reducir esos gastos?')">💸 Mayor gasto</button>
+        <button class="ia-quick" onclick="askGroq('¿Qué debo hacer para llegar a 3000 dólares ahorrados? Dame un plan concreto.')">🎯 Meta $3k</button>
+        <button class="ia-quick" onclick="askGroq('Compara mis ingresos y gastos de los últimos meses. ¿Voy mejorando o empeorando?')">📊 Comparar</button>
+        <button class="ia-quick" onclick="askGroq('Dame 5 consejos específicos para mejorar mis finanzas basados en mis datos reales.')">💡 Consejos</button>
+      </div>
+
+      <!-- Input bar -->
       <div class="ia-chat-footer">
-        <!-- Input de texto normal -->
         <input id="ia-input" class="ia-chat-input" type="text" placeholder="Pregunta sobre tus finanzas..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();askGroq()}">
-        <!-- Indicador de grabación (oculto por defecto) -->
         <div class="ia-voice-rec" id="ia-voice-rec">
           <span style="font-size:.85rem;color:#f85149">🔴</span>
           <span class="ia-voice-timer" id="ia-voice-timer">0:00</span>
@@ -1164,36 +1266,28 @@ function onHcaptchaLoad() {
             <div class="ia-voice-bar"></div><div class="ia-voice-bar"></div>
             <div class="ia-voice-bar"></div>
           </div>
-          <button onclick="stopVoiceNote()" style="background:#f85149;border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:.75rem;cursor:pointer;flex-shrink:0" title="Enviar">✓</button>
-          <button onclick="cancelVoiceNote()" style="background:#21262d;border:1px solid #30363d;color:#8b949e;width:28px;height:28px;border-radius:50%;font-size:.75rem;cursor:pointer;flex-shrink:0" title="Cancelar">✕</button>
+          <button onclick="stopVoiceNote()" style="background:#f85149;border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:.75rem;cursor:pointer;flex-shrink:0">✓</button>
+          <button onclick="cancelVoiceNote()" style="background:#21262d;border:1px solid #30363d;color:#8b949e;width:28px;height:28px;border-radius:50%;font-size:.75rem;cursor:pointer;flex-shrink:0">✕</button>
         </div>
-        <!-- Botón micrófono (solo en modo chat IA, no para formulario) -->
         <button id="btn-ia-voice" onclick="startIAVoiceNote()" style="background:#1c2128;border:1px solid #bc8cff;color:#bc8cff;width:38px;height:38px;border-radius:50%;font-size:1rem;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center" title="Nota de voz">🎙️</button>
         <button class="ia-send-btn" onclick="askGroq()" title="Enviar">➤</button>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:8px" id="ia-quick-btns">
-        <button class="ia-quick" onclick="askGroq('Dame un resumen completo de mis finanzas este mes con números exactos.')">📈 Resumen mes</button>
-        <button class="ia-quick" onclick="askGroq('¿Cuánto ingresé y gasté esta semana aproximadamente?')">📅 Esta semana</button>
-        <button class="ia-quick" onclick="askGroq('¿En qué gasté más dinero y cómo puedo reducir esos gastos?')">💸 Mayor gasto</button>
-        <button class="ia-quick" onclick="askGroq('¿Qué debo hacer para llegar a 3000 dólares ahorrados? Dame un plan concreto.')">🎯 Meta $3k</button>
-        <button class="ia-quick" onclick="askGroq('Compara mis ingresos y gastos de los últimos meses. ¿Voy mejorando o empeorando?')">📊 Comparar</button>
-        <button class="ia-quick" onclick="askGroq('Dame 5 consejos específicos para mejorar mis finanzas basados en mis datos reales.')">💡 Consejos</button>
       </div>
     </div>
 
     <!-- Modo Corrector -->
-    <div id="ia-corrector-panel" style="display:none;flex-direction:column;flex:1;min-height:0">
-      <p style="font-size:.72rem;color:#8b949e;margin-bottom:8px">Describe qué quieres cambiar o agregar al dashboard. Groq (Llama 3.3) generará el código listo para aplicar.</p>
-      <div id="ia-corrector-chat" style="flex:1;overflow-y:auto;background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:12px;margin-bottom:10px;min-height:160px;max-height:280px;font-size:.74rem;line-height:1.6"></div>
+    <div id="ia-corrector-panel" style="display:none;flex-direction:column;flex:1;min-height:0;padding:0 16px 16px">
+      <p style="font-size:.72rem;color:var(--fg-mute);margin:8px 0">Describe qué quieres cambiar o agregar al dashboard. Groq (Llama 3.3) generará el código listo para aplicar.</p>
+      <div id="ia-corrector-chat" style="flex:1;overflow-y:auto;background:var(--ink-1);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;min-height:160px;max-height:280px;font-size:.74rem;line-height:1.6"></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <button class="ia-quick" onclick="askCorrector('Agrega una nueva categoría llamada Mascotas con subcategorías Veterinario y Comida para Mascotas')">🐾 Ejemplo: agregar categoría</button>
-        <button class="ia-quick" onclick="askCorrector('Cómo cambio el color del balance a azul cuando es positivo')">🎨 Ejemplo: cambiar color</button>
+        <button class="ia-quick" onclick="askCorrector('Agrega una nueva categoría llamada Mascotas con subcategorías Veterinario y Comida para Mascotas')">🐾 Agregar categoría</button>
+        <button class="ia-quick" onclick="askCorrector('Cómo cambio el color del balance a azul cuando es positivo')">🎨 Cambiar color</button>
       </div>
       <div style="display:flex;gap:6px">
-        <input id="ia-corrector-input" type="text" placeholder="Ej: quiero agregar un campo de notas a cada movimiento..." style="flex:1;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:8px 12px;border-radius:7px;font-size:.78rem;outline:none" onkeydown="if(event.key==='Enter')askCorrector()">
-        <button onclick="askCorrector()" style="background:#6e40c9;color:#fff;border:none;padding:8px 14px;border-radius:7px;font-size:.78rem;cursor:pointer;font-weight:600">Generar</button>
+        <input id="ia-corrector-input" type="text" placeholder="Ej: quiero agregar un campo de notas a cada movimiento..." style="flex:1;background:var(--ink-1);border:1px solid var(--line);color:var(--fg);padding:8px 12px;border-radius:10px;font-size:.78rem;outline:none;font-family:inherit" onkeydown="if(event.key==='Enter')askCorrector()">
+        <button onclick="askCorrector()" style="background:#6e40c9;color:#fff;border:none;padding:8px 14px;border-radius:10px;font-size:.78rem;cursor:pointer;font-weight:600;font-family:inherit">Generar</button>
       </div>
     </div>
+
   </div>
 </div>
 
@@ -1462,7 +1556,7 @@ function onHcaptchaLoad() {
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 17l5-5-5-5M21 12H9M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
             Cerrar sesión
           </button>
-          <div class="m-more-version">Mis Finanzas 2026 · v65</div>
+          <div class="m-more-version">Mis Finanzas 2026 · v66</div>
         </div>
       </div>
     </div>

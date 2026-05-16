@@ -1,12 +1,12 @@
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  AI-CONTEXT — service-worker.js · Mis Finanzas 2026                 ║
-// ║  VERSIÓN: finanzas-v59-batch65                                       ║
-// ║  batch65: Full Mobile UIX rebuild — Sheet anatomy, ScreenMore,      ║
-// ║  FAB Actions Sheet, modal-settings RowGroup/RowLink, AppHeader,     ║
-// ║  Toggle, FormField, ChatUI, TxnList, AccountCards CSS components.   ║
+// ║  VERSIÓN: finanzas-v59-batch66                                       ║
+// ║  batch66: Bug fixes (SW chrome-ext, CSP banks, SIGNED_OUT timer) +  ║
+// ║  UIX rebuild root: modal-mov ScreenNewTxn, modal-ia ScreenAI,       ║
+// ║  CSS §18/§23 flex-column header, m-tipo-tabs, m-mov-body.           ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 
-const CACHE_VERSION = 'finanzas-v59-batch65';
+const CACHE_VERSION = 'finanzas-v59-batch66';
 const CDN_CACHE     = 'finanzas-cdn-v44';
 
 const PRECACHE_URLS = [
@@ -92,6 +92,20 @@ self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // ── GUARD: solo manejar http(s) — ignorar chrome-extension://, data:, blob: etc.
+  if (!url.protocol.startsWith('http')) return;
+
+  // ── GUARD: dominios externos de bancos/favicons → Network-only sin cachear
+  // (evita CSP violations y errores de Cache API con dominios no propios)
+  const externalPassthrough = [
+    'bancamiga.com', 'bancodevenezuela.com', 'bancoexterior.com',
+    'bbva.com', 'zinli.com', 'bicentenario.com', 'bnc.com.ve',
+    'google.com/s2/favicons', 'favicon',
+  ];
+  if (externalPassthrough.some(h => request.url.includes(h))) {
+    event.respondWith(fetch(request).catch(() => new Response('', { status: 503 }))); return;
+  }
+
   // SW propio → siempre desde red, nunca cachear
   if (url.pathname === '/service-worker.js') {
     event.respondWith(fetch(request)); return;
@@ -134,6 +148,10 @@ self.addEventListener('fetch', event => {
 });
 
 async function networkFirst(request, cacheName) {
+  // Cache API solo acepta http(s) — esquemas distintos causan TypeError
+  if (!request.url.startsWith('http')) {
+    return fetch(request).catch(() => new Response('', { status: 503 }));
+  }
   try {
     const response = await fetch(request);
     if (response.ok) {
@@ -148,6 +166,10 @@ async function networkFirst(request, cacheName) {
 }
 
 async function cacheFirst(request, cacheName) {
+  // Cache API solo acepta http(s) — esquemas distintos causan TypeError
+  if (!request.url.startsWith('http')) {
+    return fetch(request).catch(() => new Response('', { status: 503 }));
+  }
   const cached = await caches.match(request);
   if (cached) return cached;
   try {

@@ -243,6 +243,23 @@ window.addEventListener('DOMContentLoaded', async () => {
         console.log('[AUTH-DEBUG] Handler: SIGNED_OUT → reset state');
         currentUser = null; _appInitialized = false; HOUSEHOLD_ID = null;
         if (realtimeChannel) { try{realtimeChannel.unsubscribe();}catch(e){} realtimeChannel = null; }
+        // FIX batch66: recovery timer — si SIGNED_IN no vuelve en 4s (token refresh falló)
+        // mostrar login screen para que el usuario pueda re-autenticarse manualmente.
+        // Si SIGNED_IN llega antes, _appInitialized se pone true → clearTimeout evita el flash.
+        const _signOutRecovery = setTimeout(() => {
+          if (!_appInitialized) {
+            console.warn('[AUTH-DEBUG] SIGNED_OUT sin SIGNED_IN en 4s → mostrando login screen');
+            const ls = document.getElementById('login-screen');
+            const as = document.getElementById('app-shell');
+            const sp = document.getElementById('splash-overlay');
+            if (sp) sp.style.display = 'none';
+            if (as) as.style.display = 'none';
+            if (ls) ls.style.display = 'flex';
+          }
+        }, 4000);
+        // Cancelar timer cuando SIGNED_IN vuelva (se re-inicializa correctamente)
+        const _cancelRecovery = () => { clearTimeout(_signOutRecovery); };
+        sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_IN') _cancelRecovery(); });
       }
     });
     console.log('[AUTH-DEBUG] onAuthStateChange listener registrado');

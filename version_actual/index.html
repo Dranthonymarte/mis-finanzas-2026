@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/shell.css">
   <link rel="stylesheet" href="/dashboard.css">
   <link rel="stylesheet" href="/pages.css">
+  <link rel="stylesheet" href="/mobile-uix.css">
   <script src="/theme.js"></script>
 <head>
 <meta charset="UTF-8">
@@ -445,30 +446,18 @@ function onHcaptchaLoad() {
   </div>
 </div>
 
-<!-- MOBILE TOPBAR con dropdown de mes -->
-<div class="mobile-topbar" id="mobile-topbar">
-  <div class="mobile-month-row">
-    <select id="mobile-month-select" onchange="switchMonth(this.value)" class="mobile-month-select">
-    </select>
-    <span id="mobile-month-status" style="font-size:.65rem;color:var(--muted)"></span>
-  </div>
-  <!-- Tasas visibles en mobile -->
-  <div id="mobile-rates-strip" style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;background:#0d1117;border-radius:8px;padding:6px 10px;border:1px solid #21262d">
-    <div style="display:flex;align-items:center;gap:10px">
-      <span style="font-size:.72rem;color:#e6edf3">💵 <span id="mob-bcv-val" style="color:#e3b341;font-weight:700">--</span> Bs/$</span>
-      <span style="font-size:.62rem;color:#484f58">·</span>
-      <span style="font-size:.72rem;color:#e6edf3">💶 <span id="mob-eur-val" style="color:#e3b341;font-weight:700">--</span> Bs/€</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:6px">
-      <span id="mob-rate-fecha" style="font-size:.6rem;color:#484f58">bcv.org.ve</span>
-      <button onclick="fetchTasaBCV(true)" title="Actualizar tasa" style="background:#1c2128;border:1px solid #30363d;color:#58a6ff;font-size:.72rem;padding:3px 7px;border-radius:5px;cursor:pointer;line-height:1">⟳</button>
-    </div>
-  </div>
+<!-- MOBILE USER BAR — bundle anatomy: m-main.jsx ScreenHome user bar -->
+<!-- CSS: .mobile-topbar → display:none en mobile (reemplazada por .m-userbar abajo) -->
+<div class="mobile-topbar" id="mobile-topbar" style="display:none" aria-hidden="true">
+  <!-- IDs legacy que JS actualiza — mantenidos para evitar errores -->
+  <select id="mobile-month-select" onchange="switchMonth(this.value)" style="display:none"></select>
+  <span id="mobile-month-status" style="display:none"></span>
+  <span id="mob-bcv-val" style="display:none"></span>
+  <span id="mob-eur-val" style="display:none"></span>
+  <span id="mob-rate-fecha" style="display:none"></span>
 </div>
 
 <div class="main">
-
-<!-- ═══ HERO BALANCE — MOBILE ONLY ═══ -->
 
 <!-- ═══ PUSH NOTIFICATIONS BANNER ═══ -->
 <div id="push-notif-banner" style="display:none">
@@ -478,97 +467,80 @@ function onHcaptchaLoad() {
 </div>
 
 <div id="offline-banner">📡 Sin conexión — los cambios se sincronizarán al reconectar</div>
-<!-- HERO UNIT: bloque draggable completo (balance + ingresos + gastos) -->
+
+<!-- ═══ MOBILE USER BAR — m-main.jsx ScreenHome user bar ═══ -->
+<!-- padding 6px 16px 8px · flex row · gap 10 · avatar 34px · icon circles 34px -->
+<div class="m-userbar">
+  <div class="m-avatar">A</div>
+  <div class="m-userbar-info">
+    <div class="m-userbar-greet">Hola,</div>
+    <div class="m-userbar-name" id="m-user-name">Anthony</div>
+  </div>
+  <!-- Eye: ocultar/mostrar importes -->
+  <button class="m-icon-circle" id="btn-hide-balance" title="Ocultar/mostrar cifras" onclick="toggleHideAmounts()">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
+  </button>
+  <!-- Bell: notificaciones -->
+  <button class="m-icon-circle" onclick="typeof openNotifPanel==='function'&&openNotifPanel()" title="Notificaciones">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <span class="m-notif-dot"></span>
+  </button>
+</div>
+
+<!-- ═══ HERO BALANCE — m-main.jsx ScreenHome hero ═══ -->
+<!-- 54px font-display · sparkline 36px · pills USD/Bs/EUR -->
 <div id="dash-hero-unit" data-label="🏦 Balance y Finanzas" style="position:relative">
-  <span class="drag-handle" style="position:absolute;top:8px;right:8px;z-index:2;font-size:14px;color:#484f58;cursor:grab;user-select:none;opacity:.6" title="Mover bloque">⠿</span>
-  <div id="hero-balance-section">
-    <div class="hero-card">
-      <div class="hero-card-inner">
-        <div class="hero-meta-row">
-          <div class="hero-label" style="margin-bottom:0">Balance Total · USD</div>
-          <div class="hero-micro-actions">
-            <button class="hero-micro-btn" id="theme-toggle-btn" title="Cambiar tema claro/oscuro"
-              onclick="toggleTheme()" aria-label="Cambiar a modo claro">🌙</button>
-            <button class="hero-micro-btn" id="btn-hide-balance" title="Ocultar/mostrar cifras"
-              onclick="toggleHideAmounts()">👁️</button>
-            <button class="hero-micro-btn" title="¿Qué es el balance total?"
-              onclick="showCardInfo('kpi-balance')">ℹ️</button>
-            <button class="hero-micro-btn" title="Analizar con IA"
-              onclick="openIAWithAnalysis()">🤖</button>
-          </div>
-        </div>
-        <div class="hero-amount num">
-          <span class="hero-symbol" id="hero-symbol">$</span>
-          <span class="hero-int" id="hero-int">0</span>
-          <span class="hero-dec" id="hero-dec">.00</span>
-        </div>
-        <div class="hero-bs" id="hero-bs">Bs —</div>
-        <div class="hero-pills" id="hero-pills">
-          <div class="hero-pill active" id="pill-USD" onclick="heroSetCurrency('USD')">USD</div>
-          <div class="hero-pill" id="pill-BS"  onclick="heroSetCurrency('BS')">Bs</div>
-          <div class="hero-pill" id="pill-EUR" onclick="heroSetCurrency('EUR')">EUR</div>
-        </div>
-        <div class="hero-chart-wrap">
-          <div id="hero-balance-chart" data-chart="balance-series"></div>
-        </div>
-      </div>
+  <div id="hero-balance-section" class="m-hero">
+    <div class="m-hero-label">Patrimonio neto · <span id="hero-currency-label">USD</span></div>
+    <div class="m-hero-amount font-display num">
+      <span id="hero-symbol">$</span><span id="hero-int">0</span><span id="hero-dec" class="m-hero-dec">.00</span>
+    </div>
+    <div class="m-hero-bs-row" id="hero-bs"></div>
+    <div class="m-hero-pills-row" id="hero-pills">
+      <div class="m-hero-pill active" id="pill-USD" onclick="heroSetCurrency('USD')">USD</div>
+      <div class="m-hero-pill" id="pill-BS"  onclick="heroSetCurrency('BS')">Bs</div>
+      <div class="m-hero-pill" id="pill-EUR" onclick="heroSetCurrency('EUR')">EUR</div>
+    </div>
+    <div class="m-hero-chart" id="hero-balance-chart" data-chart="balance-series"></div>
+    <div class="m-hero-chart-labels">
+      <span>May</span><span>Jul</span><span>Sep</span><span>Nov</span><span>Ene</span><span>Abr</span>
     </div>
   </div>
-
-  <!-- INCOME / EXPENSE MINI CARDS -->
-  <div id="mobile-inc-exp">
-    <div class="inc-card">
-      <div class="inc-exp-micro">
-        <div class="inc-exp-row">
-          <div class="inc-exp-dot green">↑</div>
-          <span class="inc-exp-label inc-label">Ingresos</span>
-        </div>
-        <div style="display:flex;gap:3px">
-          <button class="mini-info-btn" onclick="showCardInfo('kpi-ingresos')" title="Info">ℹ️</button>
-          <button class="mini-ia-btn" onclick="askCardIA('k-ingresos')" title="IA">🤖</button>
-        </div>
-      </div>
-      <div class="inc-val" id="mob-inc-val">$0</div>
-    </div>
-    <div class="exp-card">
-      <div class="inc-exp-micro">
-        <div class="inc-exp-row">
-          <div class="inc-exp-dot red">↓</div>
-          <span class="inc-exp-label exp-label">Gastos</span>
-        </div>
-        <div style="display:flex;gap:3px">
-          <button class="mini-info-btn" onclick="showCardInfo('kpi-gastos')" title="Info">ℹ️</button>
-          <button class="mini-ia-btn" onclick="askCardIA('k-gastos')" title="IA">🤖</button>
-        </div>
-      </div>
-      <div class="exp-val" id="mob-exp-val">$0</div>
-    </div>
+  <!-- IDs legacy compatibles: JS los actualiza sin errores aunque no sean visibles -->
+  <div style="display:none" aria-hidden="true">
+    <span id="mob-inc-val">$0</span>
+    <span id="mob-exp-val">$0</span>
+    <button id="theme-toggle-btn" onclick="toggleTheme()"></button>
   </div>
 </div>
 
-<!-- QUICK ACTIONS — horizontal scroll -->
-<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 14px 2px">
-  <span style="font-size:.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Accesos rápidos</span>
-  <button id="btn-reorder-shortcuts" onclick="toggleShortcutReorder()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:2px 7px;font-size:.6rem;cursor:pointer">🔀 Orden</button>
-</div>
-<div id="mobile-quick-actions">
-  <button class="quick-btn" onclick="openCalc()"><div class="quick-icon">🧮</div><span class="quick-label">Calculadora</span></button>
-  <button class="quick-btn" onclick="openModalCuentas()"><div class="quick-icon">💳</div><span class="quick-label">Cuentas</span></button>
-  <button class="quick-btn" onclick="openSearch()"><div class="quick-icon">🔍</div><span class="quick-label">Buscar</span></button>
-  <button class="quick-btn" onclick="openIA()"><div class="quick-icon">🤖</div><span class="quick-label">IA</span></button>
-  <button class="quick-btn" onclick="openDineroFuera()"><div class="quick-icon">💰</div><span class="quick-label">Dinero Fuera</span></button>
-  <button class="quick-btn" onclick="openIntelFinanciera()"><div class="quick-icon">🧠</div><span class="quick-label">Análisis</span></button>
-  <button class="quick-btn" onclick="openTransferRial()"><div class="quick-icon">↔️</div><span class="quick-label">Transferir</span></button>
-  <button class="quick-btn" onclick="openRecurrentes()"><div class="quick-icon">🔁</div><span class="quick-label">Recurrentes</span></button>
-  <button class="quick-btn" onclick="openPareja()"><div class="quick-icon">💑</div><span class="quick-label">Pareja</span></button>
-  <button class="quick-btn" onclick="openBCVHistory()"><div class="quick-icon">📈</div><span class="quick-label">Tasa BCV</span></button>
-  <button class="quick-btn" onclick="openReceiptScanner()"><div class="quick-icon">📸</div><span class="quick-label">Escáner</span></button>
-  <button class="quick-btn" onclick="openCSVImport()"><div class="quick-icon">📂</div><span class="quick-label">Importar CSV</span></button>
-  <button class="quick-btn" onclick="openVoiceLanding()"><div class="quick-icon">🎙️</div><span class="quick-label">Voz</span></button>
-  <button class="quick-btn" onclick="openMobileRatesPanel()"><div class="quick-icon">💱</div><span class="quick-label">Tasas</span></button>
-  <button class="quick-btn" onclick="openPresupuestosPanel()"><div class="quick-icon">📊</div><span class="quick-label">Presupuesto</span></button>
-  <button class="quick-btn" onclick="openListaCompras()"><div class="quick-icon">🛒</div><span class="quick-label">Lista</span></button>
-  <button class="quick-btn" onclick="openNotifPanel()"><div class="quick-icon">🔔</div><span class="quick-label">Notificaciones</span></button>
+<!-- ═══ ACCIONES RÁPIDAS — m-main.jsx ScreenHome quick grid ═══ -->
+<!-- 4-col grid · SVG icons · padding 8px 16px 4px · gap 8 · radius 14 -->
+<div class="m-quick-grid" id="mobile-quick-actions">
+  <button class="m-quick-item" onclick="openModal()">
+    <div class="m-quick-icon m-quick-icon-amber">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    </div>
+    <span class="m-quick-label">Añadir</span>
+  </button>
+  <button class="m-quick-item" onclick="typeof openTransferRial==='function'&&openTransferRial()">
+    <div class="m-quick-icon m-quick-icon-teal">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 16V4m0 0L3 8m4-4 4 4M17 8v12m0 0 4-4m-4 4-4-4"/></svg>
+    </div>
+    <span class="m-quick-label">Transferir</span>
+  </button>
+  <button class="m-quick-item" onclick="typeof openReceiptScanner==='function'&&openReceiptScanner()">
+    <div class="m-quick-icon m-quick-icon-blue">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4"/></svg>
+    </div>
+    <span class="m-quick-label">Escanear</span>
+  </button>
+  <button class="m-quick-item" onclick="typeof openIA==='function'?openIA():pwaNavRial('ia')">
+    <div class="m-quick-icon m-quick-icon-purple">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6L12 3Z"/></svg>
+    </div>
+    <span class="m-quick-label">IA</span>
+  </button>
 </div>
 
 <!-- WALLET / MIS SALDOS SECTION -->
@@ -588,113 +560,51 @@ function onHcaptchaLoad() {
   </div>
 
 
-  <!-- KPI STRIP -->
-  <div class="kpi-strip" id="kpi-strip">
-    <div class="kpi green" data-kpi-id="ingresos">
-      <div class="kpi-header-row">
-        <div style="display:flex;align-items:center;gap:4px">
-          <span class="drag-handle" style="cursor:grab;color:rgba(139,148,158,0.5);font-size:.7rem;user-select:none">⠿</span>
-          <div class="kpi-label" style="margin:0">Ingresos</div>
-        </div>
-        <div class="kpi-action-row" style="margin:0">
-          <button class="kpi-mini-btn" onclick="showCardInfo('k-ingresos')" title="¿Qué es?">ℹ️</button>
-          <button class="kpi-mini-btn" onclick="askCardIA('k-ingresos')" title="Analizar con IA">🤖</button>
-        </div>
+  <!-- ═══ KPI GRID 2-COL — m-main.jsx ScreenHome KPIs ═══ -->
+  <!-- padding 12px 16px 4px · 1fr 1fr · gap 8 · card ink-2 radius 12 padding 12 -->
+  <div class="m-kpis-grid" id="kpi-strip">
+    <!-- Ingresos -->
+    <div class="m-kpi-card" data-kpi-id="ingresos">
+      <div class="m-kpi-header">
+        <span class="m-kpi-label-text">Ingresos</span>
+        <span class="m-kpi-delta m-kpi-delta-pos" id="k-ingresos-sub">del mes</span>
       </div>
-      <div class="kpi-val" id="k-ingresos">$0</div>
-      <div class="kpi-sub" id="k-ingresos-sub">del mes</div>
-      <div class="kpi-bar" id="k-bar-green" style="width:70%"></div>
+      <div class="m-kpi-val num" id="k-ingresos">$0</div>
     </div>
-    <div class="kpi red" data-kpi-id="gastos">
-      <div class="kpi-header-row">
-        <div style="display:flex;align-items:center;gap:4px">
-          <span class="drag-handle" style="cursor:grab;color:rgba(139,148,158,0.5);font-size:.7rem;user-select:none">⠿</span>
-          <div class="kpi-label" style="margin:0">Gastos</div>
-        </div>
-        <div class="kpi-action-row" style="margin:0">
-          <button class="kpi-mini-btn" onclick="showCardInfo('k-gastos')" title="¿Qué es?">ℹ️</button>
-          <button class="kpi-mini-btn" onclick="askCardIA('k-gastos')" title="Analizar con IA">🤖</button>
-        </div>
+    <!-- Gastos -->
+    <div class="m-kpi-card" data-kpi-id="gastos">
+      <div class="m-kpi-header">
+        <span class="m-kpi-label-text">Gastos</span>
+        <span class="m-kpi-delta m-kpi-delta-neg" id="k-gastos-sub">del mes</span>
       </div>
-      <div class="kpi-val" id="k-gastos">$0</div>
-      <div class="kpi-sub" id="k-gastos-sub">del mes</div>
-      <div class="kpi-bar" style="width:60%"></div>
+      <div class="m-kpi-val num" id="k-gastos">$0</div>
     </div>
-    <div class="kpi blue" data-kpi-id="ahorros">
-      <div class="kpi-header-row">
-        <div style="display:flex;align-items:center;gap:4px">
-          <span class="drag-handle" style="cursor:grab;color:rgba(139,148,158,0.5);font-size:.7rem;user-select:none">⠿</span>
-          <div class="kpi-label" style="margin:0">Ahorros</div>
-        </div>
-        <div class="kpi-action-row" style="margin:0">
-          <button class="kpi-mini-btn" onclick="showCardInfo('k-ahorros')" title="¿Qué es?">ℹ️</button>
-          <button class="kpi-mini-btn" onclick="askCardIA('k-ahorros')" title="Analizar con IA">🤖</button>
-        </div>
+    <!-- Ahorros -->
+    <div class="m-kpi-card" data-kpi-id="ahorros">
+      <div class="m-kpi-header">
+        <span class="m-kpi-label-text">Ahorros</span>
+        <span class="m-kpi-delta m-kpi-delta-muted" id="k-ahorros-sub">Total: $0</span>
       </div>
-      <div class="kpi-val" id="k-ahorros">$0</div>
-      <div class="kpi-sub" id="k-ahorros-sub">Total: $0</div>
-      <div class="kpi-bar" style="width:40%"></div>
+      <div class="m-kpi-val num" id="k-ahorros">$0</div>
     </div>
-    <div class="kpi gold" data-kpi-id="balance">
-      <div class="kpi-header-row">
-        <div style="display:flex;align-items:center;gap:4px">
-          <span class="drag-handle" style="cursor:grab;color:rgba(139,148,158,0.5);font-size:.7rem;user-select:none">⠿</span>
-          <div class="kpi-label" style="margin:0">Balance</div>
-        </div>
-        <div class="kpi-action-row" style="margin:0">
-          <button class="kpi-mini-btn" onclick="showCardInfo('k-balance')" title="¿Qué es?">ℹ️</button>
-          <button class="kpi-mini-btn" onclick="askCardIA('k-balance')" title="Analizar con IA">🤖</button>
-        </div>
+    <!-- Balance -->
+    <div class="m-kpi-card" data-kpi-id="balance">
+      <div class="m-kpi-header">
+        <span class="m-kpi-label-text">Balance</span>
+        <span class="m-kpi-delta m-kpi-delta-muted" id="k-balance-sub">ing−gas</span>
       </div>
-      <div class="kpi-val" id="k-balance">$0</div>
-      <div class="kpi-sub">ing − gas + ajustes</div>
-      <div class="kpi-bar" style="width:50%"></div>
+      <div class="m-kpi-val num" id="k-balance">$0</div>
     </div>
-    <div class="kpi purple" data-kpi-id="score">
-      <div class="kpi-header-row">
-        <div style="display:flex;align-items:center;gap:4px">
-          <span class="drag-handle" style="cursor:grab;color:rgba(139,148,158,0.5);font-size:.7rem;user-select:none">⠿</span>
-          <div class="kpi-label" style="margin:0">Score</div>
-        </div>
-        <div class="kpi-action-row" style="margin:0">
-          <button class="kpi-mini-btn" onclick="showCardInfo('k-score')" title="¿Qué es?">ℹ️</button>
-          <button class="kpi-mini-btn" onclick="askCardIA('k-score')" title="Analizar con IA">🤖</button>
-        </div>
-      </div>
-      <div class="kpi-val" id="k-score">—</div>
-      <div class="kpi-sub" id="k-score-label">—</div>
-      <div class="kpi-bar" id="k-score-bar" style="width:0%"></div>
-    </div>
-    <div class="kpi orange" data-kpi-id="emergencia">
-      <div class="kpi-header-row">
-        <div style="display:flex;align-items:center;gap:4px">
-          <span class="drag-handle" style="cursor:grab;color:rgba(139,148,158,0.5);font-size:.7rem;user-select:none">⠿</span>
-          <div class="kpi-label" style="margin:0">F. Emergencia</div>
-        </div>
-        <div class="kpi-action-row" style="margin:0">
-          <button class="kpi-mini-btn" onclick="showCardInfo('k-emergency')" title="¿Qué es?">ℹ️</button>
-          <button class="kpi-mini-btn" onclick="askCardIA('k-emergency')" title="Analizar con IA">🤖</button>
-        </div>
-      </div>
-      <div class="kpi-val" id="k-emergency">$0</div>
-      <div class="kpi-sub" id="k-emergency-sub">Total: $0</div>
-      <div class="kpi-bar" style="width:30%"></div>
-    </div>
-    <div class="kpi teal" data-kpi-id="forecast">
-      <div class="kpi-header-row">
-        <div style="display:flex;align-items:center;gap:4px">
-          <span class="drag-handle" style="cursor:grab;color:rgba(139,148,158,0.5);font-size:.7rem;user-select:none">⠿</span>
-          <div class="kpi-label" style="margin:0">Predicción Anual</div>
-        </div>
-        <div class="kpi-action-row" style="margin:0">
-          <button class="kpi-mini-btn" onclick="showCardInfo('k-forecast')" title="¿Qué es?">ℹ️</button>
-          <button class="kpi-mini-btn" onclick="askCardIA('k-forecast')" title="Analizar con IA">🤖</button>
-        </div>
-      </div>
-      <div class="kpi-val" id="k-forecast">$0</div>
-      <div class="kpi-sub">ahorro estimado</div>
-      <div class="kpi-bar" style="width:55%"></div>
-    </div>
+  </div>
+  <!-- IDs legacy compatibles: Score · Emergencia · Forecast · bar (JS los actualiza, no visibles en mobile) -->
+  <div style="display:none" aria-hidden="true">
+    <span id="k-score">—</span>
+    <span id="k-score-label">—</span>
+    <span id="k-score-bar"></span>
+    <span id="k-emergency">$0</span>
+    <span id="k-emergency-sub">Total: $0</span>
+    <span id="k-forecast">$0</span>
+    <span id="k-bar-green"></span>
   </div>
 
 <!-- ALERTAS DEL MES -->
@@ -719,13 +629,37 @@ function onHcaptchaLoad() {
           <button onclick="openCatRules()" style="background:#13181f;border:1px solid #21262d;border-radius:20px;padding:7px 14px;font-size:.72rem;color:#e6edf3;cursor:pointer;display:flex;align-items:center;gap:5px">🤖 Reglas</button>
         </div>
 
-  <div id="mobile-recent-txn">
-  <div class="wallet-section-header">
-    <span class="wallet-section-title">Últimos movimientos</span>
-    <button class="mobile-section-seeall" onclick="openSearch()">Ver todos →</button>
+  <!-- ═══ INSIGHT IA — m-main.jsx ScreenHome insight card ═══ -->
+  <div class="m-insight-card">
+    <div class="m-insight-inner">
+      <div class="m-insight-top">
+        <div class="m-insight-spark-icon">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m12 3 1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6L12 3Z"/></svg>
+        </div>
+        <span class="m-insight-badge">Insight</span>
+        <span class="m-insight-time">Hace 2h</span>
+      </div>
+      <div class="m-insight-text font-display">
+        Análisis disponible — toca <strong>Ver detalle</strong> para tu resumen IA.
+      </div>
+      <div class="m-insight-actions">
+        <button class="m-pill-btn-primary" onclick="typeof openIA==='function'&&openIA()">Ver detalle</button>
+        <button class="m-pill-btn-ghost">Descartar</button>
+      </div>
+    </div>
   </div>
-  <div id="mobile-recent-list"></div>
-</div>
+
+  <!-- ═══ ÚLTIMOS MOVIMIENTOS — m-main.jsx ScreenHome recent transactions ═══ -->
+  <!-- padding 14px 16px 24px · card ink-2 radius 14 -->
+  <div class="m-recent-section" id="mobile-recent-txn">
+    <div class="m-section-header">
+      <h2 class="m-section-title font-display">Últimos movimientos</h2>
+      <button class="m-link-btn" onclick="openSearch()">Ver todos →</button>
+    </div>
+    <div class="m-txn-list-wrap">
+      <div id="mobile-recent-list"></div>
+    </div>
+  </div>
 
 
 
@@ -1643,23 +1577,34 @@ window._sbLoadPromise = new Promise(function(resolve, reject) {
 <script src="init.js"></script>
 <script src="notificaciones-panel.js"></script>
 
-<!-- ═══ BARRA NAVEGACIÓN INFERIOR F2 2026 (móvil PWA) ═══ -->
+<!-- ═══ TAB BAR — m-shell.jsx TabBar() · 5 celdas · FAB central ═══ -->
+<!-- grid 5 · padding 8px 12px 22px · border-top line · FAB -32px overhang amber 56×56 -->
 <nav class="pwa-nav" id="pwa-nav">
-  <button class="pwa-nav-btn active" id="nav-dashboard" onclick="pwaNavRial('dashboard')">
-    <span class="nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V10.5Z"/></svg></span>
-    <span class="nav-label">Inicio</span>
+  <!-- Inicio -->
+  <button class="m-tab active" id="nav-dashboard" onclick="pwaNavRial('dashboard')">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V10.5Z"/></svg>
+    <span>Inicio</span>
   </button>
-  <button class="pwa-nav-btn" id="nav-mas" onclick="pwaNavRial('mas')">
-    <span class="nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>
-    <span class="nav-label">Menú</span>
+  <!-- Movimientos -->
+  <button class="m-tab" id="nav-movimientos" onclick="typeof openSearch==='function'&&openSearch()">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+    <span>Mov.</span>
   </button>
-  <button class="pwa-nav-btn" id="nav-ia" onclick="pwaNavRial('ia')">
-    <span class="nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6L12 3Z"/></svg></span>
-    <span class="nav-label">IA</span>
+  <!-- FAB central — 56×56 circle amber -32px overhang -->
+  <div class="m-fab-cell">
+    <button class="m-fab" id="fab-nuevo" onclick="haptic&&haptic();typeof toggleFabMenu==='function'&&toggleFabMenu()" title="Nuevo movimiento" aria-label="Nuevo movimiento">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+  </div>
+  <!-- Cuentas -->
+  <button class="m-tab" id="nav-cuentas" onclick="typeof openModalCuentas==='function'&&openModalCuentas()">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 11h20M7 16h3"/></svg>
+    <span>Cuentas</span>
   </button>
-  <button class="pwa-nav-btn" id="nav-config" onclick="pwaNavRial('config')">
-    <span class="nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></span>
-    <span class="nav-label">Config</span>
+  <!-- Más (config / settings) -->
+  <button class="m-tab" id="nav-mas" onclick="pwaNavRial('mas')">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+    <span>Más</span>
   </button>
 </nav>
 
@@ -1682,8 +1627,7 @@ window._sbLoadPromise = new Promise(function(resolve, reject) {
     <span class="fab-sub-label">Plantilla IA</span>
   </button>
 </div>
-<!-- ═══ FAB — Botón flotante ═══ -->
-<button id="fab-nuevo" onclick="haptic();toggleFabMenu()" title="Nuevo movimiento" aria-label="Nuevo movimiento">＋</button>
+<!-- FAB ahora está integrado dentro del #pwa-nav como .m-fab en la celda central -->
 
 <!-- ═══ MENÚ MÓVIL "MÁS" — bottom sheet ═══ -->
 <div id="mobile-menu-overlay" onclick="closeMobileMenu(event)" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000">

@@ -1,0 +1,524 @@
+/* ════════════════════════════════════════════════════════════
+   mobile-uix.css — Mobile UIX Layer · Mis Finanzas 2026
+   ────────────────────────────────────────────────────────────
+   Fuente:  m-shell.jsx (TabBar · AppHeader · RowLink · Sheet)
+            m-main.jsx  (ScreenHome · ScreenTxn · ScreenAccounts
+                         ScreenAI · ScreenMore)
+   ────────────────────────────────────────────────────────────
+   REGLAS:
+   · Solo aplica en ≤ 819px o body.is-mobile
+   · NUNCA modificar tokens.css · styles.css · app-*.js
+   · Todos los estilos van aquí, NO en shell/dashboard/pages.css
+   · Markup reconstruido fiel al JSX — NO re-skin de clases legacy
+   ════════════════════════════════════════════════════════════ */
+
+
+/* ═══════════════════════════════════════════════════════════
+   1. TAB BAR — 5 celdas · FAB central con -32px overhang
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-shell.jsx TabBar()
+   grid 5 cols · padding 8px 12px 22px · border-top line
+*/
+@media (max-width: 819px) {
+  #pwa-nav {
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    align-items: center !important;
+    height: auto !important;
+    padding: 8px 12px max(22px, calc(22px + env(safe-area-inset-bottom, 0px))) !important;
+    /* Cancelar herencia de align-items: stretch */
+    align-items: center !important;
+  }
+}
+body.is-mobile #pwa-nav {
+  display: grid !important;
+  grid-template-columns: repeat(5, 1fr) !important;
+  align-items: center !important;
+  height: auto !important;
+  padding: 8px 12px max(22px, calc(22px + env(safe-area-inset-bottom, 0px))) !important;
+}
+
+/* Tab item: Inicio · Mov. · Cuentas · Más */
+.m-tab {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 3px !important;
+  padding: 6px 4px !important;
+  color: var(--fg-mute) !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  font-size: 10px !important;
+  font-weight: 400 !important;
+  line-height: 1 !important;
+  font-family: var(--f-ui) !important;
+  transition: color .15s !important;
+  text-align: center !important;
+  width: 100% !important;
+}
+.m-tab.active,
+.m-tab[data-active="true"] {
+  color: var(--amber) !important;
+  font-weight: 600 !important;
+}
+.m-tab svg { display: block; flex-shrink: 0; }
+
+/* FAB cell — columna central */
+.m-fab-cell {
+  display: grid !important;
+  place-items: center !important;
+}
+
+/* FAB — 56×56 circle gradient amber · -32px overhang */
+.m-fab {
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, var(--amber) 0%, var(--amber-s) 100%) !important;
+  display: grid !important;
+  place-items: center !important;
+  color: var(--ink-0) !important;
+  border: none !important;
+  cursor: pointer !important;
+  box-shadow: 0 8px 20px rgba(224,168,74,.4), 0 2px 4px rgba(0,0,0,.3) !important;
+  margin-top: -32px !important;
+  /* Cancelar posicionamiento floating del #fab-nuevo legacy */
+  position: static !important;
+  bottom: auto !important;
+  right: auto !important;
+  transform: none !important;
+  font-size: 0 !important; /* reset texto fallback */
+  transition: transform .15s, box-shadow .15s !important;
+  flex-shrink: 0 !important;
+}
+.m-fab:active {
+  transform: scale(.93) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   2. USER BAR — avatar · nombre · ojo · campana
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-main.jsx ScreenHome user bar
+   padding 6px 16px 8px · flex row · gap 10
+*/
+.m-userbar {
+  display: flex !important;
+  align-items: center !important;
+  padding: 6px 16px 8px !important;
+  gap: 10px !important;
+  background: transparent !important;
+}
+
+/* Avatar — 34×34 circle teal→amber */
+.m-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--teal, #3d8b82), var(--amber, #e0a84a));
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink-0, #010409);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.m-userbar-info {
+  flex: 1;
+  min-width: 0;
+}
+.m-userbar-greet {
+  font-size: 11px;
+  color: var(--fg-mute);
+  line-height: 1.2;
+}
+.m-userbar-name {
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* Icon circle: 34×34 rounded square — eye + bell */
+.m-icon-circle {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 10px !important;
+  background: var(--ink-2) !important;
+  border: 1px solid var(--line) !important;
+  display: grid !important;
+  place-items: center !important;
+  color: var(--fg-dim) !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+  padding: 0 !important;
+  transition: background .15s !important;
+}
+.m-icon-circle:active {
+  background: var(--ink-3) !important;
+}
+
+/* Punto de notificación sobre la campana */
+.m-notif-dot {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+  pointer-events: none;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   3. HERO BALANCE — 54px display font · sparkline
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-main.jsx ScreenHome hero
+   padding 14px 22px 8px · font-size 54 · display-font
+*/
+.m-hero {
+  padding: 14px 22px 8px;
+}
+
+.m-hero-label {
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+/* Importe principal: 54px font-display */
+.m-hero-amount {
+  font-size: 54px !important;
+  line-height: 1 !important;
+  letter-spacing: -.02em !important;
+  margin-top: 6px !important;
+  font-weight: 400 !important;
+  font-family: var(--f-display) !important;
+}
+
+/* Decimales: .55em ≈ 29.7px, color fg-dim */
+.m-hero-dec {
+  color: var(--fg-dim) !important;
+  font-size: .55em !important;
+  font-weight: 400 !important;
+}
+
+/* Equivalencia en Bs */
+.m-hero-bs-row {
+  font-size: 12px;
+  color: var(--fg-mute);
+  margin-top: 4px;
+  min-height: 16px;
+}
+
+/* Pills de moneda: USD · Bs · EUR */
+.m-hero-pills-row {
+  display: flex !important;
+  gap: 6px !important;
+  margin-top: 10px !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+}
+
+.m-hero-pill {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  color: var(--fg-mute);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.m-hero-pill.active {
+  background: var(--amber) !important;
+  color: var(--ink-0) !important;
+  border-color: transparent !important;
+}
+
+/* Sparkline del hero */
+.m-hero-chart {
+  margin-top: 14px;
+  height: 36px;
+  overflow: hidden;
+  position: relative;
+}
+.m-hero-chart canvas {
+  width: 100% !important;
+  height: 36px !important;
+  display: block;
+}
+
+/* Etiquetas del eje temporal debajo del sparkline */
+.m-hero-chart-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 9px;
+  color: var(--fg-mute);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   4. ACCIONES RÁPIDAS — grid 4 columnas · SVG icons
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-main.jsx ScreenHome acciones rápidas
+   padding 8px 16px 4px · repeat(4,1fr) · gap 8
+*/
+.m-quick-grid {
+  padding: 8px 16px 4px !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 8px !important;
+  overflow: visible !important;
+}
+
+.m-quick-item {
+  background: var(--ink-2) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 14px !important;
+  padding: 11px 6px !important;
+  display: grid !important;
+  place-items: center !important;
+  gap: 6px !important;
+  cursor: pointer !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  transition: background .15s !important;
+}
+.m-quick-item:active {
+  background: var(--ink-3) !important;
+}
+
+.m-quick-icon {
+  display: grid;
+  place-items: center;
+  line-height: 0;
+}
+.m-quick-icon-amber { color: var(--amber); }
+.m-quick-icon-teal  { color: var(--teal-s, #3d8b82); }
+.m-quick-icon-blue  { color: var(--info, #58a6ff); }
+.m-quick-icon-purple{ color: #b0a3c7; }
+
+.m-quick-label {
+  font-size: 11px !important;
+  color: var(--fg-dim) !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   5. KPIs — grid 2 columnas · cards limpias
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-main.jsx ScreenHome KPIs
+   padding 12px 16px 4px · 1fr 1fr · gap 8
+   card: ink-2 · line · radius 12 · padding 12
+*/
+.m-kpis-grid {
+  padding: 12px 16px 4px !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+  overflow: visible !important;
+}
+
+.m-kpi-card {
+  background: var(--ink-2) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 12px !important;
+  padding: 12px !important;
+}
+
+.m-kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.m-kpi-label-text {
+  font-size: 9.5px;
+  color: var(--fg-mute);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* Delta badge: +/- % */
+.m-kpi-delta {
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.m-kpi-delta-pos {
+  background: rgba(88,178,106,.15);
+  color: var(--pos, #3fb950);
+}
+.m-kpi-delta-neg {
+  background: rgba(248,81,73,.15);
+  color: var(--neg, #f85149);
+}
+.m-kpi-delta-muted {
+  background: var(--ink-3);
+  color: var(--fg-mute);
+}
+
+/* Valor principal: 17px · 500 */
+.m-kpi-val {
+  font-size: 17px !important;
+  font-weight: 500 !important;
+  line-height: 1.2 !important;
+  margin-top: 0 !important;
+  color: var(--fg) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   6. INSIGHT IA — card gradiente amber
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-main.jsx ScreenHome insight IA
+   padding 12px 16px 4px · gradient amber-d → ink-2
+*/
+.m-insight-card {
+  padding: 12px 16px 4px;
+}
+.m-insight-inner {
+  padding: 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--amber-d, rgba(224,168,74,.12)) 0%, transparent 75%), var(--ink-2);
+  border: 1px solid var(--line);
+}
+.m-insight-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.m-insight-spark-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--amber);
+  color: var(--ink-0);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.m-insight-badge {
+  font-size: 9.5px;
+  letter-spacing: .12em;
+  color: var(--amber);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.m-insight-time {
+  font-size: 10px;
+  color: var(--fg-mute);
+  margin-left: auto;
+}
+.m-insight-text {
+  font-size: 16px;
+  line-height: 1.4;
+  font-family: var(--f-display);
+}
+.m-insight-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 6px;
+}
+.m-pill-btn-primary {
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  background: var(--amber);
+  color: var(--ink-0);
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+}
+.m-pill-btn-ghost {
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  background: transparent;
+  color: var(--fg-dim);
+  border: 1px solid var(--line);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   7. ÚLTIMOS MOVIMIENTOS — card container
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-main.jsx ScreenHome recent transactions
+   padding 14px 16px 24px · card ink-2 · radius 14
+*/
+.m-recent-section {
+  padding: 14px 16px 24px;
+}
+.m-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+.m-section-title {
+  font-size: 18px;
+  font-weight: 400;
+  font-family: var(--f-display);
+  line-height: 1.2;
+}
+.m-link-btn {
+  font-size: 11.5px;
+  color: var(--amber);
+  background: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.m-txn-list-wrap {
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   8. OCULTAR ELEMENTOS LEGACY REEMPLAZADOS
+   ═══════════════════════════════════════════════════════════
+   El m-userbar reemplaza .mobile-topbar
+   Las nuevas secciones reemplazan las legacy (hero-card, kpi-strip, etc.)
+*/
+@media (max-width: 819px) {
+  /* Old topbar → reemplazado por .m-userbar */
+  .mobile-topbar { display: none !important; }
+
+  /* Padding inferior del main para el tabbar */
+  .main {
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
+    margin-top: 0 !important;
+  }
+
+  /* El m-userbar sale del #mobile-topbar (está en el main antes del hero) */
+  /* Espaciado top del main: el m-userbar está dentro del main */
+  .main > .m-userbar {
+    padding-top: 8px;
+  }
+}
+body.is-mobile .mobile-topbar { display: none !important; }
+body.is-mobile .main {
+  padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
+}

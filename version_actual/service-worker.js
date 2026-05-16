@@ -1,11 +1,11 @@
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  AI-CONTEXT — service-worker.js · Mis Finanzas 2026                 ║
-// ║  VERSIÓN: finanzas-v59-batch60                                       ║
-// ║  batch58: pixel-perfect Fase A2.1 — hero markup anatomía exacta     ║
-// ║  bundle (hero-card-inner, chart-wrap), IDs/multi-moneda preservados.║
+// ║  VERSIÓN: finanzas-v59-batch64                                       ║
+// ║  batch64: Mobile UIX reconstruido — markup fiel al bundle JSX.       ║
+// ║  mobile-uix.css nueva capa. TabBar 5 celdas FAB. Hero 54px. KPI 2x2.║
 // ╚══════════════════════════════════════════════════════════════════════╝
 
-const CACHE_VERSION = 'finanzas-v59-batch60';
+const CACHE_VERSION = 'finanzas-v59-batch64';
 const CDN_CACHE     = 'finanzas-cdn-v44';
 
 const PRECACHE_URLS = [
@@ -20,6 +20,7 @@ const PRECACHE_URLS = [
   '/shell.css',
   '/dashboard.css',
   '/pages.css',
+  '/mobile-uix.css',
   '/theme.js',
   '/charts-ui.js',
   '/fonts/instrument-serif-400.woff2',
@@ -103,6 +104,7 @@ self.addEventListener('fetch', event => {
     '/app-analytics.js', '/app-cuentas.js', '/app-numpad.js',
     '/app-voice.js', '/app-features.js', '/app-cuentas-v2.js',
     '/app-docs.js', '/app-smart.js', '/styles.css', '/styles-desktop.css',
+    '/mobile-uix.css', '/shell.css', '/dashboard.css', '/pages.css',
     '/vapid-push.js', '/gcal-integration.js', '/notificaciones-panel.js',
     '/app-calendar.js',
   ];

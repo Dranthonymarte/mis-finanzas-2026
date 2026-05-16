@@ -75,3 +75,18 @@ button,
   color: inherit;
   font-family: inherit;
 }
+
+/* ── PIN shake animation ──────────────────────── */
+@keyframes pin-shake {
+  0%, 100% { transform: translateX(0);     }
+  15%       { transform: translateX(-10px); }
+  30%       { transform: translateX(10px);  }
+  45%       { transform: translateX(-8px);  }
+  60%       { transform: translateX(8px);   }
+  75%       { transform: translateX(-4px);  }
+  90%       { transform: translateX(4px);   }
+}
+
+.pin-shake {
+  animation: pin-shake 0.54s cubic-bezier(.36,.07,.19,.97) both;
+}

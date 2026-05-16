@@ -1,17 +1,14 @@
-import { type ReactNode } from 'react'
-import { useLocation } from 'react-router-dom'
+// ═══════════════════════════════════════════════════
+// AppShell — main app layout (used as layout route)
+// Renders <Outlet /> for child routes + fixed TabBar.
+// Auth pages (Onboarding, Login) do NOT use this shell.
+// ═══════════════════════════════════════════════════
+
+import { Outlet, useLocation } from 'react-router-dom'
 import { useAppStore } from '../../store/app'
 import TabBar from './TabBar'
 
-interface AppShellProps {
-  children: ReactNode
-}
-
-/**
- * Root layout: full-height flex column.
- * children (pages) scroll inside; TabBar is fixed at bottom.
- */
-export default function AppShell({ children }: AppShellProps) {
+export default function AppShell() {
   const location     = useLocation()
   const navDirection = useAppStore((s) => s.navDirection)
 
@@ -22,41 +19,40 @@ export default function AppShell({ children }: AppShellProps) {
   return (
     <div
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100dvh',
-        background: 'var(--ink-0)',
-        position: 'relative',
+        display:        'flex',
+        flexDirection:  'column',
+        minHeight:      '100dvh',
+        background:     'var(--ink-1)',
+        position:       'relative',
       }}
     >
-      {/* Page area */}
+      {/* ── Scrollable page area ── */}
       <div
         key={location.key}
         className={slideClass}
         style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          overflowY: 'auto',
-          overflowX: 'hidden',
-          /* Extra bottom padding so content isn't hidden behind TabBar */
-          paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
+          flex:                    1,
+          display:                 'flex',
+          flexDirection:           'column',
+          overflowY:               'auto',
+          overflowX:               'hidden',
+          paddingBottom:           'calc(80px + env(safe-area-inset-bottom, 0px))',
           WebkitOverflowScrolling: 'touch',
         }}
       >
-        {children}
+        <Outlet />
       </div>
 
-      {/* Tab Bar — fixed at bottom */}
+      {/* ── TabBar — fixed at bottom ── */}
       <div
         style={{
-          position: 'fixed',
-          bottom: 0,
-          left: '50%',
+          position:  'fixed',
+          bottom:    0,
+          left:      '50%',
           transform: 'translateX(-50%)',
-          width: '100%',
-          maxWidth: 430,
-          zIndex: 100,
+          width:     '100%',
+          maxWidth:  430,
+          zIndex:    100,
         }}
       >
         <TabBar />

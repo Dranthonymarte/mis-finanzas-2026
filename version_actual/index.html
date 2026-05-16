@@ -405,10 +405,10 @@ function onHcaptchaLoad() {
     <button class="btn-header desktop-only" onclick="openIA()" style="border-color:#bc8cff;color:#bc8cff">🤖 IA Llama</button>
     <button class="btn-header desktop-only" onclick="openDineroFuera()" style="border-color:#3fb950;color:#3fb950">💰 Dinero Fuera</button>
     <button class="btn-header desktop-only" onclick="openIntelFinanciera()" style="border-color:#e3b341;color:#e3b341">🧠 Análisis</button>
-    <button class="btn-header primary mobile-sm" onclick="sendReport()">📸 Informe</button>
+    <button class="btn-header desktop-only" onclick="sendReport()">📸 Informe</button>
     <button class="btn-header desktop-only" onclick="openConexiones()" style="border-color:#58a6ff;color:#58a6ff" title="Registro de conexiones">🔐 Sesiones</button>
-    <button class="btn-header" id="btn-desktop-mode" onclick="toggleDesktopMode()" style="font-size:.65rem" title="Visualizar en modo escritorio">🖥️</button>
-    <button class="btn-header" onclick="doLogout()" style="border-color:#f85149;color:#f85149" title="Cerrar sesión">🚪 Salir</button>
+    <button class="btn-header desktop-only" id="btn-desktop-mode" onclick="toggleDesktopMode()" style="font-size:.65rem" title="Visualizar en modo escritorio">🖥️</button>
+    <button class="btn-header desktop-only" onclick="doLogout()" style="border-color:#f85149;color:#f85149" title="Cerrar sesión">🚪 Salir</button>
     <button onclick="openNovedades()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:4px 9px;border-radius:5px;font-size:var(--font-xs);cursor:pointer;display:none" id="btn-novedades" class="desktop-only">✨ Novedades</button> <span id="user-email-badge" style="font-size:.65rem;color:#8b949e;display:none"></span>
   </div>
 </div>
@@ -1617,10 +1617,16 @@ function setMovTipo(val) {
 
     <!-- PANTALLAS DE LISTAS (tipos/cats/subcats/presupuestos) -->
     <div class="sett-screen" id="sett-lista">
-      <div class="sett-header">
-        <button class="sett-back" onclick="settNav('main')">‹ Volver</button>
-        <div class="sett-title" id="sett-lista-title">Lista</div>
-        <button onclick="closeSettings()" style="background:none;border:none;color:#8b949e;font-size:1.1rem;cursor:pointer;width:32px;text-align:right">✕</button>
+      <div class="m-app-header" style="flex-shrink:0">
+        <button class="m-app-header-back" onclick="settNav('main')" aria-label="Volver">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="m-app-header-info" style="text-align:center">
+          <div class="m-app-header-title" id="sett-lista-title">Lista</div>
+        </div>
+        <button class="m-app-header-icon-btn" onclick="closeSettings()" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M6 18 18 6"/></svg>
+        </button>
       </div>
       <div style="overflow-y:auto;flex:1">
         <div style="font-size:.68rem;color:var(--muted);padding:10px 16px 4px">Toca para editar · ✕ para eliminar</div>
@@ -1715,9 +1721,8 @@ window._sbLoadPromise = new Promise(function(resolve, reject) {
   </button>
   <!-- FAB central — 56×56 circle amber -32px overhang -->
   <div class="m-fab-cell">
-    <button class="m-fab" id="fab-nuevo" onclick="haptic&&haptic();typeof toggleFabMenu==='function'&&toggleFabMenu()" title="Nuevo movimiento" aria-label="Nuevo movimiento">
-      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-    </button>
+    <!-- SVG removed — icon via CSS ::before (#fab-nuevo::before), textContent-proof -->
+    <button class="m-fab" id="fab-nuevo" onclick="haptic&&haptic();typeof toggleFabMenu==='function'&&toggleFabMenu()" title="Nuevo movimiento" aria-label="Nuevo movimiento"></button>
   </div>
   <!-- Cuentas -->
   <button class="m-tab" id="nav-cuentas" onclick="typeof openModalCuentas==='function'&&openModalCuentas()">

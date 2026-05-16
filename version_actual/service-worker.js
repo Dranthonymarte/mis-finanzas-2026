@@ -1,12 +1,12 @@
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  AI-CONTEXT — service-worker.js · Mis Finanzas 2026                 ║
-// ║  VERSIÓN: finanzas-v59-batch66                                       ║
-// ║  batch66: Bug fixes (SW chrome-ext, CSP banks, SIGNED_OUT timer) +  ║
-// ║  UIX rebuild root: modal-mov ScreenNewTxn, modal-ia ScreenAI,       ║
-// ║  CSS §18/§23 flex-column header, m-tipo-tabs, m-mov-body.           ║
+// ║  VERSIÓN: finanzas-v59-batch67                                       ║
+// ║  batch67: Fix 7 bugs UI confirmados: m-tab CSS, header legacy,      ║
+// ║  FAB .open state + textContent-proof ::before, sett-screen mutex,   ║
+// ║  AccountCards base, overflow-x 390px, sett-lista m-app-header.      ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 
-const CACHE_VERSION = 'finanzas-v59-batch66';
+const CACHE_VERSION = 'finanzas-v59-batch67';
 const CDN_CACHE     = 'finanzas-cdn-v44';
 
 const PRECACHE_URLS = [

@@ -1,0 +1,77 @@
+/* ═══════════════════════════════════════════════════
+   Mis Finanzas 2026 — React app base reset
+   ═══════════════════════════════════════════════════ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--ink-0);
+  color: var(--fg);
+  font-family: var(--f-ui);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  max-width: 430px;       /* phone viewport cap */
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Page slide transitions ───────────────── */
+@keyframes slideInFromRight {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0);    }
+}
+
+@keyframes slideInFromLeft {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0);     }
+}
+
+.page-slide-forward {
+  animation: slideInFromRight 260ms cubic-bezier(.4, 0, .2, 1) both;
+}
+
+.page-slide-back {
+  animation: slideInFromLeft 260ms cubic-bezier(.4, 0, .2, 1) both;
+}
+
+/* ── Utility classes ──────────────────────── */
+.font-display {
+  font-family: var(--f-display);
+  font-weight: 400;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+}
+
+button,
+[role="button"] {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+}

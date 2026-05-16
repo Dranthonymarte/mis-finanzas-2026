@@ -1,0 +1,130 @@
+/* ═══════════════════════════════════════════════════════════
+   MIS FINANZAS 2026 — Design Tokens (rediseño F1)
+   Paleta amber + teal oxidado sobre base ink-0..4
+   Fuente: handoff Claude Design (23 Abr 2026)
+   Orden: DEBE cargarse ANTES de styles.css
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Self-hosted fonts (F1.1 batch54 — PWA offline) ── */
+@font-face {
+  font-family: 'Instrument Serif';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/instrument-serif-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-var.woff2') format('woff2-variations'),
+       url('/fonts/inter-var.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-var.woff2') format('woff2-variations'),
+       url('/fonts/jetbrains-mono-var.woff2') format('woff2');
+}
+
+:root {
+  /* ── Base — profundidades ── */
+  --ink-0:  #0a0b0d;      /* fondo más oscuro */
+  --ink-1:  #0f1115;      /* superficie app */
+  --ink-2:  #161920;      /* card */
+  --ink-3:  #1d2129;      /* card raised / hover */
+  --ink-4:  #2a2f3a;      /* borde */
+  --line:   #1b1e25;      /* divider sutil */
+
+  /* ── Texto ── */
+  --fg:      #e9ebf0;
+  --fg-dim:  #9aa0ab;
+  --fg-mute: #5c616d;
+
+  /* ── Acentos — amber + teal oxidado ── */
+  --amber:   #e0a84a;     /* acento primario */
+  --amber-s: #f5c572;     /* hover/soft */
+  --amber-d: #2a1f0a;     /* fondo acento oscuro */
+  --teal-2026:   #3d8b82;
+  --teal-2026-s: #5fb3a8;
+  --teal-2026-d: #0e2422;
+  /* Aliases cortos para compatibilidad con bundle y componentes futuros */
+  --teal:   var(--teal-2026);
+  --teal-s: var(--teal-2026-s);
+  --teal-d: var(--teal-2026-d);
+
+  /* ── Semánticos ── */
+  --pos:    #58b26a;      /* ingresos / positivo */
+  --pos-d:  #0f2015;
+  --neg:    #d66a5a;      /* gastos / negativo */
+  --neg-d:  #2a1410;
+  --warn:   #d4a246;
+  --info:   #6a94c4;
+
+  /* ── Tipografía ── */
+  --f-display: 'Instrument Serif', 'Times New Roman', serif;
+  --f-ui:      'Inter', -apple-system, 'Segoe UI', sans-serif;
+  --f-mono:    'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
+
+  --t-mega:  clamp(48px, 7vw, 88px);
+  --t-hero:  clamp(34px, 4.5vw, 56px);
+  --t-h1:    28px;
+  --t-h2:    20px;
+  --t-h3:    16px;
+  --t-md:    14px;
+  --t-sm:    12.5px;
+  --t-xs:    11px;
+  --t-2xs:   10px;
+
+  /* ── Espaciado (escala 4-64) ── */
+  --s-1: 4px;   --s-2: 8px;   --s-3: 12px;  --s-4: 16px;
+  --s-5: 20px;  --s-6: 24px;  --s-8: 32px;  --s-10: 40px;
+  --s-12: 48px; --s-16: 64px;
+
+  /* ── Radios ── */
+  --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 20px; --r-full: 999px;
+
+  /* ── Shadows ── */
+  --shadow-sm: 0 1px 0 rgba(255,255,255,.02) inset, 0 1px 2px rgba(0,0,0,.3);
+  --shadow-md: 0 1px 0 rgba(255,255,255,.03) inset, 0 4px 16px rgba(0,0,0,.4);
+  --shadow-lg: 0 1px 0 rgba(255,255,255,.04) inset, 0 20px 60px rgba(0,0,0,.55);
+
+  /* ── Grid dashboard (F2) ── */
+  --sidebar-w: 240px;
+  --nav-h-2026: 64px;
+}
+
+/* ── Light mode (activar en F6) ── */
+[data-theme="light"] {
+  --ink-0:  #f5f3ee;
+  --ink-1:  #fbfaf7;
+  --ink-2:  #ffffff;
+  --ink-3:  #f0ede6;
+  --ink-4:  #d8d4c8;
+  --line:   #e8e4da;
+
+  --fg:      #1a1c21;
+  --fg-dim:  #5c616d;
+  --fg-mute: #9a9fac;
+
+  --amber:   #b87d1f;
+  --amber-s: #d49a3e;
+  --amber-d: #f7ecd6;
+  --teal-2026:   #2a6a62;
+  --teal-2026-s: #438a80;
+  --teal-2026-d: #deece9;
+
+  --pos:    #2f7a3f;
+  --pos-d:  #e0efd9;
+  --neg:    #b03a28;
+  --neg-d:  #f3dcd6;
+  --warn:   #a67a1b;
+  --info:   #3a6a9e;
+
+  --shadow-sm: 0 1px 2px rgba(30,25,15,.06);
+  --shadow-md: 0 2px 10px rgba(30,25,15,.08), 0 1px 2px rgba(30,25,15,.04);
+  --shadow-lg: 0 20px 50px rgba(30,25,15,.12);
+}

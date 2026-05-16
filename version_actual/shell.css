@@ -346,19 +346,18 @@ body.desktop-force .main {
 #pwa-nav {
   background: var(--ink-1) !important;
   border-top: 1px solid var(--line) !important;
-  height: auto !important;
-  padding: 8px 12px calc(22px + env(safe-area-inset-bottom, 0px)) !important;
+  height: var(--nav-h-2026) !important; /* 64px */
+  padding-bottom: max(0px, env(safe-area-inset-bottom, 0px)) !important;
   display: none;
-  grid-template-columns: repeat(5, 1fr) !important;
-  align-items: center !important;
+  align-items: stretch !important;
 }
 
 /* Mostrar en móvil */
 @media (max-width: 819px) {
-  #pwa-nav { display: grid !important; }
-  .main { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
+  #pwa-nav { display: flex !important; }
+  .main { padding-bottom: calc(var(--nav-h-2026) + 8px) !important; }
 }
-body.is-mobile #pwa-nav { display: grid !important; }
+body.is-mobile #pwa-nav { display: flex !important; }
 body.desktop-force #pwa-nav { display: none !important; }
 
 /* Botones de la barra */
@@ -417,50 +416,10 @@ body.desktop-force #pwa-nav { display: none !important; }
 /* Ocultar pill heredado */
 .pwa-nav-pill { display: none !important; }
 
-/* ── FAB reskin base (amber gradient) ── */
+/* ── FAB separado — reskin ── */
 #fab-nuevo {
   background: linear-gradient(135deg, var(--amber) 0%, var(--amber-s) 100%) !important;
   color: var(--ink-0) !important;
   box-shadow: 0 8px 20px rgba(224,168,74,.4), 0 2px 4px rgba(0,0,0,.3) !important;
   border: none !important;
-}
-
-/* ═══ F1 · Mobile UIX bundle — FAB integrado en TabBar (celda central) ═══ */
-.pwa-nav-fab-slot {
-  display: grid !important;
-  place-items: center !important;
-}
-#pwa-nav #fab-nuevo {
-  position: static !important;
-  inset: auto !important;
-  margin: -32px 0 0 0 !important;
-  width: 56px !important;
-  height: 56px !important;
-  border-radius: 50% !important;
-  display: grid !important;
-  place-items: center !important;
-  font-size: 0 !important;
-  z-index: 2 !important;
-  background: linear-gradient(135deg, var(--amber) 0%, var(--amber-s) 100%) !important;
-  color: var(--ink-0) !important;
-  box-shadow: 0 8px 20px rgba(224,168,74,.4), 0 2px 4px rgba(0,0,0,.3) !important;
-  border: none !important;
-  transition: transform .18s ease !important;
-}
-#pwa-nav #fab-nuevo svg { display: block !important; }
-#pwa-nav #fab-nuevo.fab-open {
-  background: linear-gradient(135deg, var(--amber) 0%, var(--amber-s) 100%) !important;
-  color: var(--ink-0) !important;
-  border: none !important;
-  transform: rotate(45deg) !important;
-}
-/* Icono de cada tab a 18px (spec bundle TabBar) */
-.pwa-nav-btn .nav-icon { width: 18px !important; height: 18px !important; }
-.pwa-nav-btn .nav-icon svg { width: 18px !important; height: 18px !important; }
-/* Submenú FAB: centrado sobre el FAB central */
-#fab-submenu {
-  left: 0 !important;
-  right: 0 !important;
-  bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important;
-  align-items: center !important;
 }

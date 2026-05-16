@@ -401,38 +401,6 @@
   padding: var(--s-4) 0 !important;
 }
 
-/* ═══ F2 · Mobile UIX bundle — User bar (ScreenHome top) ═══ */
-.mobile-userbar {
-  display: none;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 16px 8px;
-}
-@media (max-width: 819px) { .mobile-userbar { display: flex; } }
-body.is-mobile .mobile-userbar { display: flex !important; }
-body.desktop-force .mobile-userbar { display: none !important; }
-.mobile-userbar .mub-avatar {
-  width: 34px; height: 34px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--teal), var(--amber));
-  display: grid; place-items: center;
-  font-weight: 600; font-size: 13px; color: var(--ink-0);
-  flex-shrink: 0;
-}
-.mobile-userbar .mub-greet { flex: 1; min-width: 0; }
-.mobile-userbar .mub-hi { font-size: 11px; color: var(--fg-mute); line-height: 1.2; }
-.mobile-userbar .mub-name { font-size: 13.5px; font-weight: 500; color: var(--fg); line-height: 1.2; }
-.mobile-userbar .mub-icon {
-  width: 34px; height: 34px; border-radius: 10px;
-  background: var(--ink-2); border: 1px solid var(--line);
-  display: grid; place-items: center; color: var(--fg-dim);
-  flex-shrink: 0; position: relative; cursor: pointer;
-}
-.mobile-userbar .mub-icon:active { background: var(--ink-3); }
-.mobile-userbar .mub-dot {
-  position: absolute; top: 7px; right: 7px;
-  width: 6px; height: 6px; border-radius: 50%; background: var(--amber);
-}
-
 /* ─── 10. DESKTOP GRID (≥820px) ──────────────────────────── */
 
 @media (min-width: 820px) {

@@ -2058,6 +2058,61 @@ window._sbLoadPromise = new Promise(function(resolve, reject) {
   </div>
 </div>
 
+<!-- ═══ SCREEN MOVIMIENTOS — m-main.jsx ScreenTxn() ═══ -->
+<!-- AppHeader large "Movimientos" · summary 3-col · filter chips · txn list -->
+<!-- JS: openScreenTxn() → .active; closeScreenTxn() → remove .active         -->
+<div id="screen-txn-panel">
+
+  <!-- AppHeader large ─────────────────────────────────────────────────── -->
+  <div class="m-app-header large">
+    <button class="m-app-header-icon-btn" onclick="closeScreenTxn&&closeScreenTxn()" aria-label="Atrás">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+    <div class="m-app-header-info">
+      <div class="m-app-header-sub" id="txn-panel-sub">este mes</div>
+      <h1 class="m-app-header-title">Movimientos</h1>
+    </div>
+    <div class="m-app-header-right">
+      <button class="m-app-header-icon-btn" id="txn-filter-btn" aria-label="Filtrar">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"/></svg>
+      </button>
+      <button class="m-app-header-icon-btn" id="txn-search-btn" aria-label="Buscar" onclick="typeof openSearch==='function'&&openSearch()">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Summary card: 3 cols (Entradas / Salidas / Neto) ─────────────────── -->
+  <div class="m-txn-summary-card">
+    <div class="m-txn-summary-col">
+      <div class="m-txn-summary-label">Entradas</div>
+      <div class="m-txn-summary-val" id="txn-panel-inc" style="color:var(--pos)">—</div>
+    </div>
+    <div class="m-txn-summary-col">
+      <div class="m-txn-summary-label">Salidas</div>
+      <div class="m-txn-summary-val" id="txn-panel-exp" style="color:var(--neg)">—</div>
+    </div>
+    <div class="m-txn-summary-col">
+      <div class="m-txn-summary-label">Neto</div>
+      <div class="m-txn-summary-val" id="txn-panel-net">—</div>
+    </div>
+  </div>
+
+  <!-- Filter chips ────────────────────────────────────────────────────── -->
+  <div class="m-filter-chips-row" id="txn-filter-chips">
+    <button class="m-filter-chip active" data-filter="all"     onclick="txnFilterChip&&txnFilterChip(this,'all')">Todos</button>
+    <button class="m-filter-chip"        data-filter="gasto"   onclick="txnFilterChip&&txnFilterChip(this,'gasto')">Gastos</button>
+    <button class="m-filter-chip"        data-filter="ingreso" onclick="txnFilterChip&&txnFilterChip(this,'ingreso')">Ingresos</button>
+    <button class="m-filter-chip"        data-filter="ahorro"  onclick="txnFilterChip&&txnFilterChip(this,'ahorro')">Ahorro</button>
+  </div>
+
+  <!-- Transaction list — populated by JS (date groups + TxnRows) ─────── -->
+  <div class="m-txn-scroll" id="txn-panel-list">
+    <!-- JS populates: m-txn-date-group · m-txn-date-header · m-txn-group-card · m-txn-row -->
+  </div>
+
+</div>
+
 <!-- ═══ SUBPANEL TASAS ═══ -->
 <div id="rates-panel-overlay" onclick="closeMobileRatesPanel(event)" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000">
   <div id="rates-panel-sheet" onclick="event.stopPropagation()" style="position:fixed;bottom:0;left:0;right:0;background:#161b22;border-radius:20px 20px 0 0;border-top:1px solid #30363d;padding:0;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 8px);transform:translateY(100%);transition:transform .28s ease;z-index:10001;overflow-y:auto;max-height:90vh">

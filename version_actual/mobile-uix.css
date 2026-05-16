@@ -1031,11 +1031,14 @@ body.is-mobile .modal-overlay > .modal-box {
         summary: 3-col ink-2 radius 14 · chip: amber-d active
         groups: date header 10.5px muted uppercase
    ══════════════════════════════════════════════════════════════════════ */
-@media (max-width: 819px) {
+@media (max-width: 819px), body.is-mobile {
   #screen-txn-panel {
     display: none;
     flex-direction: column;
-    flex: 1;
+    position: fixed;
+    inset: 0;
+    z-index: 900;
+    background: var(--ink-0);
     overflow: hidden;
   }
   #screen-txn-panel.active { display: flex; }

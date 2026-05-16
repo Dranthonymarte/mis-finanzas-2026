@@ -247,6 +247,44 @@ button.filtro.active,
   }
 }
 
+/* ═══ F4 · Mobile UIX bundle — ScreenAccounts (modal-cuentas → pantalla móvil) ═══
+   Scoped #modal-cuentas + solo móvil. Preserva cuentas-total-badge,
+   cuentas-modal-total(-bs), cuentas-lista-modal y handlers. */
+@media (max-width: 819px) {
+  #modal-cuentas { padding: 0 !important; }
+  #modal-cuentas .modal-box {
+    width: 100% !important; max-width: 100% !important;
+    height: 100% !important; max-height: 100% !important;
+    margin: 0 !important; border-radius: 0 !important;
+    background: var(--ink-1) !important; border: none !important;
+    padding: 16px 18px calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #modal-cuentas h3 {
+    font-family: var(--f-display) !important; font-weight: 400 !important;
+    font-size: 26px !important; color: var(--fg) !important;
+  }
+  #modal-cuentas #cuentas-total-badge {
+    background: var(--amber-d) !important; border: 1px solid var(--amber) !important;
+    color: var(--amber) !important; border-radius: 999px !important;
+    font-size: 11px !important;
+  }
+  #modal-cuentas > .modal-box > div:nth-child(2) {
+    background: var(--ink-2) !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 14px !important;
+  }
+  #modal-cuentas #cuentas-modal-total {
+    color: var(--fg) !important; font-weight: 400 !important;
+    font-family: var(--f-display) !important; letter-spacing: -.01em !important;
+  }
+  #modal-cuentas #cuentas-modal-total-bs { color: var(--fg-mute) !important; }
+  #modal-cuentas button[onclick="openNuevaCuenta()"] {
+    background: var(--amber) !important; color: var(--ink-0) !important;
+    border: none !important; border-radius: 999px !important;
+    font-weight: 600 !important; font-family: var(--f-ui) !important;
+  }
+}
+
 /* ─── 8. TABLAS DE DETALLE (movimientos) ──────────────────── */
 
 .txn-table-header,

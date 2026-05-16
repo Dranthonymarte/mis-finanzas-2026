@@ -1,11 +1,11 @@
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  AI-CONTEXT — service-worker.js · Mis Finanzas 2026                 ║
-// ║  VERSIÓN: finanzas-v59-batch60                                       ║
-// ║  batch58: pixel-perfect Fase A2.1 — hero markup anatomía exacta     ║
-// ║  bundle (hero-card-inner, chart-wrap), IDs/multi-moneda preservados.║
+// ║  VERSIÓN: finanzas-v59-batch61                                       ║
+// ║  batch61: F1 nav 5-tabs + FAB central · F2 user bar (bundle Mobile  ║
+// ║  UIX). Markup estructural; IDs/handlers/multi-moneda preservados.   ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 
-const CACHE_VERSION = 'finanzas-v59-batch60';
+const CACHE_VERSION = 'finanzas-v59-batch61';
 const CDN_CACHE     = 'finanzas-cdn-v44';
 
 const PRECACHE_URLS = [

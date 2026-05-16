@@ -23,8 +23,9 @@ import AppShell from './components/shell/AppShell'
 import { RequireAuth, RequireNoAuth } from './components/shell/AuthGuard'
 
 // ── Auth pages (no shell) ──────────────────────────
-import Onboarding from './pages/Onboarding'
-import Login      from './pages/Login'
+import Onboarding     from './pages/Onboarding'
+import Login          from './pages/Login'
+import NewTransaction from './pages/NewTransaction'
 
 // ── Main pages ─────────────────────────────────────
 import Home     from './pages/Home'
@@ -52,6 +53,9 @@ export default function App() {
 
       {/* ── App layer (protected, with AppShell) ─── */}
       <Route element={<RequireAuth />}>
+        {/* Full-screen flows — sin TabBar */}
+        <Route path="/new-txn"     element={<NewTransaction />} />
+
         <Route element={<AppShell />}>
           <Route index                       element={<Home />}       />
           <Route path="/txn"                 element={<Txn />}        />

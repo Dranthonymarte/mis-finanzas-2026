@@ -76,6 +76,14 @@ button,
   font-family: inherit;
 }
 
+/* ── Number input — hide spin arrows ─────────── */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] { -moz-appearance: textfield; }
+
 /* ── PIN shake animation ──────────────────────── */
 @keyframes pin-shake {
   0%, 100% { transform: translateX(0);     }

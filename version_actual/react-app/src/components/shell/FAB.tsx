@@ -17,9 +17,9 @@ export default function FAB() {
 
   function handleAction(id: string) {
     close()
-    if (id === 'txn')      navigate('/txn')
-    if (id === 'transfer') navigate('/txn')   // placeholder until ScreenTransfer
-    if (id === 'scan')     navigate('/txn')   // placeholder until ScreenScan
+    if (id === 'txn')      navigate('/new-txn')
+    if (id === 'transfer') navigate('/txn')   // TODO Bloque 2: /transfer
+    if (id === 'scan')     navigate('/txn')   // TODO Bloque 5: /scanner
   }
 
   return (

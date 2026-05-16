@@ -1,11 +1,12 @@
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  AI-CONTEXT — service-worker.js · Mis Finanzas 2026                 ║
-// ║  VERSIÓN: finanzas-v59-batch64                                       ║
-// ║  batch64: Mobile UIX reconstruido — markup fiel al bundle JSX.       ║
-// ║  mobile-uix.css nueva capa. TabBar 5 celdas FAB. Hero 54px. KPI 2x2.║
+// ║  VERSIÓN: finanzas-v59-batch65                                       ║
+// ║  batch65: Full Mobile UIX rebuild — Sheet anatomy, ScreenMore,      ║
+// ║  FAB Actions Sheet, modal-settings RowGroup/RowLink, AppHeader,     ║
+// ║  Toggle, FormField, ChatUI, TxnList, AccountCards CSS components.   ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 
-const CACHE_VERSION = 'finanzas-v59-batch64';
+const CACHE_VERSION = 'finanzas-v59-batch65';
 const CDN_CACHE     = 'finanzas-cdn-v44';
 
 const PRECACHE_URLS = [

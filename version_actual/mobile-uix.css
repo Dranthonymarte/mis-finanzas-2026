@@ -522,3 +522,1183 @@ body.is-mobile .mobile-topbar { display: none !important; }
 body.is-mobile .main {
   padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
 }
+
+/* ── ANIMACIÓN SLIDE-UP para FAB submenu ────────────────────────────── */
+@keyframes m-slide-up-in {
+  from { transform: translateY(40%); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+@keyframes m-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+/* El overlay de fondo anima con fade */
+#fab-submenu[style*="flex"] {
+  animation: m-fade-in .2s ease;
+}
+/* El sheet interno sube */
+#fab-submenu[style*="flex"] #fab-submenu-sheet {
+  animation: m-slide-up-in .28s cubic-bezier(.22,1,.36,1);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   9. SHEET / BOTTOM MODAL ANATOMY
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-shell.jsx Sheet()
+   ink-1 bg · radius 20 20 0 0 · border line (no bottom)
+   shadow 0 -20px 50px rgba(0,0,0,.5) · maxHeight 92dvh
+   handle: 36×4 px ink-4 · header: font-display 20px
+   close btn: 30×30 ink-2 border line
+*/
+
+/* Nuevo componente sheet (para FAB actions, ScreenMore, etc.) */
+.m-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 10200;
+  display: none;
+  align-items: flex-end;
+}
+.m-sheet-overlay.open { display: flex; }
+
+.m-sheet {
+  background: var(--ink-1);
+  border-radius: 20px 20px 0 0;
+  border: 1px solid var(--line);
+  border-bottom: none;
+  width: 100%;
+  max-height: 92dvh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -20px 50px rgba(0,0,0,.5);
+}
+
+.m-sheet-handle {
+  display: grid;
+  place-items: center;
+  padding: 8px 0 4px;
+  flex-shrink: 0;
+}
+.m-sheet-handle::before {
+  content: '';
+  width: 36px;
+  height: 4px;
+  background: var(--ink-4, #30363d);
+  border-radius: 2px;
+  display: block;
+}
+
+.m-sheet-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 18px 12px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.m-sheet-header-info { flex: 1; min-width: 0; }
+.m-sheet-title {
+  font-size: 20px;
+  font-weight: 400;
+  font-family: var(--f-display);
+  line-height: 1.2;
+}
+.m-sheet-sub {
+  font-size: 11.5px;
+  color: var(--fg-mute);
+  margin-top: 2px;
+}
+.m-sheet-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  color: var(--fg-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+.m-sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: max(30px, env(safe-area-inset-bottom, 30px));
+}
+
+/* Upgrade: Existing modal-overlays → Sheet anatomy on mobile */
+@media (max-width: 819px) {
+  .modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .modal-overlay > .modal,
+  .modal-overlay > .modal-box,
+  .modal-overlay > .cfg-modal {
+    border-radius: 20px 20px 0 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    max-height: 92dvh !important;
+    margin: 0 !important;
+    box-shadow: 0 -20px 50px rgba(0,0,0,.5) !important;
+    background: var(--ink-1, #0d1117) !important;
+  }
+  /* Drag handle via ::before on modal inner */
+  .modal-overlay > .modal::before,
+  .modal-overlay > .modal-box::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: var(--ink-4, #30363d);
+    border-radius: 2px;
+    margin: 8px auto 4px;
+    flex-shrink: 0;
+  }
+}
+body.is-mobile .modal-overlay {
+  align-items: flex-end !important;
+  padding: 0 !important;
+}
+body.is-mobile .modal-overlay > .modal,
+body.is-mobile .modal-overlay > .modal-box {
+  border-radius: 20px 20px 0 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  max-height: 92dvh !important;
+  margin: 0 !important;
+  box-shadow: 0 -20px 50px rgba(0,0,0,.5) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   10. APP HEADER — large 26px display · compact 14.5px border
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-shell.jsx AppHeader()
+   large: padding 4px 20px 12px · h1 26px font-display · no border
+   compact: padding 4px 12px 10px · border-bottom line · 14.5px 600
+*/
+.m-app-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 10px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.m-app-header.large {
+  padding: 4px 20px 12px;
+  border-bottom: none;
+}
+.m-app-header-info { flex: 1; min-width: 0; }
+.m-app-header-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--fg);
+}
+.m-app-header.large .m-app-header-title {
+  font-size: 26px;
+  font-weight: 400;
+  font-family: var(--f-display);
+  line-height: 1.1;
+  margin-top: 2px;
+}
+.m-app-header-sub {
+  font-size: 11px;
+  color: var(--fg-mute);
+  margin-top: 2px;
+}
+.m-app-header.large .m-app-header-sub {
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.m-app-header-back,
+.m-app-header-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: transparent;
+  border: none;
+  display: grid;
+  place-items: center;
+  color: var(--fg);
+  flex-shrink: 0;
+  cursor: pointer;
+  padding: 0;
+}
+.m-app-header-icon-btn {
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  color: var(--fg-dim);
+  width: 34px;
+  height: 34px;
+}
+.m-app-header-right {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   11. ROW LINK + ROW GROUP — settings list anatomy
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-shell.jsx RowLink() RowGroup()
+   group: padding 14px 18px 0 · title 10.5px uppercase
+   container: ink-2 · line border · radius 14 · overflow hidden
+   row: flex gap 12 · padding 13px 14px · icon 32×32 radius-9
+   label 14px 500 · sub 11.5px fg-mute · chevron right
+*/
+.m-row-group {
+  padding: 14px 18px 0;
+}
+.m-row-group-title {
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding: 0 4px;
+  line-height: 1;
+}
+.m-row-group-inner {
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.m-row-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .12s;
+  box-sizing: border-box;
+}
+.m-row-link:last-child { border-bottom: none; }
+.m-row-link:active { background: var(--ink-3); }
+.m-row-link.danger .m-row-link-label { color: var(--neg) !important; }
+.m-row-link-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--ink-3);
+  color: var(--fg-dim);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 16px;
+}
+.m-row-link-content { flex: 1; min-width: 0; }
+.m-row-link-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fg);
+  line-height: 1.2;
+}
+.m-row-link-sub {
+  font-size: 11.5px;
+  color: var(--fg-mute);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.m-row-link-right {
+  color: var(--fg-mute);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+/* Chevron default */
+.m-row-link-right:empty::after {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-top: 1.5px solid currentColor;
+  transform: rotate(45deg);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   12. TOGGLE 38×22 — amber when on · ink-4 when off
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-settings.jsx Toggle()
+   38×22 · radius 11 · amber/ink-4 · knob 18×18
+*/
+.m-toggle {
+  width: 38px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--ink-4, #21262d);
+  position: relative;
+  flex-shrink: 0;
+  border: none;
+  cursor: pointer;
+  transition: background .2s;
+  padding: 0;
+}
+.m-toggle.on  { background: var(--amber); }
+.m-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--fg, #e6edf3);
+  transition: left .2s, background .2s;
+}
+.m-toggle.on::after {
+  left: 18px;
+  background: var(--ink-0);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   13. FORM FIELD — m-modals.jsx FormField()
+   ═══════════════════════════════════════════════════════════
+   padding 13px 14px · ink-3 · radius 12 · line border
+   icon 32×32 radius-8 · label uppercase 10.5px · value 14px 500
+*/
+.m-form-field {
+  padding: 13px 14px;
+  background: var(--ink-3);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.m-form-field-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.m-form-field-content { flex: 1; min-width: 0; }
+.m-form-field-label {
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.m-form-field-value {
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 2px;
+  line-height: 1.2;
+}
+.m-form-field-sub {
+  font-size: 11px;
+  color: var(--fg-mute);
+  margin-top: 1px;
+}
+.m-form-field-right {
+  color: var(--fg-mute);
+  flex-shrink: 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   14. SCREEN MORE — profile card · row groups
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-main.jsx ScreenMore()
+   Profile: padding 4px 18px · card ink-2 radius-16 padding 16
+   Avatar: 48×48 radius-14 gradient teal→amber · letter 18px 600
+*/
+/* Screen más: panel/sección que se activa via pwaNavRial('mas') */
+#screen-more-panel {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: max(100px, env(safe-area-inset-bottom, 100px));
+}
+#screen-more-panel.active { display: flex; }
+
+.m-more-profile-wrap { padding: 4px 18px 0; }
+.m-more-profile-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.m-more-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--teal, #3d8b82), var(--amber, #e0a84a));
+  display: grid;
+  place-items: center;
+  color: var(--ink-0, #010409);
+  font-weight: 600;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.m-more-profile-info { flex: 1; min-width: 0; }
+.m-more-profile-name {
+  font-size: 14.5px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.m-more-profile-email {
+  font-size: 11.5px;
+  color: var(--fg-mute);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.m-more-pro-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 2px 8px;
+  background: var(--amber-d, rgba(224,168,74,.12));
+  color: var(--amber);
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .05em;
+}
+.m-more-edit-btn {
+  font-size: 11.5px;
+  color: var(--amber);
+  font-weight: 500;
+  background: none;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 4px;
+}
+.m-more-logout-wrap { padding: 18px 18px 12px; }
+.m-more-logout-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--neg, #f85149);
+  font-size: 13.5px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  font-family: var(--f-ui);
+}
+.m-more-version {
+  text-align: center;
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  padding-bottom: 14px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   15. FAB ACTION SHEET — 4 tipo btns + quick 3-col
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-modals.jsx SheetFabActions()
+   tipo: ink-2 border radius-14 padding 14 16 · icon 40×40 radius-12
+   quick: 3-col grid · col: flex col radius-14 ink-2 gap 8 padding 14 8
+*/
+.m-fab-actions-wrap { padding: 0 16px; display: grid; gap: 8px; }
+.m-fab-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .12s;
+}
+.m-fab-action-btn:active { background: var(--ink-3); }
+.m-fab-action-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 600;
+  flex-shrink: 0;
+  font-family: var(--f-display);
+}
+.m-fab-action-label {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--fg);
+}
+.m-fab-action-desc {
+  font-size: 11.5px;
+  color: var(--fg-mute);
+  margin-top: 1px;
+}
+.m-fab-action-content { flex: 1; min-width: 0; }
+.m-fab-quick-section { padding: 16px 16px 0; }
+.m-fab-quick-title {
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+.m-fab-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 8px;
+}
+.m-fab-quick-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 8px;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--fg-dim);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1.3;
+  text-align: center;
+  font-family: var(--f-ui);
+  -webkit-tap-highlight-color: transparent;
+  transition: background .12s;
+}
+.m-fab-quick-btn:active { background: var(--ink-3); }
+
+
+/* ═══════════════════════════════════════════════════════════
+   16. LOGIN SCREEN MOBILE — blobs + PIN-style card
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-auth.jsx ScreenLogin()
+   Blobs: radial-gradient amber-d top-right, teal-d bottom-left
+   Logo icon 44px · card glass effect backdrop-blur
+   Form: ink-2 bg · radius 20 · padding 28 ·
+*/
+@media (max-width: 819px) {
+  #login-screen {
+    background: var(--ink-0, #010409) !important;
+    padding: 0 !important;
+    overflow: hidden;
+    /* Blobs decorativos */
+    background-image:
+      radial-gradient(ellipse 60% 50% at 85% 5%, var(--amber-d, rgba(224,168,74,.18)) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 40% at 10% 90%, rgba(61,139,130,.18) 0%, transparent 70%) !important;
+  }
+  #login-screen > div {
+    background: var(--ink-1, #0d1117) !important;
+    border-color: var(--line, #21262d) !important;
+    border-radius: 24px 24px 0 0 !important;
+    padding: 32px 28px 40px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 85dvh !important;
+    overflow-y: auto !important;
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+  }
+  #login-screen > div > div:first-child {
+    margin-bottom: 28px !important;
+  }
+  /* Logo area */
+  #login-screen > div > div:first-child > div:first-child {
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 1.4rem !important;
+    background: linear-gradient(135deg, var(--teal, #3d8b82), var(--amber, #e0a84a)) !important;
+    border-radius: 13px !important;
+    display: grid !important;
+    place-items: center !important;
+    margin: 0 auto 12px !important;
+  }
+  /* Login/Register buttons → new style */
+  #login-btn {
+    background: linear-gradient(135deg, var(--amber) 0%, var(--amber-s, #b87d1f) 100%) !important;
+    color: var(--ink-0) !important;
+    border-radius: 12px !important;
+    padding: 13px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    font-family: var(--f-display) !important;
+  }
+  /* Inputs on mobile → new look */
+  #login-email, #login-pass {
+    background: var(--ink-2, #161b22) !important;
+    border: 1px solid var(--line, #21262d) !important;
+    border-radius: 10px !important;
+    padding: 12px 14px !important;
+    color: var(--fg) !important;
+    font-size: 14px !important;
+  }
+  #login-email:focus, #login-pass:focus {
+    border-color: var(--amber) !important;
+    outline: none !important;
+  }
+  #login-screen h2 {
+    font-family: var(--f-display) !important;
+    font-size: 22px !important;
+    font-weight: 400 !important;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   17. CHAT IA — bubbles · input bar · suggestions
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-main.jsx ScreenAI()
+   user: amber bg · ink-0 color · radius 14 14 4 14
+   bot: ink-2 bg · line border · radius 14 14 14 4
+   input bar: ink-2 · radius 22 · padding 6 6 6 16
+   send: 34×34 amber circle · mic: 32×32 fg-mute
+*/
+.m-chat-bubble-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.m-chat-bubble {
+  max-width: 82%;
+  align-self: flex-start;
+}
+.m-chat-bubble.user { align-self: flex-end; }
+.m-chat-bubble-text {
+  background: var(--ink-2);
+  color: var(--fg);
+  padding: 10px 13px;
+  font-size: 13px;
+  line-height: 1.5;
+  border-radius: 14px 14px 14px 4px;
+  border: 1px solid var(--line);
+}
+.m-chat-bubble.user .m-chat-bubble-text {
+  background: var(--amber);
+  color: var(--ink-0);
+  border: none;
+  border-radius: 14px 14px 4px 14px;
+}
+.m-chat-bubble-time {
+  font-size: 9.5px;
+  color: var(--fg-mute);
+  margin-top: 3px;
+}
+.m-chat-bubble.user .m-chat-bubble-time { text-align: right; }
+
+.m-chat-suggestions {
+  padding: 6px 16px;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.m-chat-suggestions::-webkit-scrollbar { display: none; }
+.m-chat-suggestion-pill {
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--amber);
+  background: var(--amber-d, rgba(224,168,74,.12));
+  border-radius: 999px;
+  white-space: nowrap;
+  border: none;
+  cursor: pointer;
+  font-family: var(--f-ui);
+  flex-shrink: 0;
+}
+
+.m-chat-input-bar {
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.m-chat-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 6px 6px 6px 16px;
+}
+.m-chat-input-row input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--fg);
+  font-size: 13px;
+  font-family: var(--f-ui);
+}
+.m-chat-mic-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  display: grid;
+  place-items: center;
+  color: var(--fg-mute);
+  cursor: pointer;
+  padding: 0;
+}
+.m-chat-send-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--amber);
+  color: var(--ink-0);
+  border: none;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   18. NUEVO MOVIMIENTO MOBILE — sheet form anatomy
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-modals.jsx ScreenNewTxn()
+   tipo tabs: ink-2 · border line · radius 10 · padding 3
+   amount: font-display 56px · neg/pos color
+   fields grid: gap 8 · padding 0 18px
+   toggles: ink-2 · radius 12
+*/
+@media (max-width: 819px) {
+  #modal-mov > .modal {
+    overflow-y: auto !important;
+    padding: 0 0 24px !important;
+  }
+  /* Tipo de movimiento selector tabs */
+  .m-tipo-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--ink-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 3px;
+    margin: 8px 18px 14px;
+  }
+  .m-tipo-tab {
+    flex: 1;
+    padding: 7px 4px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--fg-dim);
+    border: none;
+    cursor: pointer;
+    font-family: var(--f-ui);
+    transition: background .15s, color .15s;
+  }
+  .m-tipo-tab.active-gasto {
+    background: var(--neg, #f85149);
+    color: var(--ink-0);
+  }
+  .m-tipo-tab.active-ingreso {
+    background: var(--pos, #3fb950);
+    color: var(--ink-0);
+  }
+  .m-tipo-tab.active-transferencia {
+    background: var(--teal-s, #3d8b82);
+    color: var(--ink-0);
+  }
+  .m-tipo-tab.active-ahorro {
+    background: var(--amber);
+    color: var(--ink-0);
+  }
+  /* Amount display area */
+  .m-mov-amount-display {
+    padding: 4px 18px 16px;
+    text-align: center;
+  }
+  .m-mov-amount-label {
+    font-size: 10.5px;
+    color: var(--fg-mute);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+  }
+  .m-mov-amount-big {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .m-mov-amount-sym {
+    font-size: 28px;
+    color: var(--fg-mute);
+    font-family: var(--f-display);
+  }
+  /* Fields section */
+  .m-mov-fields { padding: 0 18px; display: grid; gap: 8px; }
+  /* Toggles section */
+  .m-mov-toggles { padding: 14px 18px; }
+  .m-mov-toggles-inner {
+    background: var(--ink-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .m-mov-toggle-row {
+    display: flex;
+    align-items: center;
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .m-mov-toggle-row:last-child { border-bottom: none; }
+  .m-mov-toggle-content { flex: 1; }
+  .m-mov-toggle-label { font-size: 13.5px; }
+  .m-mov-toggle-sub { font-size: 11px; color: var(--fg-mute); margin-top: 1px; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   19. SCREEN TXN (Movimientos) — header + summary + list
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-main.jsx ScreenTxn()
+   summary card: 3-col · ink-2 radius-14 · each: label 9.5 value 15
+   filter chips: scroll horizontal · chip: amber-d/amber active
+   list: grouped by date · group header 10.5px · TxnRow pattern
+*/
+@media (max-width: 819px) {
+  #screen-txn-panel {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+  }
+  #screen-txn-panel.active {
+    display: flex;
+  }
+}
+.m-txn-summary-card {
+  margin: 8px 16px;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  overflow: hidden;
+}
+.m-txn-summary-col {
+  padding: 12px 10px;
+  text-align: center;
+  border-right: 1px solid var(--line);
+}
+.m-txn-summary-col:last-child { border-right: none; }
+.m-txn-summary-label {
+  font-size: 9.5px;
+  color: var(--fg-mute);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.m-txn-summary-val {
+  font-size: 15px;
+  font-weight: 500;
+  margin-top: 4px;
+  line-height: 1;
+}
+.m-filter-chips-row {
+  padding: 2px 16px 8px;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.m-filter-chips-row::-webkit-scrollbar { display: none; }
+.m-filter-chip {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  color: var(--fg-mute);
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: var(--f-ui);
+  transition: background .12s, color .12s;
+}
+.m-filter-chip.active {
+  background: var(--amber-d, rgba(224,168,74,.12)) !important;
+  color: var(--amber) !important;
+  border-color: var(--amber) !important;
+}
+.m-txn-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 100px;
+}
+.m-txn-date-group { margin-bottom: 2px; }
+.m-txn-date-header {
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 10px 16px 4px;
+  line-height: 1;
+}
+.m-txn-date-list {
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  margin: 0 16px;
+  overflow: hidden;
+}
+.m-txn-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.m-txn-row:last-child { border-bottom: none; }
+.m-txn-cat-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.m-txn-info { min-width: 0; }
+.m-txn-desc {
+  font-size: 13.5px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.m-txn-meta {
+  font-size: 11px;
+  color: var(--fg-mute);
+  margin-top: 1px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.m-txn-amount {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   20. SCREEN ACCOUNTS (Cuentas) — header + total + gradient cards
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-main.jsx ScreenAccounts()
+   total bar: padding 12 18 · label 10.5 · value 28px display
+   cards grid: 2-col on ≥375px · card: radius 16 gradient
+*/
+.m-accounts-total {
+  padding: 12px 18px 8px;
+}
+.m-accounts-total-label {
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.m-accounts-total-val {
+  font-size: 28px;
+  font-weight: 400;
+  font-family: var(--f-display);
+  line-height: 1.1;
+  margin-top: 4px;
+  letter-spacing: -.02em;
+}
+.m-accounts-grid {
+  padding: 4px 16px 16px;
+  display: grid;
+  grid-template-columns: repeat(2,1fr);
+  gap: 10px;
+}
+.m-account-card {
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity .15s;
+}
+.m-account-card:active { opacity: .85; }
+.m-account-card-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: rgba(255,255,255,.15);
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+}
+.m-account-card-name {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.m-account-card-type {
+  font-size: 10px;
+  opacity: .7;
+}
+.m-account-card-val {
+  font-size: 18px;
+  font-weight: 600;
+  font-family: var(--f-display);
+  letter-spacing: -.01em;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   21. NOTIFICACIONES PANEL — filter tabs + cards
+   ═══════════════════════════════════════════════════════════
+   Fuente: m-modals.jsx ScreenNotifications()
+   tabs: horizontal scroll · chip: amber active
+   card: ink-2 · radius 12 · padding 14 · icon 36×36
+*/
+.m-notif-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 16px 10px;
+  scrollbar-width: none;
+}
+.m-notif-tabs::-webkit-scrollbar { display: none; }
+.m-notif-tab {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  color: var(--fg-mute);
+  cursor: pointer;
+  font-family: var(--f-ui);
+  flex-shrink: 0;
+  transition: background .12s, color .12s;
+}
+.m-notif-tab.active {
+  background: var(--amber-d, rgba(224,168,74,.12));
+  color: var(--amber);
+  border-color: var(--amber);
+}
+.m-notif-list { padding: 0 16px; display: grid; gap: 8px; }
+.m-notif-card {
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.m-notif-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+.m-notif-content { flex: 1; min-width: 0; }
+.m-notif-title {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.m-notif-sub {
+  font-size: 11.5px;
+  color: var(--fg-mute);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+.m-notif-time {
+  font-size: 10px;
+  color: var(--fg-mute);
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   22. HIDE OLD LEGACY SHELL ELEMENTS IN MOBILE
+   ═══════════════════════════════════════════════════════════
+   Elements replaced by new mobile screens.
+   Only screen-txn-panel, screen-more-panel are NEW divs.
+   The main dashboard section is the existing .main wrapper.
+*/
+@media (max-width: 819px) {
+  /* When screen-more-panel is active, hide main content */
+  body.view-more .main > *:not(#screen-more-panel):not(.m-userbar) {
+    display: none !important;
+  }
+  /* Smart actions buttons → hide on mobile (replaced by quick actions grid) */
+  #smart-actions-row { display: none !important; }
+  /* Old card titles with emojis → inherit new tokens */
+  .card-title { font-size: 13px !important; }
+  /* Hide desktop-only wallet section header reorder btn */
+  #btn-reorder-wallets { display: none !important; }
+}
+body.is-mobile #smart-actions-row { display: none !important; }

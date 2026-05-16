@@ -375,6 +375,74 @@ button.filtro.active,
   .sett-screen .sett-row-arrow { color: var(--fg-mute) !important; }
 }
 
+/* ═══ F7+F8 · Mobile UIX bundle — Una sola gramática ═══
+   Modales de contenido → sheet full-screen; campos/tipografía/botones
+   en tokens; auth (ScreenLogin) bundle. CSS-only, scoped móvil.
+   IDs/handlers/markup intactos. F3–F6 (por-ID) conservan su afinado. */
+@media (max-width: 819px) {
+  /* Contenedores de modal de contenido → sheet full-screen ink-1 */
+  .modal-overlay { padding: 0 !important; }
+  .modal-overlay > .modal-box,
+  .modal-overlay > .modal,
+  .modal-overlay > div > .modal-box,
+  #modal-transfer-rial .modal-box {
+    width: 100% !important; max-width: 100% !important; min-width: 0 !important;
+    height: 100% !important; max-height: 100% !important;
+    margin: 0 !important; border-radius: 0 !important;
+    background: var(--ink-1) !important; border: none !important;
+    box-sizing: border-box !important;
+    padding: 16px 16px calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow-y: auto !important;
+  }
+  .modal-overlay h3, .modal-box h3 {
+    font-family: var(--f-display) !important; font-weight: 400 !important;
+    color: var(--fg) !important;
+  }
+  /* Campos de formulario → grano bundle */
+  .modal-overlay input, .modal-overlay select, .modal-overlay textarea,
+  .modal-box input, .modal-box select, .modal-box textarea {
+    background: var(--ink-2) !important; border: 1px solid var(--line) !important;
+    color: var(--fg) !important; border-radius: 10px !important;
+    font-family: var(--f-ui) !important;
+  }
+  .modal-overlay input:focus, .modal-overlay select:focus, .modal-overlay textarea:focus,
+  .modal-box input:focus, .modal-box select:focus, .modal-box textarea:focus {
+    border-color: var(--amber) !important; outline: none !important;
+  }
+  .modal-overlay label, .modal-box label { color: var(--fg-mute) !important; }
+  /* Botones acción → ámbar / cancel outline (gramática bundle) */
+  .modal-box .btn-primary, .modal-box .btn-save, .modal-box .btn-guardar,
+  .modal-overlay .btn-primary, .modal-overlay .btn-save {
+    background: var(--amber) !important; color: var(--ink-0) !important;
+    border: none !important; border-radius: 999px !important; font-weight: 600 !important;
+  }
+  .modal-box .btn-cancel, .modal-overlay .btn-cancel {
+    background: transparent !important; color: var(--fg-dim) !important;
+    border: 1px solid var(--line) !important; border-radius: 999px !important;
+  }
+  /* Diálogos pequeños (NO full-screen): solo recolor en tokens */
+  #modal-confirm > div, #modal-card-info > div {
+    background: var(--ink-1) !important; border: 1px solid var(--line) !important;
+    border-radius: 18px !important; color: var(--fg) !important;
+  }
+  /* Auth · ScreenLogin → tokens + botón ámbar */
+  #login-screen { background: var(--ink-0) !important; }
+  #login-screen input {
+    background: var(--ink-2) !important; border: 1px solid var(--line) !important;
+    color: var(--fg) !important; border-radius: 10px !important;
+  }
+  #login-screen input:focus { border-color: var(--amber) !important; outline: none !important; }
+  #login-screen #login-btn {
+    background: linear-gradient(135deg, var(--amber) 0%, var(--amber-s) 100%) !important;
+    color: var(--ink-0) !important; border: none !important;
+    border-radius: 999px !important; font-weight: 600 !important;
+  }
+  #login-screen #login-error {
+    background: var(--neg-d) !important; border: 1px solid var(--neg) !important;
+    color: var(--neg) !important; border-radius: 10px !important;
+  }
+}
+
 /* ─── 8. TABLAS DE DETALLE (movimientos) ──────────────────── */
 
 .txn-table-header,

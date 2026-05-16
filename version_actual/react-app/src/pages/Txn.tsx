@@ -1,7 +1,40 @@
 import { useState } from 'react'
-import CatIcon from '../components/ui/CatIcon'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import CatIcon, { catColor } from '../components/ui/CatIcon'
 import { MOCK_TRANSACTIONS, MOCK_MONTH, fmt, txnGroup } from '../data/mock'
 import { FilterIcon, SearchIcon } from '../components/icons/Icons'
+
+/* ── Top 5 expense categories ── */
+const CAT_CHART_DATA = (() => {
+  const totals: Record<string, number> = {}
+  MOCK_TRANSACTIONS.forEach(t => {
+    if (txnGroup(t.tipo) === 'gasto') {
+      totals[t.cat] = (totals[t.cat] || 0) + Math.abs(t.amount)
+    }
+  })
+  return Object.entries(totals)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([cat, value]) => ({ cat, value, fill: catColor(cat) }))
+})()
+
+/* ── Donut chart custom tooltip ── */
+function CatTooltip({ active, payload }: {
+  active?: boolean
+  payload?: Array<{ payload: { cat: string; value: number; fill: string } }>
+}) {
+  if (!active || !payload?.length) return null
+  const d = payload[0].payload
+  return (
+    <div style={{
+      background: 'var(--ink-3)', border: '1px solid var(--line)',
+      borderRadius: 10, padding: '8px 12px', fontSize: 11.5,
+    }}>
+      <div style={{ color: 'var(--fg-mute)', fontSize: 10, marginBottom: 4 }}>{d.cat}</div>
+      <div style={{ color: d.fill, fontWeight: 700 }}>{fmt(d.value)}</div>
+    </div>
+  )
+}
 
 type FilterType = 'all' | 'gasto' | 'ingreso' | 'ahorro'
 
@@ -144,6 +177,55 @@ export default function Txn() {
               </div>
             )
         )}
+      </div>
+
+      {/* ── Top 5 categorías donut ── */}
+      <div style={{ margin: '0 16px 12px' }}>
+        <div style={{
+          background: 'var(--ink-2)', border: '1px solid var(--line)',
+          borderRadius: 14, padding: '14px 14px 12px',
+        }}>
+          <span style={{
+            fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em',
+            textTransform: 'uppercase', color: 'var(--fg-mute)',
+          }}>
+            Top categorías
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 10 }}>
+            <ResponsiveContainer width={110} height={110}>
+              <PieChart>
+                <Pie
+                  data={CAT_CHART_DATA}
+                  dataKey="value"
+                  innerRadius="55%"
+                  outerRadius="80%"
+                  paddingAngle={2}
+                  startAngle={90}
+                  endAngle={-270}
+                  strokeWidth={0}
+                >
+                  {CAT_CHART_DATA.map(entry => (
+                    <Cell key={entry.cat} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CatTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {CAT_CHART_DATA.map(entry => (
+                <div key={entry.cat} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: entry.fill, flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, color: 'var(--fg-dim)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {entry.cat}
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg)', fontVariantNumeric: 'tabular-nums' }}>
+                    {fmt(entry.value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ── Filter chips ── */}

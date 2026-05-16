@@ -1,9 +1,42 @@
 import { useNavigate } from 'react-router-dom'
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Sparkline from '../components/ui/Sparkline'
 import Pill      from '../components/ui/Pill'
 import CatIcon   from '../components/ui/CatIcon'
 import { MOCK_BALANCE_SERIES, MOCK_KPIS, MOCK_TRANSACTIONS, MOCK_MONTH, fmtShort, fmt, txnGroup } from '../data/mock'
 import { SearchIcon, BellIcon } from '../components/icons/Icons'
+
+/* ── Ingresos vs Gastos chart data (6 months) ── */
+const INCOME_VS_EXP = (() => {
+  const months = ['Nov', 'Dic', 'Ene', 'Feb', 'Mar', 'Abr']
+  const inc = MOCK_KPIS.find(k => k.id === 'ingresos')!.spark
+  const exp = MOCK_KPIS.find(k => k.id === 'gastos')!.spark
+  return months.map((month, i) => ({ month, ingresos: inc[i], gastos: exp[i] }))
+})()
+
+/* ── Bar chart custom tooltip ── */
+function BarTooltip({ active, payload, label }: {
+  active?: boolean
+  payload?: Array<{ name: string; value: number; color: string }>
+  label?: string
+}) {
+  if (!active || !payload?.length) return null
+  return (
+    <div style={{
+      background: 'var(--ink-3)', border: '1px solid var(--line)',
+      borderRadius: 10, padding: '8px 12px', fontSize: 11.5,
+    }}>
+      <div style={{ color: 'var(--fg-mute)', fontSize: 10, marginBottom: 5, letterSpacing: '.06em' }}>
+        {label}
+      </div>
+      {payload.map(p => (
+        <div key={p.name} style={{ color: p.color, fontWeight: 600, lineHeight: 1.6 }}>
+          {p.name}: ${p.value.toLocaleString('en-US')}
+        </div>
+      ))}
+    </div>
+  )
+}
 
 /* ── User avatar ── */
 function Avatar({ letter }: { letter: string }) {
@@ -183,6 +216,46 @@ export default function Home() {
             </div>
           )
         })}
+      </div>
+
+      {/* ── Ingresos vs Gastos 6M ── */}
+      <div style={{ padding: '12px 16px 4px' }}>
+        <div style={{
+          background: 'var(--ink-2)', border: '1px solid var(--line)',
+          borderRadius: 14, padding: '14px 14px 10px',
+        }}>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between',
+            alignItems: 'center', marginBottom: 12,
+          }}>
+            <span style={{
+              fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em',
+              textTransform: 'uppercase', color: 'var(--fg-mute)',
+            }}>
+              Ingresos vs Gastos
+            </span>
+            <div style={{ display: 'flex', gap: 10, fontSize: 9.5, fontWeight: 600 }}>
+              <span style={{ color: '#58b26a' }}>● Ingresos</span>
+              <span style={{ color: '#d66a5a' }}>● Gastos</span>
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={130}>
+            <BarChart data={INCOME_VS_EXP} barCategoryGap="35%" barGap={3} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+              <XAxis
+                dataKey="month"
+                tick={{ fill: '#5c616d', fontSize: 9.5 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                content={<BarTooltip />}
+                cursor={{ fill: 'rgba(255,255,255,.04)' }}
+              />
+              <Bar dataKey="ingresos" name="Ingresos" fill="#58b26a" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="gastos"   name="Gastos"   fill="#d66a5a" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* ── Insight IA card ── */}

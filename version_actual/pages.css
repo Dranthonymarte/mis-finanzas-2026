@@ -285,6 +285,58 @@ button.filtro.active,
   }
 }
 
+/* ═══ F5 · Mobile UIX bundle — ScreenAI (modal-ia → pantalla móvil) ═══
+   Scoped #modal-ia + solo móvil. Preserva ia-chat, ia-input,
+   ia-quick-btns, ia-*-panel y handlers (askGroq/setIAMode/closeIA). */
+@media (max-width: 819px) {
+  #modal-ia { padding: 0 !important; }
+  #modal-ia .modal-box {
+    width: 100% !important; max-width: 100% !important;
+    height: 100% !important; max-height: 100% !important;
+    margin: 0 !important; border-radius: 0 !important;
+    background: var(--ink-1) !important; border: none !important;
+    padding: 14px 16px calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #modal-ia h3 {
+    font-family: var(--f-display) !important; font-weight: 400 !important;
+    font-size: 22px !important; color: var(--fg) !important;
+  }
+  #modal-ia .ia-tab {
+    background: var(--ink-2) !important; border: 1px solid var(--line) !important;
+    color: var(--fg-dim) !important; border-radius: 999px !important;
+    font-size: 11px !important;
+  }
+  #modal-ia .ia-tab.active-ia-tab {
+    background: var(--amber-d) !important; color: var(--amber) !important;
+    border-color: var(--amber) !important;
+  }
+  #modal-ia #ia-chat,
+  #modal-ia #ia-corrector-chat {
+    background: transparent !important; border: 1px solid var(--line) !important;
+    border-radius: 14px !important; max-height: none !important;
+  }
+  #modal-ia .ia-chat-footer {
+    background: var(--ink-2) !important; border: 1px solid var(--line) !important;
+    border-radius: 22px !important; padding: 6px 6px 6px 14px !important;
+    display: flex !important; align-items: center !important; gap: 6px !important;
+  }
+  #modal-ia .ia-chat-input,
+  #modal-ia #ia-input {
+    background: transparent !important; border: none !important;
+    color: var(--fg) !important; font-size: 13px !important;
+  }
+  #modal-ia .ia-send-btn {
+    background: var(--amber) !important; color: var(--ink-0) !important;
+    border-radius: 50% !important; width: 34px !important; height: 34px !important;
+    border: none !important;
+  }
+  #modal-ia .ia-quick {
+    background: var(--amber-d) !important; color: var(--amber) !important;
+    border: none !important; border-radius: 999px !important;
+    font-size: 11px !important; padding: 6px 10px !important;
+  }
+}
+
 /* ─── 8. TABLAS DE DETALLE (movimientos) ──────────────────── */
 
 .txn-table-header,

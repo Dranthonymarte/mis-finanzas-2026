@@ -1,12 +1,13 @@
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  AI-CONTEXT — service-worker.js · Mis Finanzas 2026                 ║
-// ║  VERSIÓN: finanzas-v59-batch67                                       ║
-// ║  batch67: Fix 7 bugs UI confirmados: m-tab CSS, header legacy,      ║
-// ║  FAB .open state + textContent-proof ::before, sett-screen mutex,   ║
-// ║  AccountCards base, overflow-x 390px, sett-lista m-app-header.      ║
+// ║  VERSIÓN: finanzas-v59-batch68                                       ║
+// ║  batch68: Fase 2 UIX — reescritura completa mobile-uix.css          ║
+// ║  desde tokens.css + JSX (m-shell/m-main/m-settings/m-modals/        ║
+// ║  m-auth). §01-§25: tokens, shell, hero, kpi, accounts, IA,         ║
+// ║  settings, modals, login, animations. Batch67 fixes preserved.      ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 
-const CACHE_VERSION = 'finanzas-v59-batch67';
+const CACHE_VERSION = 'finanzas-v59-batch68';
 const CDN_CACHE     = 'finanzas-cdn-v44';
 
 const PRECACHE_URLS = [

@@ -2125,6 +2125,72 @@ window._sbLoadPromise = new Promise(function(resolve, reject) {
 
 </div>
 
+<!-- ═══ SHEET FILTROS — m-modals.jsx ScreenFilters() ═══ -->
+<!-- Sheet: drag handle · title Filtrar · chips por tipo/fecha · limpiar+aplicar -->
+<!-- JS: openTxnFilters() · closeTxnFilters() — wired to #txn-filter-btn        -->
+<div id="sheet-txn-filters-overlay" onclick="closeTxnFilters&&closeTxnFilters(event)" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:960">
+  <div id="sheet-txn-filters" onclick="event.stopPropagation()" style="position:absolute;bottom:0;left:0;right:0;background:var(--ink-1,#0d1117);border-radius:20px 20px 0 0;border:1px solid var(--line,#21262d);border-bottom:none;box-shadow:0 -20px 50px rgba(0,0,0,.5);max-height:88dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,0,.67,0);padding-bottom:max(24px,env(safe-area-inset-bottom,24px))">
+
+    <!-- Drag handle -->
+    <div class="m-sheet-handle"></div>
+
+    <!-- Header -->
+    <div class="m-sheet-header">
+      <div class="m-sheet-header-info">
+        <div class="m-sheet-title">Filtrar</div>
+        <div class="m-sheet-sub">Refina la lista de movimientos</div>
+      </div>
+      <button class="m-sheet-close" onclick="closeTxnFilters&&closeTxnFilters()" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M6 18 18 6"/></svg>
+      </button>
+    </div>
+
+    <!-- Filter sections -->
+    <div style="padding:0 18px;display:grid;gap:16px">
+
+      <!-- Tipo -->
+      <div>
+        <div class="m-section-label">Tipo</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <button class="m-filter-chip active" data-ftype="all"          onclick="txnFilterSheetChip&&txnFilterSheetChip(this,'type','all')">Todos</button>
+          <button class="m-filter-chip"        data-ftype="gasto"        onclick="txnFilterSheetChip&&txnFilterSheetChip(this,'type','gasto')">Gasto</button>
+          <button class="m-filter-chip"        data-ftype="ingreso"      onclick="txnFilterSheetChip&&txnFilterSheetChip(this,'type','ingreso')">Ingreso</button>
+          <button class="m-filter-chip"        data-ftype="ahorro"       onclick="txnFilterSheetChip&&txnFilterSheetChip(this,'type','ahorro')">Ahorro</button>
+          <button class="m-filter-chip"        data-ftype="transferencia" onclick="txnFilterSheetChip&&txnFilterSheetChip(this,'type','transferencia')">Transferencia</button>
+        </div>
+      </div>
+
+      <!-- Fecha -->
+      <div>
+        <div class="m-section-label">Fecha</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <button class="m-filter-chip" data-fdate="hoy"        onclick="txnFilterSheetChip&&txnFilterSheetChip(this,'date','hoy')">Hoy</button>
+          <button class="m-filter-chip" data-fdate="semana"     onclick="txnFilterSheetChip&&txnFilterSheetChip(this,'date','semana')">Esta semana</button>
+          <button class="m-filter-chip active" data-fdate="mes" onclick="txnFilterSheetChip&&txnFilterSheetChip(this,'date','mes')">Este mes</button>
+          <button class="m-filter-chip" data-fdate="3meses"     onclick="txnFilterSheetChip&&txnFilterSheetChip(this,'date','3meses')">3 meses</button>
+          <button class="m-filter-chip" data-fdate="anio"       onclick="txnFilterSheetChip&&txnFilterSheetChip(this,'date','anio')">Este año</button>
+        </div>
+      </div>
+
+      <!-- Autor (household) -->
+      <div id="filter-autor-section" style="display:none">
+        <div class="m-section-label">Autor</div>
+        <div id="filter-autor-chips" style="display:flex;flex-wrap:wrap;gap:6px">
+          <!-- JS populates based on household members -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CTA row: Limpiar + Aplicar -->
+    <div style="display:flex;gap:8px;padding:20px 18px 0">
+      <button style="flex:1;padding:13px;border-radius:12px;background:var(--ink-3);border:1px solid var(--line);color:var(--fg-dim);font-size:13px;font-weight:500;font-family:var(--f-ui);cursor:pointer" onclick="clearTxnFilters&&clearTxnFilters()">Limpiar</button>
+      <button style="flex:2;padding:13px;border-radius:12px;background:var(--amber);color:var(--ink-0);font-size:13px;font-weight:600;font-family:var(--f-ui);cursor:pointer;border:none" onclick="applyTxnFilters&&applyTxnFilters()" id="txn-filter-apply-btn">Aplicar</button>
+    </div>
+
+  </div>
+</div>
+
 <!-- ═══ SUBPANEL TASAS ═══ -->
 <div id="rates-panel-overlay" onclick="closeMobileRatesPanel(event)" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000">
   <div id="rates-panel-sheet" onclick="event.stopPropagation()" style="position:fixed;bottom:0;left:0;right:0;background:#161b22;border-radius:20px 20px 0 0;border-top:1px solid #30363d;padding:0;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 8px);transform:translateY(100%);transition:transform .28s ease;z-index:10001;overflow-y:auto;max-height:90vh">

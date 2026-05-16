@@ -337,6 +337,44 @@ button.filtro.active,
   }
 }
 
+/* ═══ F6 · Mobile UIX bundle — ScreenMore + Settings ═══
+   Scoped #mobile-menu-sheet / .sett-screen + solo móvil.
+   Preserva handlers (closeMobileMenu/openX/settNav/closeSettings). */
+@media (max-width: 819px) {
+  #mobile-menu-sheet {
+    background: var(--ink-1) !important;
+    border-top: 1px solid var(--line) !important;
+  }
+  #mobile-menu-sheet > div:nth-child(2) span:first-child {
+    font-family: var(--f-display) !important; font-weight: 400 !important;
+    font-size: 20px !important; color: var(--fg) !important;
+  }
+  #mobile-menu-sheet .mob-menu-btn {
+    background: var(--ink-2) !important; border: 1px solid var(--line) !important;
+    color: var(--fg-dim) !important; border-radius: 14px !important;
+    display: flex !important; flex-direction: column !important;
+    align-items: center !important; gap: 6px !important; padding: 14px 6px !important;
+  }
+  #mobile-menu-sheet .mob-menu-btn:active { background: var(--ink-3) !important; }
+  .sett-screen { background: var(--ink-1) !important; }
+  .sett-screen .sett-header { border-bottom: 1px solid var(--line) !important; }
+  .sett-screen .sett-title {
+    font-family: var(--f-display) !important; font-weight: 400 !important;
+    color: var(--fg) !important;
+  }
+  .sett-screen .sett-profile-card {
+    background: var(--ink-2) !important; border: 1px solid var(--line) !important;
+    border-radius: 16px !important;
+  }
+  .sett-screen .sett-avatar {
+    background: linear-gradient(135deg, var(--teal), var(--amber)) !important;
+    color: var(--ink-0) !important;
+  }
+  .sett-screen .sett-profile-name { color: var(--fg) !important; }
+  .sett-screen .sett-profile-email { color: var(--fg-mute) !important; }
+  .sett-screen .sett-row-arrow { color: var(--fg-mute) !important; }
+}
+
 /* ─── 8. TABLAS DE DETALLE (movimientos) ──────────────────── */
 
 .txn-table-header,

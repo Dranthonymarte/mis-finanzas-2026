@@ -1580,15 +1580,27 @@ function setMovTipo(val) {
           <div style="font-size:1rem;font-weight:700;color:var(--text)" id="sett-perfil-name">—</div>
           <div style="font-size:.72rem;color:var(--muted);margin-top:3px" id="sett-perfil-email">—</div>
         </div>
-        <div class="sett-section-label">Información Personal</div>
-        <div style="padding:0 16px 8px">
-          <label style="font-size:.68rem;color:var(--muted);display:block;margin-bottom:4px">Nombre</label>
-          <input class="sett-edit-field" id="sett-nombre" placeholder="Tu nombre" maxlength="60" style="margin:0 0 10px;width:100%">
-          <label style="font-size:.68rem;color:var(--muted);display:block;margin-bottom:4px">Correo electrónico</label>
-          <input class="sett-edit-field" id="sett-correo-display" disabled style="margin:0;width:100%;opacity:.6;cursor:not-allowed">
+        <!-- Form fields — m-form-field anatomy from §20 mobile-uix.css -->
+        <div style="padding:0 16px 8px;display:grid;gap:8px">
+          <div class="m-form-field">
+            <div class="m-form-field-content">
+              <div class="m-form-field-label">Nombre completo</div>
+              <input class="m-form-field-input" id="sett-nombre" type="text" placeholder="Tu nombre" maxlength="60" autocomplete="name">
+            </div>
+            <div class="m-form-field-right">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </div>
+          </div>
+          <div class="m-form-field" style="opacity:.6;cursor:not-allowed">
+            <div class="m-form-field-content">
+              <div class="m-form-field-label">Correo electrónico</div>
+              <input class="m-form-field-input" id="sett-correo-display" type="email" disabled autocomplete="off">
+            </div>
+            <div class="m-form-field-right" style="font-size:9.5px;color:var(--pos)">✓</div>
+          </div>
         </div>
-        <div style="padding:0 16px;margin-top:8px">
-          <button onclick="saveProfile()" style="width:100%;background:var(--accent);color:#fff;border:none;padding:10px;border-radius:8px;font-size:.83rem;font-weight:600;cursor:pointer">Guardar cambios</button>
+        <div style="padding:0 16px;margin-top:4px">
+          <button class="m-save-btn" onclick="saveProfile()">Guardar cambios</button>
         </div>
         <!-- HOGAR COMPARTIDO -->
         <div style="padding:0 16px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">

@@ -1912,6 +1912,23 @@ body.is-mobile .modal-overlay > .modal-box {
   }
 }
 
+/* Generic CTA save button — reused across settings sub-screens */
+.m-save-btn {
+  width: 100%;
+  background: linear-gradient(135deg, var(--amber), #c8922e);
+  color: var(--ink-0);
+  font-weight: 700;
+  font-size: 15px;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  cursor: pointer;
+  font-family: var(--f-ui);
+  letter-spacing: .01em;
+  transition: opacity .12s;
+}
+.m-save-btn:active { opacity: .8; }
+
 /* Security score card */
 .m-security-score-card {
   margin: 14px 18px 8px;

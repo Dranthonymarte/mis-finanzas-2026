@@ -18,8 +18,8 @@ export default function FAB() {
   function handleAction(id: string) {
     close()
     if (id === 'txn')      navigate('/new-txn')
-    if (id === 'transfer') navigate('/txn')   // TODO Bloque 2: /transfer
-    if (id === 'scan')     navigate('/txn')   // TODO Bloque 5: /scanner
+    if (id === 'transfer') navigate('/transfer')
+    if (id === 'scan')     navigate('/txn')     // TODO Bloque 5: /scanner
   }
 
   return (

@@ -10,9 +10,10 @@ export interface Transaction {
   cat: string
   tipo: string
   amount: number
-  date: string   // display label: 'Hoy' | 'Ayer' | '14 abr' etc.
-  time: string   // '14:32'
+  date: string      // display label: 'Hoy' | 'Ayer' | '14 abr' etc.
+  time: string      // '14:32'
   author: 'anthony' | 'isabel'
+  accountId: string // foreign key → Account.id
 }
 
 export interface Account {
@@ -122,16 +123,16 @@ export const MOCK_ACCOUNTS: Account[] = [
 
 // ── Transactions ──────────────────────────────────
 export const MOCK_TRANSACTIONS: Transaction[] = [
-  { id: '1',  desc: 'Supermercado Plaza',    cat: 'Alimentación',    tipo: 'Gasto',              amount: -84.20,   date: 'Hoy',    time: '14:32', author: 'anthony' },
-  { id: '2',  desc: 'Salario abril',         cat: 'Trabajo',         tipo: 'Ingreso Fijo',        amount:  2800.00, date: 'Hoy',    time: '09:15', author: 'anthony' },
-  { id: '3',  desc: 'Netflix',               cat: 'Entretenimiento', tipo: 'Gasto',              amount: -15.99,   date: 'Ayer',   time: '20:41', author: 'anthony' },
-  { id: '4',  desc: 'Gasolina',              cat: 'Transporte',      tipo: 'Gasto',              amount: -42.50,   date: 'Ayer',   time: '18:02', author: 'isabel'  },
-  { id: '5',  desc: 'Transferencia ahorro',  cat: 'Inversión',       tipo: 'Ahorro en efectivo', amount: -500.00,  date: '14 abr', time: '12:30', author: 'anthony' },
-  { id: '6',  desc: 'Farmacia',              cat: 'Salud',           tipo: 'Gasto',              amount: -22.14,   date: '14 abr', time: '11:08', author: 'isabel'  },
-  { id: '7',  desc: 'Spotify',               cat: 'Entretenimiento', tipo: 'Gasto',              amount: -9.99,    date: '13 abr', time: '08:00', author: 'anthony' },
-  { id: '8',  desc: 'Freelance diseño',      cat: 'Trabajo',         tipo: 'Ingreso Variable',   amount:  350.00,  date: '13 abr', time: '15:20', author: 'anthony' },
-  { id: '9',  desc: 'Mercado La Plaza',      cat: 'Alimentación',    tipo: 'Gasto',              amount: -62.40,   date: '13 abr', time: '11:05', author: 'isabel'  },
-  { id: '10', desc: 'Internet CANTV',        cat: 'Servicios',       tipo: 'Gasto',              amount: -12.00,   date: '12 abr', time: '10:00', author: 'anthony' },
+  { id: '1',  desc: 'Supermercado Plaza',    cat: 'Alimentación',    tipo: 'Gasto',              amount: -84.20,   date: 'Hoy',    time: '14:32', author: 'anthony', accountId: '1' },
+  { id: '2',  desc: 'Salario abril',         cat: 'Trabajo',         tipo: 'Ingreso Fijo',        amount:  2800.00, date: 'Hoy',    time: '09:15', author: 'anthony', accountId: '1' },
+  { id: '3',  desc: 'Netflix',               cat: 'Entretenimiento', tipo: 'Gasto',              amount: -15.99,   date: 'Ayer',   time: '20:41', author: 'anthony', accountId: '1' },
+  { id: '4',  desc: 'Gasolina',              cat: 'Transporte',      tipo: 'Gasto',              amount: -42.50,   date: 'Ayer',   time: '18:02', author: 'isabel',  accountId: '4' },
+  { id: '5',  desc: 'Transferencia ahorro',  cat: 'Inversión',       tipo: 'Ahorro en efectivo', amount: -500.00,  date: '14 abr', time: '12:30', author: 'anthony', accountId: '2' },
+  { id: '6',  desc: 'Farmacia',              cat: 'Salud',           tipo: 'Gasto',              amount: -22.14,   date: '14 abr', time: '11:08', author: 'isabel',  accountId: '4' },
+  { id: '7',  desc: 'Spotify',               cat: 'Entretenimiento', tipo: 'Gasto',              amount: -9.99,    date: '13 abr', time: '08:00', author: 'anthony', accountId: '1' },
+  { id: '8',  desc: 'Freelance diseño',      cat: 'Trabajo',         tipo: 'Ingreso Variable',   amount:  350.00,  date: '13 abr', time: '15:20', author: 'anthony', accountId: '1' },
+  { id: '9',  desc: 'Mercado La Plaza',      cat: 'Alimentación',    tipo: 'Gasto',              amount: -62.40,   date: '13 abr', time: '11:05', author: 'isabel',  accountId: '4' },
+  { id: '10', desc: 'Internet CANTV',        cat: 'Servicios',       tipo: 'Gasto',              amount: -12.00,   date: '12 abr', time: '10:00', author: 'anthony', accountId: '1' },
 ]
 
 // ── Month summary ─────────────────────────────────

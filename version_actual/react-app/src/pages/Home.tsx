@@ -138,7 +138,7 @@ export default function Home() {
       <div style={{ padding: '8px 16px 4px', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
         {[
           { emoji: '＋', l: 'Añadir',    c: 'var(--amber)',  onClick: () => navigate('/new-txn') },
-          { emoji: '⇄',  l: 'Transferir', c: 'var(--teal-s)', onClick: () => navigate('/txn') },
+          { emoji: '⇄',  l: 'Transferir', c: 'var(--teal)',   onClick: () => navigate('/transfer') },
           { emoji: '⊡',  l: 'Escanear',  c: 'var(--info)',   onClick: () => {} },
           { emoji: '✦',  l: 'IA',         c: '#b0a3c7',      onClick: () => navigate('/ia') },
         ].map((a) => (

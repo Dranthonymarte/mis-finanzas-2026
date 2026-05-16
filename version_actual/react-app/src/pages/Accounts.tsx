@@ -4,19 +4,23 @@ import Pill     from '../components/ui/Pill'
 import { MOCK_ACCOUNTS, fmt } from '../data/mock'
 
 /* ── Account card ── */
-function AccountCard({ acc }: { acc: typeof MOCK_ACCOUNTS[0] }) {
+function AccountCard({ acc, onClick }: { acc: typeof MOCK_ACCOUNTS[0]; onClick: () => void }) {
   const trendPos = acc.trend >= 0
   const displayBalance = acc.currency === 'USD'
     ? fmt(acc.balance)
     : `Bs ${acc.balance.toLocaleString('es-VE', { maximumFractionDigits: 0 })}`
 
   return (
-    <div style={{
-      borderRadius: 18, overflow: 'hidden',
-      background: `radial-gradient(ellipse at 88% 12%, ${acc.color}2e 0%, transparent 58%), var(--ink-2)`,
-      border: `1px solid ${acc.color}30`,
-      padding: '16px 16px 14px',
-    }}>
+    <div
+      onClick={onClick}
+      style={{
+        borderRadius: 18, overflow: 'hidden',
+        background: `radial-gradient(ellipse at 88% 12%, ${acc.color}2e 0%, transparent 58%), var(--ink-2)`,
+        border: `1px solid ${acc.color}30`,
+        padding: '16px 16px 14px',
+        cursor: 'pointer',
+      }}
+    >
       {/* top row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
         <div>
@@ -102,12 +106,13 @@ export default function Accounts() {
       {/* ── Account cards ── */}
       <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {MOCK_ACCOUNTS.map(acc => (
-          <AccountCard key={acc.id} acc={acc} />
+          <AccountCard key={acc.id} acc={acc} onClick={() => navigate(`/accounts/${acc.id}`)} />
         ))}
       </div>
 
       {/* ── Add account ── */}
       <button
+        onClick={() => navigate('/new-account')}
         style={{
           margin: '14px 16px 24px',
           background: 'transparent', border: '1px dashed var(--line)',

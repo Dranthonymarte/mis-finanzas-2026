@@ -1,11 +1,11 @@
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  AI-CONTEXT — service-worker.js · Mis Finanzas 2026                 ║
-// ║  VERSIÓN: finanzas-v59-batch61                                       ║
-// ║  batch61: F1 nav 5-tabs + FAB central · F2 user bar (bundle Mobile  ║
-// ║  UIX). Markup estructural; IDs/handlers/multi-moneda preservados.   ║
+// ║  VERSIÓN: finanzas-v59-batch62                                       ║
+// ║  batch62: F3 ScreenTxn · F4 ScreenAccounts · F5 ScreenAI · F6       ║
+// ║  ScreenMore/Settings (bundle Mobile UIX). CSS scoped; IDs intactos. ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 
-const CACHE_VERSION = 'finanzas-v59-batch61';
+const CACHE_VERSION = 'finanzas-v59-batch62';
 const CDN_CACHE     = 'finanzas-cdn-v44';
 
 const PRECACHE_URLS = [

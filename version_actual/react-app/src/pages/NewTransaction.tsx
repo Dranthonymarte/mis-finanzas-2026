@@ -91,6 +91,7 @@ export default function NewTransaction() {
   const [notes,      setNotes]      = useState('')
   const [rateBCV,    setRateBCV]    = useState(tasas.bcv)
   const [saved,      setSaved]      = useState(false)
+  const [confirm,    setConfirm]    = useState(false)  // confirmation sheet
 
   // Sync BCV rate when tasas loads
   useEffect(() => { setRateBCV(tasas.bcv) }, [tasas.bcv])
@@ -166,8 +167,14 @@ export default function NewTransaction() {
   const showSubcat = !TIPOS_SIN_SUBCAT.has(tipo) && subcats.length > 0
 
   // ── Save ──────────────────────────────────────
-  async function handleSave() {
+  function handleSave() {
     if (!amountUSD || usdNum <= 0) return
+    setConfirm(true)  // show confirmation sheet first
+  }
+
+  async function executeSave() {
+    if (!amountUSD || usdNum <= 0) return
+    setConfirm(false)
     // "may-26" → "Mayo" — DB stores Spanish month name
     const mes  = mesIdToDbKey(dateToMesId(new Date(fecha + 'T12:00:00')))
     const sign = tipoObj.esIngreso ? 1 : -1
@@ -641,6 +648,64 @@ export default function NewTransaction() {
         </div>
 
       </div>
+
+      {/* ── Confirmation sheet ────────────────────── */}
+      {confirm && (
+        <>
+          <div
+            onClick={() => setConfirm(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 500 }}
+          />
+          <div style={{
+            position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+            width: '100%', maxWidth: 430,
+            background: 'var(--ink-1)', borderRadius: '20px 20px 0 0',
+            border: '1px solid var(--line)',
+            padding: '20px 20px max(24px, calc(24px + env(safe-area-inset-bottom, 0px)))',
+            zIndex: 501,
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 8 }}>
+                Confirmar movimiento
+              </div>
+              <div className="num" style={{ fontSize: 40, fontWeight: 700, color: meta.color, lineHeight: 1 }}>
+                {meta.sign || '$'}{amountUSD}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 500, marginTop: 8 }}>{desc || cat || tipo}</div>
+              <div style={{ fontSize: 12, color: 'var(--fg-mute)', marginTop: 4 }}>
+                {tipo} · {cat}{subcat ? ` · ${subcat}` : ''} · {fecha}
+              </div>
+              {recurrente && (
+                <div style={{ fontSize: 11, color: 'var(--amber)', marginTop: 6 }}>
+                  🔁 Se guardará como recurrente (día {recDia})
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setConfirm(false)}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: 12,
+                  background: 'var(--ink-3)', border: '1px solid var(--line)',
+                  fontSize: 14, fontWeight: 600, color: 'var(--fg-dim)', cursor: 'pointer',
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={executeSave}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: 12,
+                  background: 'var(--amber)', border: 'none',
+                  fontSize: 14, fontWeight: 700, color: 'var(--ink-0)', cursor: 'pointer',
+                }}
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -248,7 +248,7 @@ export default function Home() {
         <button onClick={toggleOcultar} style={iBtn} aria-label="Ocultar montos">
           <span style={{ fontSize: 16 }}>{ocultarMontos ? '🙈' : '👁'}</span>
         </button>
-        <button style={iBtn} aria-label="Buscar"><SearchIcon /></button>
+        <button onClick={() => navigate('/buscar')} style={iBtn} aria-label="Buscar"><SearchIcon /></button>
         <button
           onClick={() => navigate('/notificaciones')}
           style={{ ...iBtn, position: 'relative' }} aria-label="Notificaciones"

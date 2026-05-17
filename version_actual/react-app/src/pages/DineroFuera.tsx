@@ -38,6 +38,9 @@ export default function DineroFuera() {
   const [abonoVal,  setAbonoVal]  = useState('')
   const [saving,    setSaving]    = useState(false)
 
+  // ── Confirmation state ──
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+
   useEffect(() => {
     if (!householdId) { setLoading(false); return }
     supabase
@@ -78,7 +81,10 @@ export default function DineroFuera() {
       .from('dinero_fuera')
       .update({ pagado: true })
       .eq('id', id)
-    if (!error) setRows(prev => prev.filter(r => r.id !== id))
+    if (!error) {
+      setRows(prev => prev.filter(r => r.id !== id))
+      setConfirmId(null)
+    }
   }
 
   const filtered   = tab === 'all' ? rows : rows.filter(r => r.tipo === tab)
@@ -216,7 +222,7 @@ export default function DineroFuera() {
                     + Abonar
                   </button>
                   <button
-                    onClick={() => handlePagado(r.id)}
+                    onClick={() => setConfirmId(r.id)}
                     style={{
                       flex: 1, padding: '7px 0', borderRadius: 8,
                       background: 'rgba(88,178,106,.12)', border: '1px solid rgba(88,178,106,.3)',
@@ -234,6 +240,61 @@ export default function DineroFuera() {
       </div>
 
       <div style={{ height: 32 }} />
+
+      {/* ── Confirmation sheet ── */}
+      {confirmId && (
+        <>
+          <div
+            onClick={() => setConfirmId(null)}
+            style={{
+              position: 'fixed', inset: 0,
+              background: 'rgba(0,0,0,.6)',
+              zIndex: 500,
+            }}
+          />
+          <div style={{
+            position: 'fixed', bottom: 0, left: '50%',
+            transform: 'translateX(-50%)',
+            width: '100%', maxWidth: 430,
+            background: 'var(--ink-1)',
+            borderRadius: '20px 20px 0 0',
+            border: '1px solid var(--line)',
+            padding: '20px 20px max(24px, calc(24px + env(safe-area-inset-bottom, 0px)))',
+            zIndex: 501,
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>✓</div>
+              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>
+                ¿Marcar como pagado?
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--fg-mute)' }}>
+                {rows.find(r => r.id === confirmId)?.nombre} — {fmt(rows.find(r => r.id === confirmId)?.monto_original ?? 0)}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginTop: 6 }}>
+                Esta acción ocultará el registro de la lista activa.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setConfirmId(null)}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: 12,
+                  background: 'var(--ink-3)', border: '1px solid var(--line)',
+                  fontSize: 14, fontWeight: 600, color: 'var(--fg-dim)', cursor: 'pointer',
+                }}
+              >Cancelar</button>
+              <button
+                onClick={() => handlePagado(confirmId)}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: 12,
+                  background: 'var(--pos)', border: 'none',
+                  fontSize: 14, fontWeight: 700, color: '#0a0b0d', cursor: 'pointer',
+                }}
+              >Confirmar</button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

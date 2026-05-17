@@ -16,13 +16,15 @@ export default function Monedas() {
   const householdId = useAuthStore(s => s.householdId)
   const { tasas }   = useTasas()
 
-  const [bcvInput, setBcvInput] = useState('')
-  const [eurInput, setEurInput] = useState('')
-  const [usdInput, setUsdInput] = useState('')
-  const [bsInput,  setBsInput]  = useState('')
-  const [saving,   setSaving]   = useState(false)
-  const [saved,    setSaved]    = useState(false)
-  const [history,  setHistory]  = useState<HistRow[]>([])
+  const [bcvInput,   setBcvInput]   = useState('')
+  const [eurInput,   setEurInput]   = useState('')
+  const [usdInput,   setUsdInput]   = useState('')
+  const [bsInput,    setBsInput]    = useState('')
+  const [saving,     setSaving]     = useState(false)
+  const [saved,      setSaved]      = useState(false)
+  const [fetching,   setFetching]   = useState(false)
+  const [fetchMsg,   setFetchMsg]   = useState<string | null>(null)
+  const [history,    setHistory]    = useState<HistRow[]>([])
 
   // Sync inputs when tasas loads from Supabase
   useEffect(() => {
@@ -33,6 +35,28 @@ export default function Monedas() {
   useEffect(() => {
     fetchTasasHistory().then(setHistory)
   }, [])
+
+  // Fetch BCV rate from public API (ve.dolarapi.com)
+  async function handleFetchRate() {
+    setFetching(true)
+    setFetchMsg(null)
+    try {
+      const res  = await fetch('https://ve.dolarapi.com/v1/dolares/oficial')
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json() as { promedio?: number; fechaActualizacion?: string }
+      const rate = data.promedio
+      if (!rate || rate <= 0) throw new Error('Tasa inválida')
+      setBcvInput(rate.toFixed(2))
+      const dateLabel = data.fechaActualizacion
+        ? new Date(data.fechaActualizacion).toLocaleDateString('es-VE')
+        : 'hoy'
+      setFetchMsg(`✓ Tasa BCV actualizada al ${dateLabel}: Bs ${rate.toFixed(2)}`)
+    } catch {
+      setFetchMsg('⚠ No se pudo obtener la tasa. Actualiza manualmente.')
+    } finally {
+      setFetching(false)
+    }
+  }
 
   async function handleSaveRates() {
     if (!householdId) return
@@ -75,6 +99,33 @@ export default function Monedas() {
           Tasas BCV
         </div>
         <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+          {/* Auto-fetch button */}
+          <button
+            onClick={handleFetchRate}
+            disabled={fetching}
+            style={{
+              background: 'var(--ink-3)', border: '1px solid var(--line)',
+              borderRadius: 10, padding: '9px 12px', fontSize: 12.5,
+              fontWeight: 600, cursor: fetching ? 'default' : 'pointer',
+              color: 'var(--fg-dim)', display: 'flex', alignItems: 'center',
+              gap: 8, opacity: fetching ? .7 : 1,
+            }}
+          >
+            <span style={{ fontSize: 16 }}>🌐</span>
+            {fetching ? 'Consultando BCV…' : 'Obtener tasa BCV automáticamente'}
+          </button>
+
+          {fetchMsg && (
+            <div style={{
+              fontSize: 11.5, padding: '8px 10px', borderRadius: 8,
+              background: fetchMsg.startsWith('✓') ? 'rgba(63,185,80,.1)' : 'rgba(214,106,90,.1)',
+              color: fetchMsg.startsWith('✓') ? 'var(--pos)' : 'var(--neg)',
+            }}>
+              {fetchMsg}
+            </div>
+          )}
+
           <div>
             <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginBottom: 4 }}>Bs / USD (BCV)</div>
             <input type="number" value={bcvInput} onChange={e => setBcvInput(e.target.value)} style={inp} />

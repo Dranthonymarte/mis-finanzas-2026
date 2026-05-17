@@ -8,9 +8,11 @@ export interface Transaction {
   id: string
   desc: string
   cat: string
+  subcat?: string | null   // subcategory (from DB)
   tipo: string
   amount: number
   date: string      // display label: 'Hoy' | 'Ayer' | '14 abr' etc.
+  isoDate?: string  // ISO date 'YYYY-MM-DD' (from DB — used for grouping)
   time: string      // '14:32'
   author: 'anthony' | 'isabel'
   accountId: string // foreign key → Account.id

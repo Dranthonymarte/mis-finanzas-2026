@@ -11,9 +11,20 @@ async function resolveHousehold(userId: string): Promise<string | null> {
   return data?.household_id ?? null
 }
 
-async function buildSession(userId: string, email: string | null): Promise<SessionPayload> {
+async function buildSession(
+  userId:   string,
+  email:    string | null,
+  meta?:    Record<string, unknown>,
+): Promise<SessionPayload> {
   const householdId = await resolveHousehold(userId)
-  return { userId, householdId, email: email ?? null }
+  const userName = (
+    (meta?.full_name   as string | undefined) ??
+    (meta?.name        as string | undefined) ??
+    (meta?.display_name as string | undefined) ??
+    email?.split('@')[0] ??
+    null
+  )
+  return { userId, householdId, email: email ?? null, userName }
 }
 
 export function useAuth() {
@@ -24,7 +35,11 @@ export function useAuth() {
     // 1. Fast cached check — avoids flash of /login on reload
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        buildSession(session.user.id, session.user.email ?? null).then(setSession)
+        buildSession(
+          session.user.id,
+          session.user.email ?? null,
+          session.user.user_metadata,
+        ).then(setSession)
       }
     })
 
@@ -32,7 +47,11 @@ export function useAuth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (session?.user) {
-          const payload = await buildSession(session.user.id, session.user.email ?? null)
+          const payload = await buildSession(
+            session.user.id,
+            session.user.email ?? null,
+            session.user.user_metadata,
+          )
           setSession(payload)
         } else {
           clearSession()

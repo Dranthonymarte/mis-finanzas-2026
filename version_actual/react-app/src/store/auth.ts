@@ -10,6 +10,7 @@ export interface SessionPayload {
   userId:      string
   householdId: string | null
   email:       string | null
+  userName?:   string | null
 }
 
 export interface AuthState {
@@ -60,12 +61,13 @@ export const useAuthStore = create<AuthState>()(
 
       setPin: (pin: string) => set({ pin }),
 
-      setSession: ({ userId, householdId, email }: SessionPayload) =>
+      setSession: ({ userId, householdId, email, userName }: SessionPayload) =>
         set({
           isAuthenticated: true,
           userId,
           householdId,
-          ...(email ? { userEmail: email } : {}),
+          ...(email    ? { userEmail:   email    } : {}),
+          ...(userName ? { userName, userInitial: userName[0].toUpperCase() } : {}),
         }),
 
       clearSession: () => set({ isAuthenticated: false, userId: null, householdId: null }),

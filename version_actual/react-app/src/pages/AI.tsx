@@ -5,7 +5,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Sparkline from '../components/ui/Sparkline'
-import { type ChatMsg, MOCK_CHAT, ACTIVE_MONTH, fmt, txnGroup } from '../data/mock'
+import { type ChatMsg, MOCK_CHAT, fmt, txnGroup } from '../data/mock'
+import { currentMes, mesLabel } from '../lib/mes'
 import { useTransactions } from '../hooks/useTransactions'
 import { useAccounts } from '../hooks/useAccounts'
 
@@ -40,7 +41,7 @@ function buildContext(
   const expenses = txns ? txns.filter(t => txnGroup(t.tipo) === 'gasto').reduce((s, t) => s + Math.abs(t.amount), 0) : 0
   const savings  = income - expenses
 
-  return `Cuentas: ${accsLine}\nBCV:${rateBCV}Bs/$ | Mes:${ACTIVE_MONTH} | Ing:${fmt(income)} Gas:${fmt(expenses)} Aho:${fmt(savings)}\n\nMovimientos recientes:\n${txLines}`
+  return `Cuentas: ${accsLine}\nBCV:${rateBCV}Bs/$ | Mes:${mesLabel(currentMes())} | Ing:${fmt(income)} Gas:${fmt(expenses)} Aho:${fmt(savings)}\n\nMovimientos recientes:\n${txLines}`
 }
 
 // ── Call Groq API ──
@@ -132,7 +133,7 @@ export default function AI() {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const { accounts } = useAccounts()
-  const { transactions } = useTransactions(ACTIVE_MONTH)
+  const { transactions } = useTransactions(currentMes())
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

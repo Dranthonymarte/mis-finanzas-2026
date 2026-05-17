@@ -5,11 +5,7 @@ import { fmt } from '../../data/mock'
 import { useConfig } from '../../hooks/useConfig'
 import { useTransactions } from '../../hooks/useTransactions'
 import { txnGroup } from '../../data/mock'
-
-function currentMonth(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
+import { currentMes } from '../../lib/mes'
 
 const inputSt: React.CSSProperties = {
   width: '80px', background: 'var(--ink-1)', border: '1px solid var(--line)',
@@ -19,7 +15,7 @@ const inputSt: React.CSSProperties = {
 
 export default function Budgets() {
   const { config, updateConfig } = useConfig()
-  const { transactions }         = useTransactions(currentMonth())
+  const { transactions }         = useTransactions(currentMes())
   const [editCat, setEditCat]    = useState<string | null>(null)
   const [editVal, setEditVal]    = useState('')
 

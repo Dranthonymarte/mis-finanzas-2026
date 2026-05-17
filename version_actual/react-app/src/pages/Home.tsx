@@ -10,10 +10,7 @@ import { useTransactions } from '../hooks/useTransactions'
 import { useConfig }      from '../hooks/useConfig'
 import { useKPIs }        from '../hooks/useKPIs'
 import { SearchIcon, BellIcon } from '../components/icons/Icons'
-
-function currentMonth(): string {
-  return new Date().toISOString().slice(0, 7)
-}
+import { currentMes } from '../lib/mes'
 
 /* ── Ingresos vs Gastos — 6 months placeholder (replace when historical hook exists) ── */
 const INCOME_VS_EXP = (() => {
@@ -134,7 +131,7 @@ export default function Home() {
   const [showInsight, setShowInsight] = useState(true)
 
   const { accounts: liveAccounts }  = useAccounts()
-  const { transactions: liveTxns }  = useTransactions(currentMonth())
+  const { transactions: liveTxns }  = useTransactions(currentMes())
   const { config }                  = useConfig()
   const kpiData                     = useKPIs(liveTxns, config)
 

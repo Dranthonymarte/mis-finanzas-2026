@@ -1,14 +1,19 @@
 import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { useAuthStore } from '../store/auth'
+import { useAuthStore, type SessionPayload } from '../store/auth'
 
-async function resolveSession(userId: string, setter: (uid: string, hid: string) => void) {
+async function resolveHousehold(userId: string): Promise<string | null> {
   const { data } = await supabase
     .from('household_members')
     .select('household_id')
     .eq('user_id', userId)
     .single()
-  if (data?.household_id) setter(userId, data.household_id)
+  return data?.household_id ?? null
+}
+
+async function buildSession(userId: string, email: string | null): Promise<SessionPayload> {
+  const householdId = await resolveHousehold(userId)
+  return { userId, householdId, email: email ?? null }
 }
 
 export function useAuth() {
@@ -16,14 +21,24 @@ export function useAuth() {
   const clearSession = useAuthStore(s => s.clearSession)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) resolveSession(user.id, setSession)
+    // 1. Fast cached check — avoids flash of /login on reload
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        buildSession(session.user.id, session.user.email ?? null).then(setSession)
+      }
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) resolveSession(session.user.id, setSession)
-      else clearSession()
-    })
+    // 2. Reactive — handles login/logout/token refresh
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (session?.user) {
+          const payload = await buildSession(session.user.id, session.user.email ?? null)
+          setSession(payload)
+        } else {
+          clearSession()
+        }
+      }
+    )
 
     return () => subscription.unsubscribe()
   }, [setSession, clearSession])

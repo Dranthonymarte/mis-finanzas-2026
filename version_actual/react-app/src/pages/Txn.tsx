@@ -11,35 +11,9 @@ import { fmt, txnGroup, type Transaction } from '../data/mock'
 import { useTransactions } from '../hooks/useTransactions'
 import { useConfig }       from '../hooks/useConfig'
 import { FilterIcon, LockIcon } from '../components/icons/Icons'
+import { currentMes, generateMeses, mesLabel } from '../lib/mes'
 
-// ── Dynamic month list (last 12 months ending at current) ────────────────────
-interface MonthEntry { id: string; label: string; shortYear: string }
-
-function generateMonths(count = 12): MonthEntry[] {
-  const result: MonthEntry[] = []
-  const now = new Date()
-  for (let i = count - 1; i >= 0; i--) {
-    const d   = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const id  = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    const label = d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '').replace(/^\w/, c => c.toUpperCase())
-    result.push({ id, label, shortYear: String(d.getFullYear()).slice(2) })
-  }
-  return result
-}
-
-function currentMonth(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
-function monthDisplayLabel(id: string): string {
-  const [year, month] = id.split('-')
-  const d = new Date(parseInt(year), parseInt(month) - 1, 1)
-  return d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
-    .replace(/^\w/, c => c.toUpperCase())
-}
-
-const MONTHS = generateMonths(12)
+const MONTHS = generateMeses(12)
 
 const LS_CLOSED = 'mis_finanzas_closed_months'
 
@@ -167,7 +141,7 @@ function RecRow({ t, last }: { t: Recurrente; last: boolean }) {
 
 export default function Txn() {
   const navigate = useNavigate()
-  const [activeMes, setActiveMes] = useState(currentMonth)
+  const [activeMes, setActiveMes] = useState(currentMes)
   const [filter,    setFilter]    = useState<FilterType>('all')
   const [closed,    setClosed]    = useState<Set<string>>(loadClosed)
   const [showFilters, setShowFilters] = useState(false)
@@ -206,7 +180,7 @@ export default function Txn() {
     return acc
   }, {})
 
-  const monthLabel = monthDisplayLabel(activeMes)
+  const monthLabel = mesLabel(activeMes)
 
   // Top 5 expense categories for current month data
   const catData = (() => {
@@ -308,7 +282,6 @@ export default function Txn() {
               }}
             >
               {m.label}
-              {!isActive && <span style={{ fontSize: 9, color: 'var(--fg-mute)', marginLeft: 3 }}>{m.shortYear}</span>}
               {isMeClosed && !isActive && (
                 <span style={{ position: 'absolute', top: -2, right: -2, width: 7, height: 7, borderRadius: '50%', background: 'var(--amber)', border: '1px solid var(--ink-1)' }} />
               )}

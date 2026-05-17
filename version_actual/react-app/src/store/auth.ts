@@ -1,21 +1,24 @@
 // ═══════════════════════════════════════════════════
-// Auth store — PIN + onboarding state (Checkpoint B)
-// isAuthenticated is SESSION-ONLY (not persisted) so
-// users must authenticate on every app launch — correct
-// behaviour for a finance app.
-// Supabase auth replaces this in Checkpoint C.
+// Auth store — Supabase session + PIN/onboarding state
+// isAuthenticated is SESSION-ONLY (not persisted).
 // ═══════════════════════════════════════════════════
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+export interface SessionPayload {
+  userId:      string
+  householdId: string | null
+  email:       string | null
+}
+
 export interface AuthState {
   // Persisted
   hasSeenOnboarding: boolean
-  pin: string
-  userName: string
-  userInitial: string
-  userEmail: string
+  pin:               string
+  userName:          string
+  userInitial:       string
+  userEmail:         string
 
   // Session-only (NOT persisted)
   isAuthenticated: boolean
@@ -27,7 +30,7 @@ export interface AuthState {
   authenticate:       (enteredPin: string) => boolean
   logout:             () => void
   setPin:             (pin: string) => void
-  setSession:         (userId: string, householdId: string) => void
+  setSession:         (payload: SessionPayload) => void
   clearSession:       () => void
 }
 
@@ -57,9 +60,15 @@ export const useAuthStore = create<AuthState>()(
 
       setPin: (pin: string) => set({ pin }),
 
-      setSession: (userId: string, householdId: string) => set({ userId, householdId }),
+      setSession: ({ userId, householdId, email }: SessionPayload) =>
+        set({
+          isAuthenticated: true,
+          userId,
+          householdId,
+          ...(email ? { userEmail: email } : {}),
+        }),
 
-      clearSession: () => set({ userId: null, householdId: null }),
+      clearSession: () => set({ isAuthenticated: false, userId: null, householdId: null }),
     }),
     {
       name: 'mis-finanzas-auth',

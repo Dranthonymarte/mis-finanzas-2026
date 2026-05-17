@@ -207,7 +207,8 @@ export default function NewTransaction() {
           monto:            sign * usdNum,
           tipo,
           cat,
-          recurrencia_dias: recDia,
+          recurrencia_dias: 30,      // monthly period
+          recDia,                    // day of month (1-28) for the trigger
         },
       ]
       await updateConfig('recurrentes', nuevos)

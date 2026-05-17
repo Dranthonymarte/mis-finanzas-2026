@@ -13,7 +13,8 @@ interface RecurrenteItem {
   id:               string
   descripcion:      string
   monto:            number
-  recurrencia_dias: number
+  recurrencia_dias: number    // period in days (30 = monthly)
+  recDia?:          number    // day of month (1-28)
   tipo:             string
   cat:              string
 }
@@ -44,12 +45,13 @@ export default function Recurrentes() {
   const [desc,     setDesc]     = useState('')
   const [monto,    setMonto]    = useState('')
   const [dias,     setDias]     = useState('30')
+  const [diaNum,   setDiaNum]   = useState(1)     // day of month
   const [tipo,     setTipo]     = useState(TIPOS[0])
   const [cat,      setCat]      = useState('')
   const [saving,   setSaving]   = useState(false)
 
   function resetForm() {
-    setDesc(''); setMonto(''); setDias('30'); setTipo(TIPOS[0]); setCat('')
+    setDesc(''); setMonto(''); setDias('30'); setDiaNum(1); setTipo(TIPOS[0]); setCat('')
   }
 
   async function handleAdd() {
@@ -61,6 +63,7 @@ export default function Recurrentes() {
       descripcion:      desc.trim(),
       monto:            montoNum,
       recurrencia_dias: parseInt(dias) || 30,
+      recDia:           diaNum,
       tipo,
       cat:              cat.trim() || tipo,
     }
@@ -133,7 +136,10 @@ export default function Recurrentes() {
                     <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 2, display: 'flex', gap: 5 }}>
                       <span>{r.cat}</span>
                       <span>·</span>
-                      <span>cada {r.recurrencia_dias === 30 ? 'mes' : `${r.recurrencia_dias} días`}</span>
+                      <span>
+                        {r.recurrencia_dias === 30 ? 'Mensual' : `cada ${r.recurrencia_dias} días`}
+                        {r.recDia ? ` · día ${r.recDia}` : ''}
+                      </span>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -200,8 +206,8 @@ export default function Recurrentes() {
               style={inputSt} maxLength={100}
             />
 
-            {/* Monto + Días */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {/* Monto + Días + Día del mes */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
               <div>
                 <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginBottom: 4 }}>Monto (USD)</div>
                 <input
@@ -216,6 +222,14 @@ export default function Recurrentes() {
                 <input
                   type="number" inputMode="numeric" min="1" max="365"
                   value={dias} onChange={e => setDias(e.target.value)}
+                  style={inputSt}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginBottom: 4 }}>Día del mes</div>
+                <input
+                  type="number" inputMode="numeric" min="1" max="28"
+                  value={diaNum} onChange={e => setDiaNum(parseInt(e.target.value) || 1)}
                   style={inputSt}
                 />
               </div>

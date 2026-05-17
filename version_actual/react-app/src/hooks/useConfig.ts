@@ -31,7 +31,8 @@ export interface RecurrenteConfig {
   monto:            number
   tipo:             string
   cat:              string
-  recurrencia_dias: number
+  recurrencia_dias: number    // period in days (e.g. 30 = monthly)
+  recDia?:          number    // day of month to trigger (1-28)
 }
 
 export interface Config {

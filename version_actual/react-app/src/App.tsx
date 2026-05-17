@@ -30,6 +30,13 @@ import AccountDetail  from './pages/AccountDetail'
 import TxnDetail      from './pages/TxnDetail'
 import NewAccount     from './pages/NewAccount'
 import Transfer       from './pages/Transfer'
+import Monedas        from './pages/Monedas'
+import Fire           from './pages/Fire'
+import Metas          from './pages/Metas'
+import Pareja         from './pages/Pareja'
+import Exportar       from './pages/Exportar'
+import Escanear       from './pages/Escanear'
+import Notificaciones from './pages/Notificaciones'
 
 // ── Main pages ─────────────────────────────────────
 import Home     from './pages/Home'
@@ -58,11 +65,18 @@ export default function App() {
       {/* ── App layer (protected, with AppShell) ─── */}
       <Route element={<RequireAuth />}>
         {/* Full-screen flows — sin TabBar */}
-        <Route path="/new-txn"       element={<NewTransaction />} />
-        <Route path="/accounts/:id"  element={<AccountDetail />}  />
-        <Route path="/txn/:id"       element={<TxnDetail />}      />
-        <Route path="/new-account"   element={<NewAccount />}     />
-        <Route path="/transfer"      element={<Transfer />}        />
+        <Route path="/new-txn"         element={<NewTransaction />}  />
+        <Route path="/accounts/:id"    element={<AccountDetail />}   />
+        <Route path="/txn/:id"         element={<TxnDetail />}       />
+        <Route path="/new-account"     element={<NewAccount />}      />
+        <Route path="/transfer"        element={<Transfer />}         />
+        <Route path="/monedas"         element={<Monedas />}         />
+        <Route path="/fire"            element={<Fire />}            />
+        <Route path="/metas"           element={<Metas />}           />
+        <Route path="/pareja"          element={<Pareja />}          />
+        <Route path="/exportar"        element={<Exportar />}        />
+        <Route path="/escanear"        element={<Escanear />}        />
+        <Route path="/notificaciones"  element={<Notificaciones />}  />
 
         <Route element={<AppShell />}>
           <Route index                       element={<Home />}       />

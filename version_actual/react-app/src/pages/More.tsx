@@ -92,14 +92,14 @@ export default function More() {
             iconBg="transparent"
             label="Metas de ahorro"
             sub="Viaje a Japón · Fondo de emergencia"
-            onClick={() => {}}
+            onClick={() => navigate('/metas')}
           />
           <RowLink
             icon={<IcoBg color="#3a1a1a"><FireIcon /></IcoBg>}
             iconBg="transparent"
             label="FIRE / Jubilación"
             sub="Proyección de independencia"
-            onClick={() => {}}
+            onClick={() => navigate('/fire')}
           />
           <RowLink
             icon={<IcoBg color="#2d1a3d"><HeartIcon /></IcoBg>}
@@ -107,7 +107,7 @@ export default function More() {
             label="Finanzas en pareja"
             sub="Isabel · 2 miembros"
             last
-            onClick={() => {}}
+            onClick={() => navigate('/pareja')}
           />
         </RowGroup>
 
@@ -124,7 +124,7 @@ export default function More() {
             iconBg="transparent"
             label="Exportar datos"
             sub="CSV · Excel · PDF"
-            onClick={() => {}}
+            onClick={() => navigate('/exportar')}
           />
           <RowLink
             icon={<IcoBg color="#1a3428"><span style={{ color: 'var(--teal)', display: 'grid', placeItems: 'center' }}><ScanIcon /></span></IcoBg>}
@@ -132,7 +132,7 @@ export default function More() {
             label="Escanear recibo"
             sub="Capturar con cámara"
             last
-            onClick={() => {}}
+            onClick={() => navigate('/escanear')}
           />
         </RowGroup>
 
@@ -149,7 +149,7 @@ export default function More() {
             iconBg="transparent"
             label="Notificaciones"
             sub="Alertas y recordatorios"
-            onClick={() => {}}
+            onClick={() => navigate('/notificaciones')}
           />
           <RowLink
             icon={<IcoBg color="#1a2416"><span style={{ color: '#58b26a', display: 'grid', placeItems: 'center' }}><PaletteIcon /></span></IcoBg>}
@@ -164,7 +164,7 @@ export default function More() {
             label="Monedas y tasas"
             sub="USD · VES · EUR · BCV"
             last
-            onClick={() => {}}
+            onClick={() => navigate('/monedas')}
           />
         </RowGroup>
 
@@ -198,7 +198,7 @@ export default function More() {
         </RowGroup>
 
         <div style={{ textAlign: 'center', padding: '16px 0 8px', fontSize: 10.5, color: 'var(--fg-mute)' }}>
-          Mis Finanzas 2026 · checkpoint-B · v0.2.0
+          Mis Finanzas 2026 · checkpoint-C · v0.3.0
         </div>
       </div>
 

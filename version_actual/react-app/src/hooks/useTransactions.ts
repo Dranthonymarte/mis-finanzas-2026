@@ -1,23 +1,22 @@
 import { useEffect, useState } from 'react'
-import { supabase, HOUSEHOLD_ID } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
+import { useAuthStore } from '../store/auth'
 import { type Transaction } from '../data/mock'
 
 interface SupaMov {
-  id: string
+  id:          string
   descripcion: string
-  tipo: string
-  cat: string
-  subcat: string | null
-  amount: number
-  fecha: string        // ISO date 'YYYY-MM-DD'
-  author: string | null
-  mes: string
-  recurrente?: boolean
-  rec_dia?: number
+  tipo:        string
+  cat:         string
+  subcat:      string | null
+  amount:      number
+  fecha:       string
+  author:      string | null
+  mes:         string
+  cuenta_id:   string | null
 }
 
 function relativeDate(iso: string): string {
-  // Supabase returns fecha as 'YYYY-MM-DD'
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const d = new Date(iso + 'T00:00:00')
@@ -27,18 +26,30 @@ function relativeDate(iso: string): string {
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
 }
 
+function mapAuthor(raw: string | null): 'anthony' | 'isabel' {
+  if (!raw) return 'anthony'
+  const v = raw.toLowerCase()
+  return v === 'i' || v === 'isabel' ? 'isabel' : 'anthony'
+}
+
 export function useTransactions(mes: string) {
+  const userId      = useAuthStore(s => s.userId)
+  const householdId = useAuthStore(s => s.householdId)
+
   const [transactions, setTransactions] = useState<Transaction[] | null>(null)
   const [loading,      setLoading]      = useState(true)
   const [error,        setError]        = useState<string | null>(null)
 
   useEffect(() => {
+    if (!userId || !householdId) { setLoading(false); return }
+
     setLoading(true)
     setTransactions(null)
+
     supabase
       .from('movimientos')
-      .select('id,descripcion,tipo,cat,subcat,amount,fecha,author,mes')
-      .eq('household_id', HOUSEHOLD_ID)
+      .select('id,descripcion,tipo,cat,subcat,amount,fecha,author,mes,cuenta_id')
+      .eq('household_id', householdId)
       .eq('mes', mes)
       .is('deleted_at', null)
       .order('fecha', { ascending: false })
@@ -53,14 +64,14 @@ export function useTransactions(mes: string) {
             amount:    r.amount,
             date:      relativeDate(r.fecha),
             time:      '—',
-            author:    (r.author === 'isabel' ? 'isabel' : 'anthony') as 'anthony' | 'isabel',
-            accountId: '',
+            author:    mapAuthor(r.author),
+            accountId: r.cuenta_id ?? '',
             mes:       r.mes,
           }))
         )
         setLoading(false)
       })
-  }, [mes])
+  }, [userId, householdId, mes])
 
   return { transactions, loading, error }
 }

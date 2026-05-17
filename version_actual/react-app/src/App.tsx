@@ -21,6 +21,7 @@
 import { Routes, Route } from 'react-router-dom'
 import AppShell from './components/shell/AppShell'
 import { RequireAuth, RequireNoAuth } from './components/shell/AuthGuard'
+import { useAuth } from './hooks/useAuth'
 
 // ── Auth pages (no shell) ──────────────────────────
 import Onboarding     from './pages/Onboarding'
@@ -54,6 +55,7 @@ import Appearance from './pages/settings/Appearance'
 import Security   from './pages/settings/Security'
 
 export default function App() {
+  useAuth()
   return (
     <Routes>
       {/* ── Auth layer (public, no AppShell) ─────── */}

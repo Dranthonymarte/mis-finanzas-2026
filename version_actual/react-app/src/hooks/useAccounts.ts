@@ -1,24 +1,32 @@
 import { useEffect, useState } from 'react'
-import { supabase, HOUSEHOLD_ID } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
+import { useAuthStore } from '../store/auth'
 import { type Account } from '../data/mock'
 
 interface SupaCuenta {
-  id: string
-  nombre: string
-  color: string | null
-  saldo_inicial: number | null
-  moneda: 'USD' | 'BS' | 'EUR'
-  activa: boolean
+  id:                   string
+  nombre:               string
+  color:                string | null
+  moneda:               string
+  saldo_inicial:        number | null
+  balance_override:     number | null
+  activa:               boolean
+  owner:                string | null
+}
+
+function inferType(nombre: string, moneda: string): string {
+  if (moneda === 'VES') return 'CASH'
+  if (nombre.toLowerCase().includes('ahorro')) return 'AHORRO'
+  return 'CORRIENTE'
 }
 
 function mapCuenta(r: SupaCuenta): Account {
-  const isBs = r.moneda === 'BS'
   return {
     id:       r.id,
-    type:     isBs ? 'CASH' : r.nombre.toLowerCase().includes('ahorro') ? 'AHORRO' : 'CORRIENTE',
+    type:     inferType(r.nombre, r.moneda),
     name:     r.nombre,
-    currency: r.moneda === 'BS' ? 'VES' : r.moneda,
-    balance:  r.saldo_inicial ?? 0,
+    currency: r.moneda,
+    balance:  r.balance_override ?? r.saldo_inicial ?? 0,
     trend:    0,
     color:    r.color ?? '#58b26a',
     spark:    [],
@@ -26,23 +34,26 @@ function mapCuenta(r: SupaCuenta): Account {
 }
 
 export function useAccounts() {
+  const userId = useAuthStore(s => s.userId)
   const [accounts, setAccounts] = useState<Account[] | null>(null)
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState<string | null>(null)
 
   useEffect(() => {
+    if (!userId) { setLoading(false); return }
+
     supabase
       .from('cuentas')
-      .select('id,nombre,color,saldo_inicial,moneda,activa')
-      .eq('household_id', HOUSEHOLD_ID)
+      .select('id,nombre,color,moneda,saldo_inicial,balance_override,activa,owner')
+      .eq('user_id', userId)
       .eq('activa', true)
-      .order('nombre')
+      .order('created_at')
       .then(({ data, error: err }) => {
         if (err) { setError(err.message); setLoading(false); return }
         setAccounts((data as SupaCuenta[] ?? []).map(mapCuenta))
         setLoading(false)
       })
-  }, [])
+  }, [userId])
 
   return { accounts, loading, error }
 }

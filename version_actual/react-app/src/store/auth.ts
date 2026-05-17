@@ -17,14 +17,18 @@ export interface AuthState {
   userInitial: string
   userEmail: string
 
-  // Session-only (NOT persisted — always requires PIN on reload)
+  // Session-only (NOT persisted)
   isAuthenticated: boolean
+  userId:          string | null
+  householdId:     string | null
 
   // Actions
   completeOnboarding: () => void
   authenticate:       (enteredPin: string) => boolean
   logout:             () => void
   setPin:             (pin: string) => void
+  setSession:         (userId: string, householdId: string) => void
+  clearSession:       () => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -32,11 +36,13 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       // ── Defaults ──────────────────────────────────
       hasSeenOnboarding: false,
-      pin:               '1234',       // Demo PIN — replace with biometrics in C
+      pin:               '1234',
       userName:          'Anthony',
       userInitial:       'A',
       userEmail:         'anthonymarte12@gmail.com',
       isAuthenticated:   false,
+      userId:            null,
+      householdId:       null,
 
       // ── Actions ───────────────────────────────────
       completeOnboarding: () => set({ hasSeenOnboarding: true }),
@@ -47,9 +53,13 @@ export const useAuthStore = create<AuthState>()(
         return ok
       },
 
-      logout: () => set({ isAuthenticated: false }),
+      logout: () => set({ isAuthenticated: false, userId: null, householdId: null }),
 
       setPin: (pin: string) => set({ pin }),
+
+      setSession: (userId: string, householdId: string) => set({ userId, householdId }),
+
+      clearSession: () => set({ userId: null, householdId: null }),
     }),
     {
       name: 'mis-finanzas-auth',

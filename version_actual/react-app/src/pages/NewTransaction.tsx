@@ -1,84 +1,14 @@
-// ═══════════════════════════════════════════════════
-// NewTransaction — Paridad completa con modal-mov vanilla
-// Tipo→Categoría→Subcategoría en cadena
-// USD↔Bs bidireccional con tasa BCV activa
-// Método de pago, cuenta, recurrente, ef_contribution
-// ═══════════════════════════════════════════════════
-
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { type CSSProperties, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import CatIcon, { catColor } from '../components/ui/CatIcon'
 import { ArrowLeftIcon, CheckIcon } from '../components/icons/Icons'
-import { MOCK_ACCOUNTS } from '../data/mock'
 import { useAccounts } from '../hooks/useAccounts'
+import { useConfig } from '../hooks/useConfig'
+import { useTasas } from '../hooks/useTasas'
 import { useAuthStore } from '../store/auth'
-import { supabase, HOUSEHOLD_ID } from '../lib/supabase'
-
-// ── Tipos exactos del vanilla ─────────────────────
-const TIPOS = [
-  'Gasto',
-  'Ingreso Fijo',
-  'Ingreso Variable',
-  'Ahorro en efectivo',
-  'Transferencia Interna',
-  'Prestamo recibido',
-  'Prestamo pagado',
-  'Ajuste',
-] as const
-
-type Tipo = typeof TIPOS[number]
-
-// ── Metadatos por tipo (color, signo) ──────────────
-const TIPO_META: Record<Tipo, { color: string; sign: '' | '+' | '−' }> = {
-  'Gasto':                { color: 'var(--neg)',  sign: '−' },
-  'Ingreso Fijo':         { color: 'var(--pos)',  sign: '+' },
-  'Ingreso Variable':     { color: 'var(--pos)',  sign: '+' },
-  'Ahorro en efectivo':   { color: 'var(--info)', sign: ''  },
-  'Transferencia Interna':{ color: 'var(--teal)', sign: ''  },
-  'Prestamo recibido':    { color: 'var(--pos)',  sign: '+' },
-  'Prestamo pagado':      { color: 'var(--neg)',  sign: '−' },
-  'Ajuste':               { color: 'var(--amber)', sign: '' },
-}
-
-// ── Subcategorías ocultas para ciertos tipos ──────
-const TIPOS_SIN_SUBCAT = new Set<Tipo>(['Ajuste', 'Prestamo recibido', 'Prestamo pagado', 'Transferencia Interna'])
-
-// ── Categorías por tipo ────────────────────────────
-const CATS_BY_TIPO: Record<Tipo, string[]> = {
-  'Gasto': [
-    'Alimentación', 'Restaurantes', 'Transporte', 'Entretenimiento',
-    'Salud', 'Hogar', 'Servicios', 'Suscripciones', 'Ropa', 'Ocio', 'Educación',
-  ],
-  'Ingreso Fijo':      ['Trabajo', 'Salario', 'Arrendamiento', 'Pensión'],
-  'Ingreso Variable':  ['Freelance', 'Negocio', 'Inversión', 'Comisión', 'Venta', 'Otro'],
-  'Ahorro en efectivo':['Ahorro general', 'Emergencia', 'FIRE', 'Meta viaje', 'Meta hogar'],
-  'Transferencia Interna': ['Transferencia Interna'],
-  'Prestamo recibido': ['Familiar', 'Amigo', 'Banco', 'Personal'],
-  'Prestamo pagado':   ['Familiar', 'Amigo', 'Banco', 'Personal'],
-  'Ajuste':            ['Corrección', 'Diferencia cambiaria', 'Otro'],
-}
-
-// ── Subcategorías por categoría ───────────────────
-const SUBCATS: Record<string, string[]> = {
-  'Alimentación':    ['Supermercado', 'Panadería', 'Carnicería', 'Bodega', 'Frutas y verduras'],
-  'Restaurantes':    ['Almuerzo', 'Cena', 'Domicilio', 'Fast Food', 'Café / Merienda'],
-  'Transporte':      ['Gasolina', 'Taxi / Uber', 'Bus', 'Parking', 'Peaje', 'Avión'],
-  'Entretenimiento': ['Cine', 'Conciertos', 'Teatro', 'Eventos', 'Parques'],
-  'Salud':           ['Farmacia', 'Médico', 'Dentista', 'Seguro', 'Gimnasio', 'Vitaminas'],
-  'Hogar':           ['Alquiler', 'Electricidad', 'Agua', 'Internet', 'Gas', 'Reparaciones', 'Muebles'],
-  'Servicios':       ['Teléfono', 'Internet', 'Cable TV', 'Seguro hogar'],
-  'Suscripciones':   ['Netflix', 'Spotify', 'Disney+', 'HBO Max', 'Amazon Prime', 'YouTube Premium'],
-  'Ropa':            ['Ropa', 'Zapatos', 'Accesorios'],
-  'Ocio':            ['Viajes', 'Deporte', 'Hobbies', 'Libros'],
-  'Educación':       ['Cursos online', 'Universidad', 'Materiales', 'Idiomas'],
-  'Trabajo':         ['Salario', 'Bono', 'Horas extra', 'Viáticos'],
-  'Freelance':       ['Diseño', 'Programación', 'Consultoría', 'Contenido', 'Traducción'],
-  'Inversión':       ['Acciones', 'Crypto', 'Fondo mutuo', 'Dividendos', 'Bienes raíces'],
-  'Ahorro general':  ['Meta ahorro', 'General'],
-  'Emergencia':      ['Fondo emergencia'],
-  'FIRE':            ['Independencia financiera'],
-}
+import { supabase } from '../lib/supabase'
+import { ACTIVE_MONTH } from '../data/mock'
 
 // ── Métodos de pago ────────────────────────────────
 const METHODS = [
@@ -91,20 +21,24 @@ const METHODS = [
   'Binance',
 ]
 
-// ── Utilidades ─────────────────────────────────────
+// ── Tipos que no muestran subcategoría ────────────
+const TIPOS_SIN_SUBCAT = new Set([
+  'Ajuste', 'Prestamo recibido', 'Prestamo pagado', 'Transferencia Interna',
+])
+
+// ── Color y signo por tipo ─────────────────────────
+function tipoMeta(nombre: string, esIngreso: boolean): { color: string; sign: '' | '+' | '−' } {
+  if (esIngreso) return { color: 'var(--pos)', sign: '+' }
+  if (nombre.includes('Ahorro'))       return { color: 'var(--info)', sign: '' }
+  if (nombre.includes('Transfer'))     return { color: 'var(--teal)', sign: '' }
+  if (nombre.includes('Ajuste'))       return { color: 'var(--amber)', sign: '' }
+  return { color: 'var(--neg)', sign: '−' }
+}
+
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
-function loadBCV(): number {
-  try {
-    const raw = localStorage.getItem('mis_finanzas_tasas')
-    if (raw) return JSON.parse(raw).bcv || 431.01
-  } catch { /* ignore */ }
-  return 431.01
-}
-
-// ── Sub-components ─────────────────────────────────
 const inputSt: CSSProperties = {
   width: '100%', background: 'var(--ink-2)', border: '1px solid var(--line)',
   borderRadius: 12, padding: '11px 14px', fontSize: 14,
@@ -127,58 +61,77 @@ function Rule() {
   return <div style={{ height: 1, background: 'var(--line)', margin: '14px 16px 0' }} />
 }
 
-// ══════════════════════════════════════════════════
 export default function NewTransaction() {
-  const navigate = useNavigate()
-  const userName = useAuthStore((s) => s.userName)
+  const navigate    = useNavigate()
+  const userName    = useAuthStore(s => s.userName)
+  const userId      = useAuthStore(s => s.userId)
+  const householdId = useAuthStore(s => s.householdId)
 
   const { accounts: liveAccounts } = useAccounts()
-  const accounts = liveAccounts ?? MOCK_ACCOUNTS
+  const { config }                 = useConfig()
+  const { tasas }                  = useTasas(ACTIVE_MONTH)
 
-  // ── Form state ────────────────────────────────
-  const [tipo,        setTipo]        = useState<Tipo>('Gasto')
-  const [cat,         setCat]         = useState<string>(CATS_BY_TIPO['Gasto'][0])
-  const [subcat,      setSubcat]      = useState<string>('')
-  const [amountUSD,   setAmountUSD]   = useState('')
-  const [amountBs,    setAmountBs]    = useState('')
-  const [method,      setMethod]      = useState(METHODS[0])
-  const [account,     setAccount]     = useState('')
-  const [accountTo,   setAccountTo]   = useState('')
-  const [desc,        setDesc]        = useState('')
-  const [fecha,       setFecha]       = useState(todayISO())
-  const [autor,       setAutor]       = useState<'anthony' | 'isabel'>('anthony')
-  const [recurrente,  setRecurrente]  = useState(false)
-  const [recDia,      setRecDia]      = useState(1)
-  const [notes,       setNotes]       = useState('')
-  const [rateBCV,     setRateBCV]     = useState(loadBCV)
-  const [saved,       setSaved]       = useState(false)
+  const accounts = liveAccounts ?? []
+  const tipos    = config.tipos
 
-  // Keep rate fresh; initialize accounts once loaded
+  // ── Form state ─────────────────────────────────
+  const [tipo,       setTipo]       = useState(tipos[0]?.nombre ?? 'Gasto')
+  const [cat,        setCat]        = useState('')
+  const [subcat,     setSubcat]     = useState('')
+  const [amountUSD,  setAmountUSD]  = useState('')
+  const [amountBs,   setAmountBs]   = useState('')
+  const [method,     setMethod]     = useState(METHODS[0])
+  const [account,    setAccount]    = useState('')
+  const [accountTo,  setAccountTo]  = useState('')
+  const [desc,       setDesc]       = useState('')
+  const [fecha,      setFecha]      = useState(todayISO())
+  const [autor,      setAutor]      = useState<'anthony' | 'isabel'>('anthony')
+  const [recurrente, setRecurrente] = useState(false)
+  const [recDia,     setRecDia]     = useState(1)
+  const [notes,      setNotes]      = useState('')
+  const [rateBCV,    setRateBCV]    = useState(tasas.bcv)
+  const [saved,      setSaved]      = useState(false)
+
+  // Sync BCV rate when tasas loads
+  useEffect(() => { setRateBCV(tasas.bcv) }, [tasas.bcv])
+
+  // Set default account once — useRef prevents circular re-renders
+  const initialAccountSet = useRef(false)
   useEffect(() => {
-    setRateBCV(loadBCV())
-  }, [])
-
-  useEffect(() => {
-    if (accounts.length > 0 && account === '') {
+    if (!initialAccountSet.current && accounts.length > 0) {
       setAccount(accounts[0].id)
       setAccountTo(accounts[1]?.id ?? accounts[0].id)
+      initialAccountSet.current = true
     }
-  }, [accounts, account])
+  }, [accounts])
 
-  // ── Cascade: tipo → cat → subcat ─────────────
-  function changeTipo(t: Tipo) {
-    setTipo(t)
-    const firstCat = CATS_BY_TIPO[t][0]
+  // Sync tipo when config loads
+  const initialTipoSet = useRef(false)
+  useEffect(() => {
+    if (!initialTipoSet.current && tipos.length > 0) {
+      const first = tipos[0].nombre
+      setTipo(first)
+      const firstCat = config.categorias[first]?.[0] ?? ''
+      setCat(firstCat)
+      setSubcat(config.subcategorias[firstCat]?.[0] ?? '')
+      initialTipoSet.current = true
+    }
+  }, [tipos, config.categorias, config.subcategorias])
+
+  // ── Cascade: tipo → cat → subcat ──────────────
+  function changeTipo(nombre: string) {
+    setTipo(nombre)
+    const firstCat = config.categorias[nombre]?.[0] ?? ''
     setCat(firstCat)
-    setSubcat(SUBCATS[firstCat]?.[0] ?? '')
+    setSubcat(config.subcategorias[firstCat]?.[0] ?? '')
   }
 
   function changeCat(c: string) {
     setCat(c)
-    setSubcat(SUBCATS[c]?.[0] ?? '')
+    setSubcat(config.subcategorias[c]?.[0] ?? '')
   }
 
-  // ── Bidirectional USD↔Bs ──────────────────────
+  // ── Bidirectional USD ↔ Bs ─────────────────────
   function handleUSD(v: string) {
     setAmountUSD(v)
     const n = parseFloat(v)
@@ -191,33 +144,35 @@ export default function NewTransaction() {
     setAmountUSD(isNaN(n) ? '' : (n / rateBCV).toFixed(2))
   }
 
-  // ── ef_contribution (auto for Ahorro) ────────
   const usdNum     = parseFloat(amountUSD) || 0
-  const efContrib  = tipo === 'Ahorro en efectivo' ? usdNum * 0.30 : 0
   const isTransfer = tipo === 'Transferencia Interna'
+  const tipoObj    = tipos.find(t => t.nombre === tipo) ?? { nombre: tipo, esIngreso: false }
+  const meta       = tipoMeta(tipoObj.nombre, tipoObj.esIngreso)
+  const cats       = config.categorias[tipo] ?? []
+  const subcats    = config.subcategorias[cat] ?? []
+  const showSubcat = !TIPOS_SIN_SUBCAT.has(tipo) && subcats.length > 0
 
   // ── Save ──────────────────────────────────────
   async function handleSave() {
     if (!amountUSD || usdNum <= 0) return
-    const mes = fecha.slice(0, 7) // 'YYYY-MM'
-    const sign = ['Ingreso Fijo', 'Ingreso Variable', 'Prestamo recibido'].includes(tipo) ? 1 : -1
-    const mov = {
-      household_id: HOUSEHOLD_ID,
-      tipo, cat,
-      subcat:          subcat || null,
-      amount:          sign * usdNum,
-      amount_bs:       parseFloat(amountBs) || 0,
-      descripcion:     desc || cat,
-      method,
-      cuenta_id:       account || null,
-      cuenta_destino:  isTransfer ? accountTo : null,
-      fecha,
+    const mes  = fecha.slice(0, 7)
+    const sign = tipoObj.esIngreso ? 1 : -1
+    const mov  = {
+      id:           crypto.randomUUID(),
+      user_id:      userId,
+      household_id: householdId,
       mes,
-      author:          autor,
-      recurrente,
-      rec_dia:         recurrente ? recDia : null,
-      ef_contribution: efContrib > 0 ? efContrib : null,
-      rate_bcv:        rateBCV,
+      descripcion:  desc || cat,
+      tipo,
+      cat,
+      subcat:       subcat || null,
+      amount:       sign * usdNum,
+      amount_bs:    parseFloat(amountBs) || 0,
+      method,
+      fecha,
+      author:       autor,
+      rate_type:    'bcv' as const,
+      cuenta_id:    account || null,
     }
     setSaved(true)
     const { error } = await supabase.from('movimientos').insert(mov)
@@ -228,9 +183,6 @@ export default function NewTransaction() {
     }
     setTimeout(() => navigate(-1), 400)
   }
-  const meta      = TIPO_META[tipo]
-  const subcats   = SUBCATS[cat] ?? []
-  const showSubcat = !TIPOS_SIN_SUBCAT.has(tipo) && subcats.length > 0
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--ink-1)', display: 'flex', flexDirection: 'column' }}>
@@ -280,36 +232,36 @@ export default function NewTransaction() {
       {/* ── Scrollable content ── */}
       <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
 
-        {/* ── Tipo selector (8 chips, scrollable) ── */}
+        {/* ── Tipo selector ── */}
         <div style={{
           display: 'flex', gap: 6, padding: '14px 16px 0',
           overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none',
         }}>
-          {TIPOS.map(t => {
-            const sel = t === tipo
-            const c   = TIPO_META[t].color
-            const shortLabels: Partial<Record<Tipo, string>> = {
-              'Ingreso Fijo':         'Ing. Fijo',
-              'Ingreso Variable':     'Ing. Variable',
-              'Ahorro en efectivo':   'Ahorro',
-              'Transferencia Interna':'Transferencia',
-              'Prestamo recibido':    'Préstamo +',
-              'Prestamo pagado':      'Préstamo −',
+          {tipos.map(t => {
+            const m   = tipoMeta(t.nombre, t.esIngreso)
+            const sel = t.nombre === tipo
+            const shortLabels: Record<string, string> = {
+              'Ingreso Fijo':          'Ing. Fijo',
+              'Ingreso Variable':      'Ing. Variable',
+              'Ahorro en efectivo':    'Ahorro',
+              'Transferencia Interna': 'Transferencia',
+              'Prestamo recibido':     'Préstamo +',
+              'Prestamo pagado':       'Préstamo −',
             }
             return (
               <button
-                key={t}
-                onClick={() => changeTipo(t)}
+                key={t.nombre}
+                onClick={() => changeTipo(t.nombre)}
                 style={{
                   flexShrink: 0, padding: '7px 13px', borderRadius: 999,
                   fontSize: 12, fontWeight: 600,
-                  background: sel ? `${c}18` : 'var(--ink-2)',
-                  color:      sel ? c : 'var(--fg-mute)',
-                  border:     sel ? `1.5px solid ${c}55` : '1px solid var(--line)',
+                  background: sel ? `${m.color}18` : 'var(--ink-2)',
+                  color:      sel ? m.color : 'var(--fg-mute)',
+                  border:     sel ? `1.5px solid ${m.color}55` : '1px solid var(--line)',
                   transition: 'all .12s',
                 }}
               >
-                {shortLabels[t] ?? t}
+                {shortLabels[t.nombre] ?? t.nombre}
               </button>
             )
           })}
@@ -317,19 +269,12 @@ export default function NewTransaction() {
 
         {/* ── Amount hero ── */}
         <div style={{ padding: '16px 16px 10px', textAlign: 'center' }}>
-          {/* USD row */}
           <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2 }}>
-            <span style={{
-              fontFamily: 'var(--f-display)', fontSize: 40, color: meta.color,
-              opacity: 0.55, lineHeight: 1,
-            }}>
+            <span style={{ fontFamily: 'var(--f-display)', fontSize: 40, color: meta.color, opacity: 0.55, lineHeight: 1 }}>
               {meta.sign || '$'}
             </span>
             <input
-              type="number"
-              inputMode="decimal"
-              min="0"
-              step="0.01"
+              type="number" inputMode="decimal" min="0" step="0.01"
               value={amountUSD}
               onChange={e => handleUSD(e.target.value)}
               placeholder="0.00"
@@ -343,14 +288,10 @@ export default function NewTransaction() {
               } as CSSProperties}
             />
           </div>
-
-          {/* Bs row */}
           <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <span style={{ fontSize: 11, color: 'var(--fg-mute)' }}>Bs</span>
             <input
-              type="number"
-              inputMode="decimal"
-              min="0"
+              type="number" inputMode="decimal" min="0"
               value={amountBs}
               onChange={e => handleBs(e.target.value)}
               placeholder="0.00"
@@ -363,25 +304,13 @@ export default function NewTransaction() {
             />
             <span style={{ fontSize: 10, color: 'var(--fg-mute)' }}>@ {rateBCV.toFixed(2)}</span>
           </div>
-
-          {/* EF contribution note */}
           {tipo === 'Ahorro en efectivo' && usdNum > 0 && (
-            <div style={{
-              marginTop: 8, fontSize: 11, color: 'var(--info)',
-              background: 'rgba(106,148,196,.1)', borderRadius: 8,
-              padding: '4px 12px', display: 'inline-block',
-            }}>
-              🛡️ 30% → fondo emergencia (${efContrib.toFixed(2)})
+            <div style={{ marginTop: 8, fontSize: 11, color: 'var(--info)', background: 'rgba(106,148,196,.1)', borderRadius: 8, padding: '4px 12px', display: 'inline-block' }}>
+              🛡️ 30% → fondo emergencia (${(usdNum * 0.30).toFixed(2)})
             </div>
           )}
-
-          {/* Ajuste note */}
           {tipo === 'Ajuste' && (
-            <div style={{
-              marginTop: 8, fontSize: 11, color: 'var(--amber)',
-              background: 'var(--amber-d)', borderRadius: 8,
-              padding: '4px 12px', display: 'inline-block',
-            }}>
+            <div style={{ marginTop: 8, fontSize: 11, color: 'var(--amber)', background: 'var(--amber-d)', borderRadius: 8, padding: '4px 12px', display: 'inline-block' }}>
               ⚡ Ajuste de saldo — no afecta ingresos/gastos
             </div>
           )}
@@ -390,14 +319,11 @@ export default function NewTransaction() {
         <Rule />
 
         {/* ── Categoría grid ── */}
-        {!isTransfer && (
+        {!isTransfer && cats.length > 0 && (
           <>
             <SLabel>Categoría</SLabel>
-            <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(4,1fr)',
-              gap: 8, padding: '0 16px',
-            }}>
-              {CATS_BY_TIPO[tipo].map(c => {
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, padding: '0 16px' }}>
+              {cats.map(c => {
                 const sel   = c === cat
                 const color = catColor(c)
                 return (
@@ -432,17 +358,14 @@ export default function NewTransaction() {
         {showSubcat && (
           <>
             <SLabel>Subcategoría</SLabel>
-            <div style={{
-              display: 'flex', gap: 6, padding: '0 16px',
-              overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none',
-            }}>
+            <div style={{ display: 'flex', gap: 6, padding: '0 16px', overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
               <button
                 onClick={() => setSubcat('')}
                 style={{
                   flexShrink: 0, padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 500,
                   background: subcat === '' ? 'var(--ink-3)' : 'var(--ink-2)',
                   color:      subcat === '' ? 'var(--fg)' : 'var(--fg-mute)',
-                  border:     subcat === '' ? '1px solid var(--line)' : '1px solid var(--line)',
+                  border: '1px solid var(--line)',
                 }}
               >
                 — Sin subcat.
@@ -472,10 +395,7 @@ export default function NewTransaction() {
 
         {/* ── Método de pago ── */}
         <SLabel>Método de pago</SLabel>
-        <div style={{
-          display: 'flex', gap: 6, padding: '0 16px',
-          overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none',
-        }}>
+        <div style={{ display: 'flex', gap: 6, padding: '0 16px', overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
           {METHODS.map(m => {
             const sel = m === method
             return (
@@ -502,10 +422,7 @@ export default function NewTransaction() {
         {!isTransfer ? (
           <>
             <SLabel>Cuenta / Billetera</SLabel>
-            <div style={{
-              display: 'flex', gap: 8, padding: '0 16px',
-              overflowX: 'auto', scrollbarWidth: 'none',
-            }}>
+            <div style={{ display: 'flex', gap: 8, padding: '0 16px', overflowX: 'auto', scrollbarWidth: 'none' }}>
               {accounts.map(acc => {
                 const sel = acc.id === account
                 return (
@@ -534,23 +451,14 @@ export default function NewTransaction() {
             </div>
           </>
         ) : (
-          /* Transfer: from → to */
           <>
             <SLabel>Transferencia entre cuentas</SLabel>
             <div style={{ padding: '0 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <select
-                value={account}
-                onChange={e => setAccount(e.target.value)}
-                style={{ ...inputSt, flex: 1 }}
-              >
+              <select value={account} onChange={e => setAccount(e.target.value)} style={{ ...inputSt, flex: 1 }}>
                 {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
               <span style={{ color: 'var(--teal)', fontSize: 18, fontWeight: 700 }}>→</span>
-              <select
-                value={accountTo}
-                onChange={e => setAccountTo(e.target.value)}
-                style={{ ...inputSt, flex: 1 }}
-              >
+              <select value={accountTo} onChange={e => setAccountTo(e.target.value)} style={{ ...inputSt, flex: 1 }}>
                 {accounts.filter(a => a.id !== account).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </div>
@@ -563,12 +471,9 @@ export default function NewTransaction() {
         <SLabel>Descripción</SLabel>
         <div style={{ padding: '0 16px' }}>
           <input
-            type="text"
-            value={desc}
-            onChange={e => setDesc(e.target.value)}
+            type="text" value={desc} onChange={e => setDesc(e.target.value)}
             placeholder="Ej. Supermercado Plaza, Salario abril…"
-            style={inputSt}
-            maxLength={200}
+            style={inputSt} maxLength={200}
           />
         </div>
 
@@ -576,22 +481,19 @@ export default function NewTransaction() {
         <SLabel>Fecha</SLabel>
         <div style={{ padding: '0 16px' }}>
           <input
-            type="date"
-            value={fecha}
-            onChange={e => setFecha(e.target.value)}
+            type="date" value={fecha} onChange={e => setFecha(e.target.value)}
             style={{ ...inputSt, colorScheme: 'dark' }}
           />
         </div>
 
-        {/* ── Tasa BCV (editable por movimiento) ── */}
+        {/* ── Tasa BCV ── */}
         <SLabel>Tasa BCV del movimiento</SLabel>
         <div style={{ padding: '0 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
-              type="number"
-              value={rateBCV}
+              type="number" value={rateBCV}
               onChange={e => {
-                const v = parseFloat(e.target.value) || 431.01
+                const v = parseFloat(e.target.value) || tasas.bcv
                 setRateBCV(v)
                 if (amountUSD) setAmountBs((parseFloat(amountUSD) * v).toFixed(2))
               }}
@@ -611,8 +513,7 @@ export default function NewTransaction() {
             const sel = autor === id
             return (
               <button
-                key={id}
-                onClick={() => setAutor(id)}
+                key={id} onClick={() => setAutor(id)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   padding: '9px 14px', borderRadius: 12,
@@ -635,7 +536,7 @@ export default function NewTransaction() {
           })}
         </div>
 
-        {/* ── Toggle recurrente ── */}
+        {/* ── Recurrente ── */}
         <SLabel>Recurrente</SLabel>
         <div style={{ padding: '0 16px' }}>
           <div style={{
@@ -660,22 +561,16 @@ export default function NewTransaction() {
               aria-label="Toggle recurrente"
             >
               <div style={{
-                position: 'absolute', top: 3,
-                left: recurrente ? 21 : 3,
+                position: 'absolute', top: 3, left: recurrente ? 21 : 3,
                 width: 16, height: 16, borderRadius: '50%', background: 'white',
                 transition: 'left .2s',
               }} />
             </button>
           </div>
-
           {recurrente && (
             <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 12, color: 'var(--fg-mute)', whiteSpace: 'nowrap' }}>Día del mes</span>
-              <select
-                value={recDia}
-                onChange={e => setRecDia(parseInt(e.target.value))}
-                style={{ ...inputSt, flex: 1 }}
-              >
+              <select value={recDia} onChange={e => setRecDia(parseInt(e.target.value))} style={{ ...inputSt, flex: 1 }}>
                 {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
                   <option key={d} value={d}>{d}</option>
                 ))}
@@ -688,20 +583,14 @@ export default function NewTransaction() {
         <SLabel>Notas (opcional)</SLabel>
         <div style={{ padding: '0 16px' }}>
           <textarea
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            placeholder="Notas adicionales…"
-            rows={2}
-            style={{ ...inputSt, resize: 'none', lineHeight: 1.5 }}
-            maxLength={200}
+            value={notes} onChange={e => setNotes(e.target.value)}
+            placeholder="Notas adicionales…" rows={2}
+            style={{ ...inputSt, resize: 'none', lineHeight: 1.5 }} maxLength={200}
           />
         </div>
 
         {/* ── Save CTA ── */}
-        <div style={{
-          padding: '20px 16px',
-          paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
-        }}>
+        <div style={{ padding: '20px 16px', paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))' }}>
           <button
             onClick={handleSave}
             disabled={!amountUSD || usdNum <= 0}

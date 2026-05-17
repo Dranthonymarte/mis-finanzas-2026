@@ -1,80 +1,75 @@
 import { useState, useEffect } from 'react'
 import AppHeader from '../components/shell/AppHeader'
-
-const LS_KEY  = 'mis_finanzas_tasas'
-const LS_HIST = 'mis_finanzas_tasas_hist'
-
-interface Rate { bcv: number; eur: number; updatedAt: string }
-
-function loadRates(): Rate {
-  try {
-    const raw = localStorage.getItem(LS_KEY)
-    if (raw) return JSON.parse(raw) as Rate
-  } catch { /* ignore */ }
-  return { bcv: 431.01, eur: 499.62, updatedAt: '' }
-}
-
-function persistRates(r: Rate) {
-  localStorage.setItem(LS_KEY, JSON.stringify(r))
-  try {
-    const hist: Rate[] = JSON.parse(localStorage.getItem(LS_HIST) || '[]')
-    hist.unshift(r)
-    localStorage.setItem(LS_HIST, JSON.stringify(hist.slice(0, 20)))
-  } catch { /* ignore */ }
-}
+import { useAuthStore } from '../store/auth'
+import { useTasas, saveTasas, fetchTasasHistory } from '../hooks/useTasas'
 
 const inp: React.CSSProperties = {
   width: '100%', background: 'var(--ink-1)', border: '1px solid var(--line)',
   borderRadius: 10, padding: '9px 12px', fontSize: 18, fontWeight: 600,
   color: 'var(--fg)', outline: 'none', fontFamily: 'var(--f-num)',
+  boxSizing: 'border-box',
 }
 
+interface HistRow { fecha: string; rate_bcv: number; rate_eur: number | null }
+
 export default function Monedas() {
-  const [rates,    setRates]    = useState<Rate>(loadRates)
-  const [bcvInput, setBcvInput] = useState(String(loadRates().bcv))
-  const [eurInput, setEurInput] = useState(String(loadRates().eur))
+  const householdId = useAuthStore(s => s.householdId)
+  const { tasas }   = useTasas()
+
+  const [bcvInput, setBcvInput] = useState('')
+  const [eurInput, setEurInput] = useState('')
   const [usdInput, setUsdInput] = useState('')
   const [bsInput,  setBsInput]  = useState('')
+  const [saving,   setSaving]   = useState(false)
   const [saved,    setSaved]    = useState(false)
-  const [history,  setHistory]  = useState<Rate[]>([])
+  const [history,  setHistory]  = useState<HistRow[]>([])
+
+  // Sync inputs when tasas loads from Supabase
+  useEffect(() => {
+    setBcvInput(String(tasas.bcv))
+    setEurInput(String(tasas.eur))
+  }, [tasas.bcv, tasas.eur])
 
   useEffect(() => {
-    try {
-      setHistory(JSON.parse(localStorage.getItem(LS_HIST) || '[]') as Rate[])
-    } catch { /* ignore */ }
+    fetchTasasHistory().then(setHistory)
   }, [])
 
-  function handleSaveRates() {
-    const bcv = parseFloat(bcvInput) || 431.01
-    const eur = parseFloat(eurInput) || 499.62
-    const next: Rate = { bcv, eur, updatedAt: new Date().toISOString() }
-    setRates(next)
-    persistRates(next)
-    setHistory(JSON.parse(localStorage.getItem(LS_HIST) || '[]') as Rate[])
+  async function handleSaveRates() {
+    if (!householdId) return
+    const bcv = parseFloat(bcvInput)
+    const eur = parseFloat(eurInput)
+    if (!bcv || !eur) return
+    setSaving(true)
+    await saveTasas(householdId, bcv, eur)
+    setSaving(false)
     setSaved(true)
+    fetchTasasHistory().then(setHistory)
     setTimeout(() => setSaved(false), 2000)
   }
+
+  const bcv = parseFloat(bcvInput) || tasas.bcv
+  const eur = parseFloat(eurInput) || tasas.eur
 
   function handleUsdChange(v: string) {
     setUsdInput(v)
     const n = parseFloat(v)
-    setBsInput(isNaN(n) ? '' : (n * rates.bcv).toFixed(2))
+    setBsInput(isNaN(n) ? '' : (n * bcv).toFixed(2))
   }
 
   function handleBsChange(v: string) {
     setBsInput(v)
     const n = parseFloat(v)
-    setUsdInput(isNaN(n) ? '' : (n / rates.bcv).toFixed(2))
+    setUsdInput(isNaN(n) ? '' : (n / bcv).toFixed(2))
   }
 
-  const usdNum = parseFloat(usdInput) || 0
-  const eurCalc = usdNum > 0 ? (usdNum * rates.bcv) / rates.eur : 0
+  const usdNum  = parseFloat(usdInput) || 0
+  const eurCalc = usdNum > 0 ? (usdNum * bcv) / eur : 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       <AppHeader title="Monedas y tasas" back />
 
-      {/* ── Tasas actuales ── */}
+      {/* ── Tasas BCV ── */}
       <div style={{ padding: '20px 16px 0' }}>
         <div style={{ fontSize: 12, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 12 }}>
           Tasas BCV
@@ -90,19 +85,16 @@ export default function Monedas() {
           </div>
           <button
             onClick={handleSaveRates}
+            disabled={saving}
             style={{
               background: saved ? 'var(--pos)' : 'var(--amber)', color: 'var(--ink-0)',
               border: 'none', borderRadius: 10, padding: '10px', fontSize: 13,
-              fontWeight: 600, cursor: 'pointer', transition: 'background .2s',
+              fontWeight: 600, cursor: saving ? 'default' : 'pointer',
+              opacity: saving ? .7 : 1, transition: 'background .2s',
             }}
           >
-            {saved ? '✓  Tasas guardadas' : 'Guardar tasas'}
+            {saved ? '✓  Tasas guardadas' : saving ? 'Guardando…' : 'Guardar tasas'}
           </button>
-          {rates.updatedAt && (
-            <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', textAlign: 'center' }}>
-              Actualizado: {new Date(rates.updatedAt).toLocaleString('es-VE')}
-            </div>
-          )}
         </div>
       </div>
 
@@ -115,8 +107,7 @@ export default function Monedas() {
           <div>
             <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginBottom: 4 }}>USD $</div>
             <input
-              type="number"
-              value={usdInput}
+              type="number" value={usdInput}
               onChange={e => handleUsdChange(e.target.value)}
               placeholder="0.00"
               style={{ ...inp, color: 'var(--amber)', fontSize: 20 }}
@@ -125,8 +116,7 @@ export default function Monedas() {
           <div>
             <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginBottom: 4 }}>Bolívares Bs</div>
             <input
-              type="number"
-              value={bsInput}
+              type="number" value={bsInput}
               onChange={e => handleBsChange(e.target.value)}
               placeholder="0.00"
               style={{ ...inp, fontSize: 20 }}
@@ -153,31 +143,35 @@ export default function Monedas() {
             Historial
           </div>
           <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
-            {history.slice(0, 10).map((h, i) => (
+            {history.map((h, i) => (
               <div
-                key={i}
+                key={h.fecha}
                 style={{
                   padding: '11px 14px',
-                  borderBottom: i < Math.min(history.length, 10) - 1 ? '1px solid var(--line)' : 'none',
+                  borderBottom: i < history.length - 1 ? '1px solid var(--line)' : 'none',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}
               >
                 <div>
                   <div style={{ fontSize: 12.5, fontWeight: 600, fontFamily: 'var(--f-num)' }}>
-                    Bs {h.bcv.toFixed(2)} / USD
+                    Bs {h.rate_bcv.toFixed(2)} / USD
                   </div>
                   <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginTop: 2 }}>
-                    {h.updatedAt ? new Date(h.updatedAt).toLocaleDateString('es-VE') : '—'}
+                    {new Date(h.fecha + 'T12:00:00').toLocaleDateString('es-VE')}
                   </div>
                 </div>
-                <span style={{ fontSize: 12, color: 'var(--fg-mute)', fontFamily: 'var(--f-num)' }}>
-                  Bs {h.eur.toFixed(2)} / €
-                </span>
+                {h.rate_eur && (
+                  <span style={{ fontSize: 12, color: 'var(--fg-mute)', fontFamily: 'var(--f-num)' }}>
+                    Bs {h.rate_eur.toFixed(2)} / €
+                  </span>
+                )}
               </div>
             ))}
           </div>
         </div>
       )}
+
+      <div style={{ height: 32 }} />
     </div>
   )
 }

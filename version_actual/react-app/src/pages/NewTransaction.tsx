@@ -8,7 +8,6 @@ import { useConfig } from '../hooks/useConfig'
 import { useTasas } from '../hooks/useTasas'
 import { useAuthStore } from '../store/auth'
 import { supabase } from '../lib/supabase'
-import { ACTIVE_MONTH } from '../data/mock'
 
 // ── Métodos de pago ────────────────────────────────
 const METHODS = [
@@ -69,7 +68,7 @@ export default function NewTransaction() {
 
   const { accounts: liveAccounts } = useAccounts()
   const { config }                 = useConfig()
-  const { tasas }                  = useTasas(ACTIVE_MONTH)
+  const { tasas }                  = useTasas()
 
   const accounts = liveAccounts ?? []
   const tipos    = config.tipos

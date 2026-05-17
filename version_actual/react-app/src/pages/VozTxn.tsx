@@ -38,7 +38,8 @@ export default function VozTxn() {
   const [supported,  setSupported]  = useState(true)
   const [pulseStep,  setPulseStep]  = useState(0)
 
-  const recognizerRef = useRef<SpeechRecognition | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognizerRef = useRef<any>(null)
   const pulseRef      = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {

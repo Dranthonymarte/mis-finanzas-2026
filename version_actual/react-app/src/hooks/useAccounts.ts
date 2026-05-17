@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import { useAuthStore } from '../store/auth'
-import { type Account } from '../data/mock'
+import { supabase }      from '../lib/supabase'
+import { useAuthStore }  from '../store/auth'
+import { type Account }  from '../data/mock'
+import { handleError }   from '../lib/handleError'
 
 interface SupaCuenta {
   id:                   string
@@ -49,7 +50,7 @@ export function useAccounts() {
       .eq('activa', true)
       .order('created_at')
       .then(({ data, error: err }) => {
-        if (err) { setError(err.message); setLoading(false); return }
+        if (err) { handleError(err); setError(err.message); setLoading(false); return }
         setAccounts((data as SupaCuenta[] ?? []).map(mapCuenta))
         setLoading(false)
       })

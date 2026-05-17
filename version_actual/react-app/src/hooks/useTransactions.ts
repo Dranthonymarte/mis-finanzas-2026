@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
 import { type Transaction } from '../data/mock'
 import { mesIdToDbKey } from '../lib/mes'
+import { handleError }  from '../lib/handleError'
 
 interface SupaMov {
   id:          string
@@ -63,7 +64,7 @@ export function useTransactions(mesId: string) {
       .is('deleted_at', null)
       .order('fecha', { ascending: false })
       .then(({ data, error: err }) => {
-        if (err) { setError(err.message); setLoading(false); return }
+        if (err) { handleError(err); setError(err.message); setLoading(false); return }
         setTransactions(
           (data as SupaMov[] ?? []).map(r => ({
             id:         r.id,

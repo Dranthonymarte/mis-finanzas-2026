@@ -10,14 +10,12 @@ import { currentMes, mesLabel } from '../lib/mes'
 import { useTransactions } from '../hooks/useTransactions'
 import { useAccounts } from '../hooks/useAccounts'
 
-// ── Groq config (split to discourage scraping — move to Worker in PASO 9) ──
-const GROQ_URL   = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama-3.3-70b-versatile'
+// ── Groq config — key from .env.local (VITE_GROQ_API_KEY) ──
+const GROQ_URL      = 'https://api.groq.com/openai/v1/chat/completions'
+const GROQ_MODEL    = 'llama-3.3-70b-versatile'
 const GROQ_FALLBACK = 'llama-3.1-8b-instant'
 function getGroqKey(): string {
-  const a = 'gsk_hb2a4jhd72rLYiCS4xBD'
-  const b = 'WGdyb3FYmFs8X3lNHE4tTJM3M6Xt5zEQ'
-  return a + b
+  return import.meta.env.VITE_GROQ_API_KEY ?? ''
 }
 
 // ── Build financial context string from live data ──

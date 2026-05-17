@@ -27,12 +27,21 @@ export interface FireConfig {
   gastos: number
 }
 
+export interface RecurrenteConfig {
+  id:               string
+  descripcion:      string
+  monto:            number
+  tipo:             string
+  cat:              string
+  recurrencia_dias: number
+}
+
 export interface Config {
   tipos:         TipoConfig[]
   categorias:    Record<string, string[]>
   subcategorias: Record<string, string[]>
   presupuestos:  Record<string, number>
-  recurrentes:   unknown[]
+  recurrentes:   RecurrenteConfig[]
   closedMonths:  string[]
   metasAhorro:   MetaAhorro[]
   fireConfig:    FireConfig
@@ -102,7 +111,7 @@ export function useConfig() {
           categorias:    (data.categorias     as Record<string,string[]>) ?? DEFAULTS.categorias,
           subcategorias: (data.subcategorias  as Record<string,string[]>) ?? DEFAULTS.subcategorias,
           presupuestos:  (data.presupuestos   as Record<string,number> ) ?? DEFAULTS.presupuestos,
-          recurrentes:   (data.recurrentes    as unknown[]             ) ?? [],
+          recurrentes:   (data.recurrentes    as RecurrenteConfig[]    ) ?? [],
           closedMonths:  (data.closed_months  as string[]              ) ?? [],
           metasAhorro:   (data.metas_ahorro   as MetaAhorro[]          ) ?? [],
           fireConfig:    (data.fire_config    as FireConfig            ) ?? DEFAULTS.fireConfig,

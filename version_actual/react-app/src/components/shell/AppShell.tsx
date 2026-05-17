@@ -7,6 +7,7 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import { useAppStore } from '../../store/app'
 import TabBar from './TabBar'
+import Toast  from './Toast'
 
 export default function AppShell() {
   const location     = useLocation()
@@ -42,6 +43,9 @@ export default function AppShell() {
       >
         <Outlet />
       </div>
+
+      {/* ── Toast notifications ── */}
+      <Toast />
 
       {/* ── TabBar — fixed at bottom ── */}
       <div

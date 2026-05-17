@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase }     from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
+import { handleError }  from '../lib/handleError'
 
 export interface Tasas {
   bcv: number
@@ -26,7 +27,8 @@ export function useTasas() {
       .eq('user_id', householdId)
       .eq('mes', 'global')
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error: err }) => {
+        if (err) handleError(err)
         if (data) setTasas({ bcv: data.rate_bcv ?? TASAS_DEFAULTS.bcv, eur: data.rate_eur ?? TASAS_DEFAULTS.eur })
         setLoading(false)
       })

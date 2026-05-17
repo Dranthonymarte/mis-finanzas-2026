@@ -14,6 +14,9 @@ export interface Transaction {
   time: string      // '14:32'
   author: 'anthony' | 'isabel'
   accountId: string // foreign key → Account.id
+  recurrente?: boolean
+  recDia?: number   // day of month 1-28
+  mes?: string      // 'YYYY-MM' for future filtering
 }
 
 export interface Account {
@@ -123,17 +126,38 @@ export const MOCK_ACCOUNTS: Account[] = [
 
 // ── Transactions ──────────────────────────────────
 export const MOCK_TRANSACTIONS: Transaction[] = [
-  { id: '1',  desc: 'Supermercado Plaza',    cat: 'Alimentación',    tipo: 'Gasto',              amount: -84.20,   date: 'Hoy',    time: '14:32', author: 'anthony', accountId: '1' },
-  { id: '2',  desc: 'Salario abril',         cat: 'Trabajo',         tipo: 'Ingreso Fijo',        amount:  2800.00, date: 'Hoy',    time: '09:15', author: 'anthony', accountId: '1' },
-  { id: '3',  desc: 'Netflix',               cat: 'Entretenimiento', tipo: 'Gasto',              amount: -15.99,   date: 'Ayer',   time: '20:41', author: 'anthony', accountId: '1' },
-  { id: '4',  desc: 'Gasolina',              cat: 'Transporte',      tipo: 'Gasto',              amount: -42.50,   date: 'Ayer',   time: '18:02', author: 'isabel',  accountId: '4' },
-  { id: '5',  desc: 'Transferencia ahorro',  cat: 'Inversión',       tipo: 'Ahorro en efectivo', amount: -500.00,  date: '14 abr', time: '12:30', author: 'anthony', accountId: '2' },
-  { id: '6',  desc: 'Farmacia',              cat: 'Salud',           tipo: 'Gasto',              amount: -22.14,   date: '14 abr', time: '11:08', author: 'isabel',  accountId: '4' },
-  { id: '7',  desc: 'Spotify',               cat: 'Entretenimiento', tipo: 'Gasto',              amount: -9.99,    date: '13 abr', time: '08:00', author: 'anthony', accountId: '1' },
-  { id: '8',  desc: 'Freelance diseño',      cat: 'Trabajo',         tipo: 'Ingreso Variable',   amount:  350.00,  date: '13 abr', time: '15:20', author: 'anthony', accountId: '1' },
-  { id: '9',  desc: 'Mercado La Plaza',      cat: 'Alimentación',    tipo: 'Gasto',              amount: -62.40,   date: '13 abr', time: '11:05', author: 'isabel',  accountId: '4' },
-  { id: '10', desc: 'Internet CANTV',        cat: 'Servicios',       tipo: 'Gasto',              amount: -12.00,   date: '12 abr', time: '10:00', author: 'anthony', accountId: '1' },
+  { id: '1',  desc: 'Supermercado Plaza',    cat: 'Alimentación',    tipo: 'Gasto',              amount: -84.20,   date: 'Hoy',    time: '14:32', author: 'anthony', accountId: '1', mes: '2026-04' },
+  { id: '2',  desc: 'Salario abril',         cat: 'Trabajo',         tipo: 'Ingreso Fijo',        amount:  2800.00, date: 'Hoy',    time: '09:15', author: 'anthony', accountId: '1', mes: '2026-04', recurrente: true, recDia: 1 },
+  { id: '3',  desc: 'Netflix',               cat: 'Entretenimiento', tipo: 'Gasto',              amount: -15.99,   date: 'Ayer',   time: '20:41', author: 'anthony', accountId: '1', mes: '2026-04', recurrente: true, recDia: 3 },
+  { id: '4',  desc: 'Gasolina',              cat: 'Transporte',      tipo: 'Gasto',              amount: -42.50,   date: 'Ayer',   time: '18:02', author: 'isabel',  accountId: '4', mes: '2026-04' },
+  { id: '5',  desc: 'Transferencia ahorro',  cat: 'Inversión',       tipo: 'Ahorro en efectivo', amount: -500.00,  date: '14 abr', time: '12:30', author: 'anthony', accountId: '2', mes: '2026-04' },
+  { id: '6',  desc: 'Farmacia',              cat: 'Salud',           tipo: 'Gasto',              amount: -22.14,   date: '14 abr', time: '11:08', author: 'isabel',  accountId: '4', mes: '2026-04' },
+  { id: '7',  desc: 'Spotify',               cat: 'Entretenimiento', tipo: 'Gasto',              amount: -9.99,    date: '13 abr', time: '08:00', author: 'anthony', accountId: '1', mes: '2026-04', recurrente: true, recDia: 13 },
+  { id: '8',  desc: 'Freelance diseño',      cat: 'Trabajo',         tipo: 'Ingreso Variable',   amount:  350.00,  date: '13 abr', time: '15:20', author: 'anthony', accountId: '1', mes: '2026-04' },
+  { id: '9',  desc: 'Mercado La Plaza',      cat: 'Alimentación',    tipo: 'Gasto',              amount: -62.40,   date: '13 abr', time: '11:05', author: 'isabel',  accountId: '4', mes: '2026-04' },
+  { id: '10', desc: 'Internet CANTV',        cat: 'Servicios',       tipo: 'Gasto',              amount: -12.00,   date: '12 abr', time: '10:00', author: 'anthony', accountId: '1', mes: '2026-04', recurrente: true, recDia: 12 },
 ]
+
+// ── Months for selector ───────────────────────────
+export interface MonthEntry { id: string; label: string; shortYear: string }
+export const MOCK_MONTHS: MonthEntry[] = [
+  { id: '2025-11', label: 'Nov', shortYear: '25' },
+  { id: '2025-12', label: 'Dic', shortYear: '25' },
+  { id: '2026-01', label: 'Ene', shortYear: '26' },
+  { id: '2026-02', label: 'Feb', shortYear: '26' },
+  { id: '2026-03', label: 'Mar', shortYear: '26' },
+  { id: '2026-04', label: 'Abr', shortYear: '26' },
+]
+export const ACTIVE_MONTH = '2026-04'
+
+export const MONTH_LABELS: Record<string, string> = {
+  '2026-04': 'Abril 2026',
+  '2026-03': 'Marzo 2026',
+  '2026-02': 'Febrero 2026',
+  '2026-01': 'Enero 2026',
+  '2025-12': 'Diciembre 2025',
+  '2025-11': 'Noviembre 2025',
+}
 
 // ── Month summary ─────────────────────────────────
 export const MOCK_MONTH = {

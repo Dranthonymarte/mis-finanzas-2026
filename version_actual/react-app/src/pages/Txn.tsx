@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════
-// Txn — Movimientos dashboard
-// Month selector · Cierre de mes · Filtros · Recurrentes
+// Txn — Movimientos dashboard (BLOQUE 3)
+// Mes desde prefs store · Cierre · Filtros · Donut
+// Presupuesto vs real · Recurrentes
 // ═══════════════════════════════════════════════════
 
 import { useState, useRef, useEffect } from 'react'
@@ -11,8 +12,9 @@ import { txnGroup, type Transaction } from '../data/mock'
 import { useFormat } from '../hooks/useFormat'
 import { useTransactions } from '../hooks/useTransactions'
 import { useConfig }       from '../hooks/useConfig'
+import { usePrefsStore }   from '../store/prefs'
 import { FilterIcon, LockIcon } from '../components/icons/Icons'
-import { currentMes, generateMeses, mesLabel } from '../lib/mes'
+import { generateMeses, mesLabel } from '../lib/mes'
 
 const MONTHS = generateMeses(12)
 
@@ -145,11 +147,14 @@ function RecRow({ t, last }: { t: Recurrente; last: boolean }) {
 }
 
 export default function Txn() {
-  const navigate   = useNavigate()
-  const { fmt }    = useFormat()
-  const [activeMes, setActiveMes] = useState(currentMes)
-  const [filter,    setFilter]    = useState<FilterType>('all')
-  const [closed,    setClosed]    = useState<Set<string>>(loadClosed)
+  const navigate        = useNavigate()
+  const { fmt }         = useFormat()
+  // ── Mes activo desde prefs store (sincronizado con Home) ──
+  const activeMes       = usePrefsStore(s => s.mesActivo)
+  const setMesActivo    = usePrefsStore(s => s.setMesActivo)
+
+  const [filter,      setFilter]      = useState<FilterType>('all')
+  const [closed,      setClosed]      = useState<Set<string>>(loadClosed)
   const [showFilters, setShowFilters] = useState(false)
   const monthsRef = useRef<HTMLDivElement>(null)
 
@@ -188,7 +193,7 @@ export default function Txn() {
 
   const monthLabel = mesLabel(activeMes)
 
-  // Top 5 expense categories for current month data
+  // Top 5 expense categories for donut
   const catData = (() => {
     const totals: Record<string, number> = {}
     txnsForMonth.forEach(t => {
@@ -202,6 +207,14 @@ export default function Txn() {
 
   const income   = txnsForMonth.filter(t => txnGroup(t.tipo) === 'ingreso').reduce((s, t) => s + t.amount, 0)
   const expenses = txnsForMonth.filter(t => txnGroup(t.tipo) === 'gasto').reduce((s, t) => s + Math.abs(t.amount), 0)
+
+  // ── Presupuesto vs real ──
+  const spentByCat: Record<string, number> = {}
+  for (const t of txnsForMonth) {
+    if (txnGroup(t.tipo) === 'gasto')
+      spentByCat[t.cat] = (spentByCat[t.cat] ?? 0) + Math.abs(t.amount)
+  }
+  const budgetCats = Object.keys(config.presupuestos)
 
   const LABELS: Record<FilterType, string> = {
     all: 'Todos', gasto: 'Gastos', ingreso: 'Ingresos', ahorro: 'Ahorro',
@@ -277,7 +290,7 @@ export default function Txn() {
             <button
               key={m.id}
               data-active={isActive}
-              onClick={() => { setActiveMes(m.id); setFilter('all') }}
+              onClick={() => { setMesActivo(m.id); setFilter('all') }}
               style={{
                 padding: '6px 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
                 whiteSpace: 'nowrap', cursor: 'pointer', flexShrink: 0,
@@ -411,9 +424,54 @@ export default function Txn() {
         )}
       </div>
 
+      {/* ── Presupuesto vs real ── */}
+      {budgetCats.length > 0 && (
+        <div style={{ padding: '20px 16px 4px' }}>
+          <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 10 }}>
+            Presupuesto vs real
+          </div>
+          <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
+            {budgetCats.map((cat, i) => {
+              const limit  = config.presupuestos[cat]
+              const spent  = spentByCat[cat] ?? 0
+              const pct    = Math.min(100, (spent / limit) * 100)
+              const over   = spent > limit
+              const color  = catColor(cat)
+              const isLast = i === budgetCats.length - 1
+              return (
+                <div key={cat} style={{
+                  padding: '12px 14px',
+                  borderBottom: isLast ? 'none' : '1px solid var(--line)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                    <CatIcon cat={cat} size={22} />
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{cat}</span>
+                    <span className="num" style={{ fontSize: 12.5, color: over ? 'var(--neg)' : 'var(--fg-dim)' }}>
+                      {fmt(spent)} / {fmt(limit)}
+                    </span>
+                  </div>
+                  <div style={{ height: 5, background: 'var(--ink-3)', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%', borderRadius: 3, transition: 'width .4s ease',
+                      width: `${pct}%`,
+                      background: over ? 'var(--neg)' : color,
+                    }} />
+                  </div>
+                  {over && (
+                    <div style={{ fontSize: 10, color: 'var(--neg)', marginTop: 4, textAlign: 'right' }}>
+                      Excedido {fmt(spent - limit)}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── Recurrentes ── */}
       {recurring.length > 0 && (
-        <div style={{ padding: '20px 16px 24px' }}>
+        <div style={{ padding: '20px 16px 4px' }}>
           <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 10 }}>
             Recurrentes este mes
           </div>
@@ -425,6 +483,7 @@ export default function Txn() {
         </div>
       )}
 
+      <div style={{ height: 24 }} />
     </div>
   )
 }

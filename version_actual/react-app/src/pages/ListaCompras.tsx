@@ -1,6 +1,9 @@
 // ═══════════════════════════════════════════════════
 // ListaCompras — /lista-compras
-// Lista de compras del hogar con Supabase
+// Schema real: tabla list-based con items JSONB.
+// Row: { id, user_id, household_id, nombre, items[], activa, archivada }
+// Item: { id, nombre, cantidad, precio, checked }
+// Todas las mutaciones hacen UPDATE al array items del row activo.
 // ═══════════════════════════════════════════════════
 
 import { useState, useEffect } from 'react'
@@ -9,9 +12,22 @@ import AppHeader from '../components/shell/AppHeader'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
 
-interface Item {
-  id: string; household_id: string; nombre: string
-  cantidad: number; comprado: boolean; created_at: string
+interface ListItem {
+  id:       string
+  nombre:   string
+  cantidad: number
+  precio:   number
+  checked:  boolean
+}
+
+interface ListaRow {
+  id:           string
+  user_id:      string
+  household_id: string
+  nombre:       string
+  items:        ListItem[]
+  activa:       boolean
+  archivada:    boolean
 }
 
 const inputSt: CSSProperties = {
@@ -25,61 +41,106 @@ const numSt: CSSProperties = {
 }
 
 export default function ListaCompras() {
+  const userId      = useAuthStore(s => s.userId)
   const householdId = useAuthStore(s => s.householdId)
 
-  const [items,    setItems]    = useState<Item[]>([])
+  const [lista,    setLista]    = useState<ListaRow | null>(null)
   const [loading,  setLoading]  = useState(true)
   const [nombre,   setNombre]   = useState('')
   const [cantidad, setCantidad] = useState(1)
   const [saving,   setSaving]   = useState(false)
 
+  // ── Load active list (or create one) ────────────
   useEffect(() => {
-    if (!householdId) { setLoading(false); return }
+    if (!householdId || !userId) { setLoading(false); return }
+
     supabase
       .from('listas_compras')
-      .select('id,household_id,nombre,cantidad,comprado,created_at')
+      .select('id,user_id,household_id,nombre,items,activa,archivada')
       .eq('household_id', householdId)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: true })
-      .then(({ data }) => { setItems((data as Item[]) ?? []); setLoading(false) })
-  }, [householdId])
+      .eq('archivada', false)
+      .order('updated_at', { ascending: false })
+      .then(async ({ data, error }) => {
+        if (error) { console.error('[ListaCompras] load:', error.message); setLoading(false); return }
 
-  async function toggle(item: Item) {
-    const next = !item.comprado
-    setItems(prev => prev.map(i => i.id === item.id ? { ...i, comprado: next } : i))
-    await supabase.from('listas_compras').update({ comprado: next }).eq('id', item.id)
+        let rows = (data ?? []) as ListaRow[]
+        let active = rows.find(r => r.activa) ?? rows[0] ?? null
+
+        if (!active) {
+          // Create a default list for this household
+          const newId = crypto.randomUUID()
+          const newRow = {
+            id:           newId,
+            user_id:      userId,
+            household_id: householdId,
+            nombre:       'Compras',
+            items:        [],
+            activa:       true,
+            archivada:    false,
+          }
+          const { error: insertErr } = await supabase.from('listas_compras').insert(newRow)
+          if (!insertErr) active = newRow as ListaRow
+        }
+
+        setLista(active)
+        setLoading(false)
+      })
+  }, [userId, householdId])
+
+  // ── Persist items array to Supabase ──────────────
+  async function persistItems(newItems: ListItem[]) {
+    if (!lista) return
+    setLista(prev => prev ? { ...prev, items: newItems } : prev)
+    await supabase
+      .from('listas_compras')
+      .update({ items: newItems, updated_at: new Date().toISOString() })
+      .eq('id', lista.id)
   }
 
-  async function remove(id: string) {
-    setItems(prev => prev.filter(i => i.id !== id))
-    await supabase.from('listas_compras').update({ deleted_at: new Date().toISOString() }).eq('id', id)
+  async function toggle(itemId: string) {
+    if (!lista) return
+    const newItems = lista.items.map(i =>
+      i.id === itemId ? { ...i, checked: !i.checked } : i
+    )
+    await persistItems(newItems)
+  }
+
+  async function remove(itemId: string) {
+    if (!lista) return
+    await persistItems(lista.items.filter(i => i.id !== itemId))
   }
 
   async function addItem() {
     const trimmed = nombre.trim()
-    if (!trimmed || !householdId) return
+    if (!trimmed || !lista) return
     setSaving(true)
-    const newItem: Item = {
-      id: crypto.randomUUID(), household_id: householdId,
-      nombre: trimmed, cantidad: cantidad > 0 ? cantidad : 1,
-      comprado: false, created_at: new Date().toISOString(),
+    const newItem: ListItem = {
+      id:       crypto.randomUUID(),
+      nombre:   trimmed,
+      cantidad: cantidad > 0 ? cantidad : 1,
+      precio:   0,
+      checked:  false,
     }
-    setItems(prev => [...prev, newItem])
-    setNombre(''); setCantidad(1)
-    await supabase.from('listas_compras').insert(newItem)
+    await persistItems([...(lista.items ?? []), newItem])
+    setNombre('')
+    setCantidad(1)
     setSaving(false)
   }
 
-  const sorted = [...items.filter(i => !i.comprado), ...items.filter(i => i.comprado)]
+  const items  = lista?.items ?? []
+  const sorted = [...items.filter(i => !i.checked), ...items.filter(i => i.checked)]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       <AppHeader title="Lista de compras" back />
 
       {loading ? (
-        <div style={{ padding: 24, textAlign: 'center', color: 'var(--fg-mute)', fontSize: 13 }}>Cargando…</div>
+        <div style={{ padding: 24, textAlign: 'center', color: 'var(--fg-mute)', fontSize: 13 }}>
+          Cargando…
+        </div>
       ) : (
         <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+
           {sorted.length === 0 && (
             <div style={{
               background: 'var(--ink-2)', border: '1px solid var(--line)',
@@ -96,30 +157,30 @@ export default function ListaCompras() {
                 display: 'flex', alignItems: 'center', gap: 12,
                 background: 'var(--ink-2)', border: '1px solid var(--line)',
                 borderRadius: 14, padding: '12px 14px',
-                opacity: item.comprado ? 0.55 : 1,
+                opacity: item.checked ? 0.55 : 1,
                 transition: 'opacity .2s',
               }}
             >
-              {/* Checkbox button */}
+              {/* Checkbox */}
               <button
-                onClick={() => toggle(item)}
+                onClick={() => toggle(item.id)}
                 style={{
                   width: 26, height: 26, borderRadius: 8, flexShrink: 0,
-                  background:   item.comprado ? 'var(--pos)' : 'var(--ink-3)',
-                  border:       item.comprado ? 'none' : '1.5px solid var(--line)',
+                  background:   item.checked ? 'var(--pos)' : 'var(--ink-3)',
+                  border:       item.checked ? 'none' : '1.5px solid var(--line)',
                   color:        'var(--ink-0)', fontSize: 14, fontWeight: 700,
                   display:      'grid', placeItems: 'center', cursor: 'pointer',
                 }}
-                aria-label={item.comprado ? 'Desmarcar' : 'Marcar como comprado'}
+                aria-label={item.checked ? 'Desmarcar' : 'Marcar como comprado'}
               >
-                {item.comprado ? '✓' : ''}
+                {item.checked ? '✓' : ''}
               </button>
 
               {/* Nombre */}
               <span style={{
                 flex: 1, fontSize: 14, fontWeight: 500,
-                color:          item.comprado ? 'var(--fg-mute)' : 'var(--fg)',
-                textDecoration: item.comprado ? 'line-through' : 'none',
+                color:          item.checked ? 'var(--fg-mute)' : 'var(--fg)',
+                textDecoration: item.checked ? 'line-through' : 'none',
               }}>
                 {item.nombre}
               </span>
@@ -127,8 +188,7 @@ export default function ListaCompras() {
               {/* Cantidad */}
               <span className="num" style={{
                 fontSize: 12.5, color: 'var(--fg-dim)',
-                background: 'var(--ink-3)', borderRadius: 6,
-                padding: '3px 8px',
+                background: 'var(--ink-3)', borderRadius: 6, padding: '3px 8px',
               }}>
                 ×{item.cantidad}
               </span>
@@ -165,8 +225,7 @@ export default function ListaCompras() {
               style={inputSt}
             />
             <input
-              type="number"
-              min={1}
+              type="number" min={1}
               value={cantidad}
               onChange={e => setCantidad(Number(e.target.value))}
               style={numSt}
@@ -185,6 +244,13 @@ export default function ListaCompras() {
               Agregar
             </button>
           </div>
+
+          {/* Summary */}
+          {items.length > 0 && (
+            <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', textAlign: 'center', marginTop: 4 }}>
+              {items.filter(i => i.checked).length} / {items.length} comprados
+            </div>
+          )}
         </div>
       )}
 

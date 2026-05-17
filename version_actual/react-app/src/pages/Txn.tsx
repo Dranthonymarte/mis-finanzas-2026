@@ -178,8 +178,15 @@ export default function Txn() {
 
   const txnsForMonth = liveTxns ?? []
 
-  // Recurrentes from config_usuario
-  const recurring = (config.recurrentes as Recurrente[]).filter(r => r.id)
+  // Recurrentes from config_usuario — map RecurrenteConfig → local Recurrente shape
+  const recurring: Recurrente[] = config.recurrentes.map(r => ({
+    id:     r.id,
+    desc:   r.descripcion,
+    cat:    r.cat,
+    tipo:   r.tipo,
+    amount: r.monto,
+    recDia: undefined,
+  }))
 
   const filtered = txnsForMonth.filter(t => {
     if (filter === 'all') return true

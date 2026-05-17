@@ -8,7 +8,7 @@ const TABS = [
   { id: 'txn',      label: 'Mov.',    path: '/txn',       Icon: ListIcon   },
   { id: 'fab' },
   { id: 'accounts', label: 'Cuentas', path: '/accounts',  Icon: WalletIcon },
-  { id: 'more',     label: 'Más',     path: '/more',      Icon: CogIcon    },
+  { id: 'more',     label: 'Menú',    path: '/more',      Icon: CogIcon    },
 ] as const
 
 // Tab-to-path depth for determining slide direction

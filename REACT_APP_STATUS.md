@@ -2,7 +2,7 @@
 
 > Documento vivo. Actualizar al cerrar cada sesión.
 > Fuente de verdad para la nueva UIX (react-app/).
-> **Última actualización:** 2026-05-17 (BLOQUEs 6-9 completados — v1.0.0-rc)
+> **Última actualización:** 2026-05-17 (27 bugs corregidos — v1.0.1-bugfix)
 
 ---
 
@@ -26,43 +26,47 @@ Git push:       SIEMPRE con PowerShell (bash no tiene auth):
 |------|---------|--------|-------|
 | `/onboarding` | Onboarding.tsx | ✅ | 3 slides, warm bg, A1 mockup |
 | `/login` | Login.tsx | ✅ | PIN 4 dígitos, shake, A2 mockup |
-| `/` | Home.tsx | ✅ | Hero, Sparkline, KPI 2×2, Insight, TxnPreview |
+| `/` | Home.tsx | ✅ | userName dinámico, EF desde fondo_emergencia DB, pronóstico con recurrentes |
 | `/txn` | Txn.tsx | ✅ | Filter chips, date groups, subtotales, CatIcon |
 | `/accounts` | Accounts.tsx | ✅ | Cards gradiente radial, Sparkline, trend |
 | `/ia` | AI.tsx | ✅ | Chat real, MiniChart, chips, input bar |
-| `/more` | More.tsx | ✅ | BLOQUE 9 — grid 4×4 + RowGroups config + logout |
-| `/new-txn` | NewTransaction.tsx | ✅ | Full screen, tipo/monto/cat/cuenta/autor, mes fix |
+| `/more` | More.tsx | ✅ | grid 4×4 + RowGroups config + logout |
+| `/new-txn` | NewTransaction.tsx | ✅ | Confirmación pre-save, user_id=householdId, subcat='' |
 | `/accounts/:id` | AccountDetail.tsx | ✅ | Balance hero, stats, txn filtrado, eliminar |
 | `/new-account` | NewAccount.tsx | ✅ | Preview vivo, tipo/moneda/color picker |
-| `/transfer` | Transfer.tsx | ✅ | AccountPicker, monto teal, par DEBIT/CREDIT |
-| `/fire` | Fire.tsx | ✅ | Regla 4%, simulador, useFormat |
-| `/metas` | Metas.tsx | ✅ | Circular progress, inline abono |
+| `/transfer` | Transfer.tsx | ✅ | AccountPicker, 2 rows DEBIT/CREDIT, user_id=householdId |
+| `/fire` | Fire.tsx | ✅ | Regla 4%, shape real {goal:{meta,extra,plazo,actual}} |
+| `/metas` | Metas.tsx | ✅ | Circular progress, inline abono, **inline edit** |
 | `/notificaciones` | Notificaciones.tsx | ✅ | Form creación + lista activas |
 | `/dinero-fuera` | DineroFuera.tsx | ✅ | Abono inline, marcar pagado |
 | `/buscar` | Buscar.tsx | ✅ | Search global ilike debounced, navega /txn/:id |
 | `/voz` | VozTxn.tsx | ✅ | Web Speech API es-VE, prefill sessionStorage |
-| `/csv-import` | CsvImport.tsx | ✅ | Parse+preview+bulk insert mesIdToDbKey |
+| `/csv-import` | CsvImport.tsx | ✅ | Parse+preview+bulk insert, user_id=householdId |
 | `/analisis` | Analisis.tsx | ✅ | Bar charts cat/tipo, top gastos, mes selector |
-| `/recurrentes` | Recurrentes.tsx | ✅ | CRUD config.recurrentes, form inline |
-| `/lista-compras` | ListaCompras.tsx | ✅ | Supabase listas_compras, toggle/soft-delete |
-| `/settings` | Settings.tsx | ⚠️ | Estructura básica |
-| `/settings/profile` | settings/Profile.tsx | ⚠️ | Placeholder |
-| `/settings/categories` | settings/Categories.tsx | ⚠️ | Placeholder |
-| `/settings/budgets` | settings/Budgets.tsx | ✅ | Presupuestos con progreso real |
-| `/settings/appearance` | settings/Appearance.tsx | ⚠️ | Placeholder |
-| `/settings/security` | settings/Security.tsx | ⚠️ | Placeholder |
+| `/recurrentes` | Recurrentes.tsx | ✅ | CRUD config.recurrentes, recDia (día del mes) |
+| `/lista-compras` | ListaCompras.tsx | ✅ | Schema JSONB real — items[]{id,nombre,cantidad,precio,checked} |
+| `/escanear` | Escanear.tsx | ✅ | **OCR real** Groq Vision llama-3.2-11b, editar+guardar movimiento |
+| `/pareja` | Pareja.tsx | ✅ | Real household_members desde Supabase |
+| `/txn/:id` | TxnDetail.tsx | ✅ | Soft-delete + recrear en edit, user_id=householdId |
+| `/settings` | Settings.tsx | ✅ | Estructura completa |
+| `/settings/profile` | settings/Profile.tsx | ✅ | Edita nombre real, refleja en store |
+| `/settings/categories` | settings/Categories.tsx | ✅ | CRUD categorías |
+| `/settings/budgets` | settings/Budgets.tsx | ✅ | Inline edit en cada fila (no panel separado) |
+| `/settings/appearance` | settings/Appearance.tsx | ✅ | Tema dark/light/system + accent picker |
+| `/settings/security` | settings/Security.tsx | ✅ | Cambio contraseña + **Groq API key storage** |
 | `/settings/tipos` | settings/Tipos.tsx | ✅ | CRUD tipos, toggle esIngreso, protect built-ins |
-| `/settings/subcategorias` | settings/Subcategorias.tsx | ✅ | Collapsible, CRUD por cat |
+| `/settings/subcategorias` | settings/Subcategorias.tsx | ✅ | CRUD completo — rename inline + todas las cats |
 
 ---
 
-## 🔐 Seguridad (BLOQUE 8)
+## 🔐 Seguridad
 
 | Item | Estado |
 |------|--------|
-| Groq API key → .env.local (VITE_GROQ_API_KEY) | ✅ |
+| Groq API key → localStorage `fin_groq_api_key` (configurable en Ajustes → Seguridad) | ✅ |
 | Sin `gsk_` en código fuente ni en dist/ | ✅ |
-| RLS USING(false) en 4 tablas deprecated | ✅ |
+| project_files RLS: anon bloqueado, SELECT solo authenticated | ✅ (BUG-25 fix 2026-05-17) |
+| RLS USING(false) en deprecated + working_version_files + vapid_config | ✅ |
 | ErrorBoundary wrapeando Routes | ✅ |
 | handleError en todos los hooks de datos | ✅ |
 | React.lazy() todas las rutas | ✅ |
@@ -70,6 +74,7 @@ Git push:       SIEMPRE con PowerShell (bash no tiene auth):
 | PWA manifest.webmanifest standalone+portrait+#0a0b0d | ✅ |
 | icon-192.png + icon-512.png generados | ✅ |
 | Toast store + componente global | ✅ |
+| Fonts: CDN Google Fonts (Inter + Instrument Serif + JetBrains Mono) — @font-face rotos eliminados | ✅ |
 
 ---
 
@@ -126,15 +131,18 @@ verbatimModuleSyntax: true  # → import { type X } en lugar de import { X }
 
 ---
 
-## 📝 Commit history (React App)
+## 📝 Commit history (React App — bugfix sprint)
 
 ```
+012372b feat(subcategorias): CRUD completo — rename inline + todas las cats (BUG-24)
+b842727 fix(budgets): inline edit dentro de cada fila (BUG-23)
+8da7cc0 fix(fonts): eliminar @font-face rotos, CDN incluye JetBrains Mono (BUG-22)
+232cefd fix(metas): inline edit + overflow mobile en MetaCard (BUG-21)
+37508bb feat(escanear): OCR real via Groq Vision + API key en Seguridad (BUG-19)
+ef563d6 fix(home): pronostico recurrentes pendientes + nombre dinamico header (BUG-20)
+4bcdd77 fix(txn-detail): soft-delete + recrear en saveEdit; user_id=householdId (BUG-15)
+...      [commits anteriores de BUG-1 a BUG-14 en misma sesión]
 92f46da feat(app): FAB voz busqueda CSV NewTransaction  ← BLOQUE 6+7
-97c370c feat(secondary): BLOQUE 5 — pantallas secundarias mejoradas
-0edd5ac feat(accounts): BLOQUE 4 — Cuentas + AccountDetail con datos reales
-bf429d7 feat(txn): BLOQUE 3 — Movimientos completo con prefs + presupuesto
-35a6200 feat(home): BLOQUE 2 — Home completo 11 secciones datos reales
-a0caec6 feat(format): BLOQUE 1 — useFormat en todos los componentes
 ```
 
 ---
@@ -147,10 +155,12 @@ Supabase URL:  https://jcgoccaisemrfsuwwrrl.supabase.co
 Proyecto ID:   jcgoccaisemrfsuwwrrl
 Autores:       Anthony (A) | Isabel (I)
 Monedas:       USD | VES (BCV rate de tasas_cambio)
-Movimientos:   682+ rows — SIEMPRE deleted_at IS NULL
+Movimientos:   1319+ rows — SIEMPRE deleted_at IS NULL
 Regla crítica: NUNCA UPDATE amount/tipo/fecha → soft-delete + recrear
-Transferencias: par TRANSFER_DEBIT + TRANSFER_CREDIT con pair_id lógico
-mes DB:        "Mayo" (nombre español) — prefs store: "may-26"
+user_id en INSERT: SIEMPRE householdId (UUID del household). NUNCA auth.uid()
+Transferencias: par Transferencia Interna {amount:-N} + {amount:+N}
+mes DB:        "Mayo" (nombre español) — prefs store: "may-26" — convertir con mesIdToDbKey()
+subcat/method: NUNCA null → siempre '' (NOT NULL en DB)
 ```
 
 ---
@@ -159,10 +169,10 @@ mes DB:        "Mayo" (nombre español) — prefs store: "may-26"
 
 | Item | Prioridad |
 |------|-----------|
-| settings/Profile — editar nombre real desde DB | 🟡 Media |
-| settings/Categories — CRUD colores | 🟡 Media |
-| settings/Appearance — dark/light theme toggle real | 🟠 Baja |
-| settings/Security — cambiar PIN | 🟠 Baja |
-| Analisis — comparativa mes anterior | 🟠 Baja |
-| Transferencia — fix Transfer.tsx con pair_id | 🟡 Media |
-| Worker de Cloudflare para Groq (no exponer key en frontend) | 🔴 Alta (post v1) |
+| BUG-10: Account balance = balance_override ?? saldo_inicial + movements (join complejo) | 🔴 Alta |
+| BUG-11: tasas_cambio mes 'global' vs mesActivo — verificar si es bug real | 🟡 Media |
+| settings/Categories — CRUD colores por categoría | 🟡 Media |
+| Analisis — comparativa mes anterior real | 🟠 Baja |
+| Worker Cloudflare para Groq OCR (no exponer key en frontend localStorage) | 🟡 Media |
+| Fonts self-hosted PWA offline: crear /public/fonts/ con woff2 reales | 🟠 Baja |
+| Invite real a pareja (email link via Supabase invite) | 🟠 Baja |

@@ -4,8 +4,11 @@ import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../store/auth'
 
 export default function Profile() {
-  const storeEmail = useAuthStore(s => s.userEmail)
-  const storeName  = useAuthStore(s => s.userName)
+  const storeEmail    = useAuthStore(s => s.userEmail)
+  const storeName     = useAuthStore(s => s.userName)
+  const userId        = useAuthStore(s => s.userId)
+  const householdId   = useAuthStore(s => s.householdId)
+  const setSession    = useAuthStore(s => s.setSession)
 
   const [name,   setName]   = useState(storeName)
   const [email,  setEmail]  = useState(storeEmail)
@@ -28,6 +31,10 @@ export default function Profile() {
     })
     setSaving(false)
     if (err) { setError(err.message); return }
+    // Reflect name change immediately in the Zustand store (avatar + header)
+    if (userId) {
+      setSession({ userId, householdId, email: storeEmail, userName: name })
+    }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }

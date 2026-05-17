@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Sparkline from '../components/ui/Sparkline'
@@ -121,7 +122,8 @@ function TxnRowPreview({ t, last }: { t: typeof MOCK_TRANSACTIONS[0]; last: bool
 }
 
 export default function Home() {
-  const navigate = useNavigate()
+  const navigate      = useNavigate()
+  const [showInsight, setShowInsight] = useState(true)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -259,7 +261,7 @@ export default function Home() {
       </div>
 
       {/* ── Insight IA card ── */}
-      <div style={{ padding: '12px 16px 4px' }}>
+      {showInsight && <div style={{ padding: '12px 16px 4px' }}>
         <div style={{
           padding: 14, borderRadius: 14,
           background: 'linear-gradient(135deg, var(--amber-d) 0%, transparent 75%), var(--ink-2)',
@@ -283,10 +285,10 @@ export default function Home() {
           </div>
           <div style={{ marginTop: 10, display: 'flex', gap: 6 }}>
             <PillBtn primary onClick={() => navigate('/ia')}>Ver detalle</PillBtn>
-            <PillBtn>Descartar</PillBtn>
+            <PillBtn onClick={() => setShowInsight(false)}>Descartar</PillBtn>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* ── Últimos movimientos ── */}
       <div style={{ padding: '14px 16px 24px' }}>

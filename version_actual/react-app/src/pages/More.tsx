@@ -6,6 +6,7 @@ import {
   BudgetIcon, PaletteIcon, LockIcon,
   BellIcon, GlobeIcon, LogoutIcon, ScanIcon,
 } from '../components/icons/Icons'
+import { useAuthStore } from '../store/auth'
 
 /* ── Icon with colored bg ── */
 function IcoBg({ color, children }: { color: string; children: ReactNode }) {
@@ -29,6 +30,12 @@ const ShareIcon = () => <span style={{ fontSize: 15 }}>🎁</span>
 
 export default function More() {
   const navigate = useNavigate()
+  const logout   = useAuthStore((s) => s.logout)
+
+  function handleLogout() {
+    logout()
+    navigate('/login')
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -186,7 +193,7 @@ export default function More() {
             label="Cerrar sesión"
             danger
             last
-            onClick={() => {}}
+            onClick={handleLogout}
           />
         </RowGroup>
 

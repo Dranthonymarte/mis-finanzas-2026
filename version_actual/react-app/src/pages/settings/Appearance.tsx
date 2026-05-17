@@ -4,6 +4,8 @@ import { CheckIcon } from '../../components/icons/Icons'
 
 type ThemeMode = 'dark' | 'light' | 'system'
 
+const ACCENTS = ['#e0a84a', '#58b26a', '#6a94c4', '#d66a5a', '#3d8b82']
+
 const THEMES: { id: ThemeMode; label: string; bg: string; dot: string }[] = [
   { id: 'dark',   label: 'Oscuro',    bg: '#0a0b0d', dot: '#e0a84a' },
   { id: 'light',  label: 'Claro',     bg: '#f5f3ee', dot: '#b87d1f' },
@@ -11,7 +13,8 @@ const THEMES: { id: ThemeMode; label: string; bg: string; dot: string }[] = [
 ]
 
 export default function Appearance() {
-  const [theme, setTheme] = useState<ThemeMode>('dark')
+  const [theme,  setTheme]  = useState<ThemeMode>('dark')
+  const [accent, setAccent] = useState('#e0a84a')
 
   function applyTheme(t: ThemeMode) {
     setTheme(t)
@@ -84,16 +87,18 @@ export default function Appearance() {
             Color acento
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            {['#e0a84a', '#58b26a', '#6a94c4', '#d66a5a', '#3d8b82'].map((c) => (
+            {ACCENTS.map((c) => (
               <button
                 key={c}
+                onClick={() => {
+                  setAccent(c)
+                  document.documentElement.style.setProperty('--amber', c)
+                }}
+                aria-label={`Acento ${c}`}
                 style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: '50%',
-                  background: c,
-                  border: c === '#e0a84a' ? '3px solid var(--fg)' : '3px solid transparent',
-                  cursor: 'pointer',
+                  width: 36, height: 36, borderRadius: '50%', background: c,
+                  border: accent === c ? '3px solid var(--fg)' : '3px solid transparent',
+                  cursor: 'pointer', transition: 'border .15s',
                 }}
               />
             ))}

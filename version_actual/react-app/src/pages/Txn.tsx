@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import CatIcon, { catColor } from '../components/ui/CatIcon'
 import { MOCK_TRANSACTIONS, MOCK_MONTH, fmt, txnGroup } from '../data/mock'
@@ -47,7 +48,7 @@ const COUNTS: Record<FilterType, number> = {
 }
 
 /* ── TxnRow ── */
-function TxnRow({ t, last }: { t: typeof MOCK_TRANSACTIONS[0]; last: boolean }) {
+function TxnRow({ t, last, onTap }: { t: typeof MOCK_TRANSACTIONS[0]; last: boolean; onTap: () => void }) {
   const group   = txnGroup(t.tipo)
   const isInc   = group === 'ingreso'
   const isSav   = group === 'ahorro'
@@ -55,11 +56,15 @@ function TxnRow({ t, last }: { t: typeof MOCK_TRANSACTIONS[0]; last: boolean }) 
   const sign    = isInc ? '+' : '−'
 
   return (
-    <div style={{
-      display: 'grid', gridTemplateColumns: '36px 1fr auto', gap: 10,
-      alignItems: 'center', padding: '11px 14px',
-      borderBottom: last ? 'none' : '1px solid var(--line)',
-    }}>
+    <div
+      onClick={onTap}
+      style={{
+        display: 'grid', gridTemplateColumns: '36px 1fr auto', gap: 10,
+        alignItems: 'center', padding: '11px 14px',
+        borderBottom: last ? 'none' : '1px solid var(--line)',
+        cursor: 'pointer',
+      }}
+    >
       <CatIcon cat={t.cat} />
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 13.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -110,6 +115,7 @@ function DateHeader({ date, txns }: { date: string; txns: typeof MOCK_TRANSACTIO
 }
 
 export default function Txn() {
+  const navigate = useNavigate()
   const [filter, setFilter] = useState<FilterType>('all')
 
   const filtered = MOCK_TRANSACTIONS.filter(t => {
@@ -263,7 +269,7 @@ export default function Txn() {
             <DateHeader date={date} txns={txns} />
             <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
               {txns.map((t, i) => (
-                <TxnRow key={t.id} t={t} last={i === txns.length - 1} />
+                <TxnRow key={t.id} t={t} last={i === txns.length - 1} onTap={() => navigate(`/txn/${t.id}`)} />
               ))}
             </div>
           </div>

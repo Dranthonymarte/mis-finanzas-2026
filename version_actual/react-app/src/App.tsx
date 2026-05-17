@@ -27,6 +27,7 @@ import Onboarding     from './pages/Onboarding'
 import Login          from './pages/Login'
 import NewTransaction from './pages/NewTransaction'
 import AccountDetail  from './pages/AccountDetail'
+import TxnDetail      from './pages/TxnDetail'
 import NewAccount     from './pages/NewAccount'
 import Transfer       from './pages/Transfer'
 
@@ -59,6 +60,7 @@ export default function App() {
         {/* Full-screen flows — sin TabBar */}
         <Route path="/new-txn"       element={<NewTransaction />} />
         <Route path="/accounts/:id"  element={<AccountDetail />}  />
+        <Route path="/txn/:id"       element={<TxnDetail />}      />
         <Route path="/new-account"   element={<NewAccount />}     />
         <Route path="/transfer"      element={<Transfer />}        />
 

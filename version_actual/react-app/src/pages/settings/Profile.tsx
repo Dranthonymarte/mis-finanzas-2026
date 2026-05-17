@@ -1,6 +1,14 @@
+import { useState } from 'react'
 import AppHeader from '../../components/shell/AppHeader'
 
 export default function Profile() {
+  const [saved, setSaved] = useState(false)
+
+  function handleSave() {
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       <AppHeader title="Perfil" back />
@@ -61,7 +69,16 @@ export default function Profile() {
       </div>
 
       <div style={{ padding: '4px 16px' }}>
-        <button className="m-save-btn">Guardar cambios</button>
+        <button
+          className="m-save-btn"
+          onClick={handleSave}
+          style={{
+            background: saved ? 'var(--pos)' : undefined,
+            transition: 'background .2s',
+          }}
+        >
+          {saved ? '✓  Guardado' : 'Guardar cambios'}
+        </button>
       </div>
     </div>
   )

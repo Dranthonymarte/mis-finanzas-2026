@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { type Transaction } from '../data/mock'
-import { type Config } from './useConfig'
+import { type Config, DEFAULTS } from './useConfig'
 
 export interface KPIs {
   ingresos: number
@@ -13,11 +13,14 @@ export function useKPIs(transactions: Transaction[] | null, config: Config): KPI
   return useMemo(() => {
     if (!transactions) return { ingresos: 0, gastos: 0, balance: 0, ahorro: 0 }
 
+    // Guard: if tipos is somehow empty (DB returned []), fall back to DEFAULTS
+    const tipos = config.tipos.length > 0 ? config.tipos : DEFAULTS.tipos
+
     const tiposIngreso = new Set(
-      config.tipos.filter(t => t.esIngreso).map(t => t.nombre)
+      tipos.filter(t => t.esIngreso).map(t => t.nombre)
     )
     const tiposAhorro = new Set(
-      config.tipos
+      tipos
         .filter(t => !t.esIngreso && t.nombre.toLowerCase().includes('ahorro'))
         .map(t => t.nombre)
     )
@@ -32,5 +35,5 @@ export function useKPIs(transactions: Transaction[] | null, config: Config): KPI
     }
 
     return { ingresos, gastos, balance: ingresos - gastos, ahorro }
-  }, [transactions, config.tipos])
+  }, [transactions, config.tipos])  // eslint-disable-line react-hooks/exhaustive-deps
 }

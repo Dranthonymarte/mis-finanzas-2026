@@ -47,7 +47,7 @@ export interface Config {
   fireConfig:    FireConfig
 }
 
-const DEFAULTS: Config = {
+export const DEFAULTS: Config = {
   tipos: [
     { nombre: 'Gasto',                 esIngreso: false },
     { nombre: 'Ingreso Fijo',          esIngreso: true  },
@@ -106,10 +106,16 @@ export function useConfig() {
       .single()
       .then(({ data, error }) => {
         if (error || !data) { setLoading(false); return }
+        // ── Guard: empty array/object falls back to DEFAULTS ──
+        // DB can return [] / {} if config was never saved → ?? won't catch it
+        const tipos = (data.tipos as TipoConfig[] | null)
+        const cats  = (data.categorias  as Record<string,string[]> | null)
+        const subs  = (data.subcategorias as Record<string,string[]> | null)
+
         setConfig({
-          tipos:         (data.tipos         as TipoConfig[]          ) ?? DEFAULTS.tipos,
-          categorias:    (data.categorias     as Record<string,string[]>) ?? DEFAULTS.categorias,
-          subcategorias: (data.subcategorias  as Record<string,string[]>) ?? DEFAULTS.subcategorias,
+          tipos:         (tipos?.length)                    ? tipos  : DEFAULTS.tipos,
+          categorias:    (cats  && Object.keys(cats).length)  ? cats   : DEFAULTS.categorias,
+          subcategorias: (subs  && Object.keys(subs).length)  ? subs   : DEFAULTS.subcategorias,
           presupuestos:  (data.presupuestos   as Record<string,number> ) ?? DEFAULTS.presupuestos,
           recurrentes:   (data.recurrentes    as RecurrenteConfig[]    ) ?? [],
           closedMonths:  (data.closed_months  as string[]              ) ?? [],

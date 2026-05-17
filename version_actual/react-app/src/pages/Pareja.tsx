@@ -1,20 +1,69 @@
-import { useState } from 'react'
+// ═══════════════════════════════════════════════════
+// Pareja — /pareja
+// Miembros reales del household desde household_members
+// ═══════════════════════════════════════════════════
+
+import { useState, useEffect } from 'react'
 import AppHeader from '../components/shell/AppHeader'
 import Pill from '../components/ui/Pill'
+import { supabase }    from '../lib/supabase'
+import { useAuthStore } from '../store/auth'
 
-const MEMBERS = [
-  { inicial: 'A', nombre: 'Anthony', rol: 'Propietario', color: '#6a94c4' },
-  { inicial: 'I', nombre: 'Isabel',  rol: 'Pareja',      color: '#b0a3c7' },
-]
+interface Member {
+  user_id: string
+  role:    string | null
+  display: string    // name or truncated email fallback
+  inicial: string
+  color:   string
+}
+
+const COLORS = ['#6a94c4', '#b0a3c7', '#3d8b82', '#e0a84a', '#d66a5a']
 
 export default function Pareja() {
-  const [email, setEmail] = useState('')
-  const [sent,  setSent]  = useState(false)
+  const householdId = useAuthStore(s => s.householdId)
+  const userId      = useAuthStore(s => s.userId)
+  const userName    = useAuthStore(s => s.userName)
+
+  const [members,  setMembers]  = useState<Member[]>([])
+  const [loading,  setLoading]  = useState(true)
+  const [email,    setEmail]    = useState('')
+  const [sent,     setSent]     = useState(false)
+
+  useEffect(() => {
+    if (!householdId) { setLoading(false); return }
+
+    supabase
+      .from('household_members')
+      .select('user_id, role')
+      .eq('household_id', householdId)
+      .then(({ data }) => {
+        const rows = (data ?? []) as { user_id: string; role: string | null }[]
+        const mapped: Member[] = rows.map((r, i) => {
+          const isSelf = r.user_id === userId
+          const name   = isSelf ? (userName ?? r.user_id.slice(0, 6)) : r.user_id.slice(0, 8)
+          return {
+            user_id: r.user_id,
+            role:    r.role,
+            display: isSelf ? (userName ?? 'Tú') : name,
+            inicial: (isSelf ? (userName ?? '?') : name)[0].toUpperCase(),
+            color:   COLORS[i % COLORS.length],
+          }
+        })
+        setMembers(mapped)
+        setLoading(false)
+      })
+  }, [householdId, userId, userName])
 
   function handleInvite() {
     if (!email.trim()) return
     setSent(true)
     setTimeout(() => { setSent(false); setEmail('') }, 2500)
+  }
+
+  const rolLabel = (role: string | null) => {
+    if (!role) return 'Miembro'
+    const map: Record<string, string> = { owner: 'Propietario', admin: 'Admin', member: 'Miembro' }
+    return map[role.toLowerCase()] ?? role
   }
 
   return (
@@ -28,21 +77,29 @@ export default function Pareja() {
           <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginBottom: 14, letterSpacing: '.1em', textTransform: 'uppercase' }}>
             Tu hogar
           </div>
-          <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
-            {MEMBERS.map(m => (
-              <div key={m.nombre} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                <div style={{
-                  width: 52, height: 52, borderRadius: 15, background: m.color,
-                  display: 'grid', placeItems: 'center',
-                  fontSize: 22, fontWeight: 700, color: 'var(--ink-0)',
-                }}>
-                  {m.inicial}
+
+          {loading ? (
+            <div style={{ textAlign: 'center', color: 'var(--fg-mute)', fontSize: 12, padding: '8px 0' }}>Cargando…</div>
+          ) : members.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--fg-mute)', fontSize: 12, padding: '8px 0' }}>Sin miembros registrados</div>
+          ) : (
+            <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+              {members.map(m => (
+                <div key={m.user_id} style={{ flex: 1, minWidth: 80, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <div style={{
+                    width: 52, height: 52, borderRadius: 15, background: m.color,
+                    display: 'grid', placeItems: 'center',
+                    fontSize: 22, fontWeight: 700, color: 'var(--ink-0)',
+                  }}>
+                    {m.inicial}
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'center' }}>{m.display}</div>
+                  <Pill tone="pos" size="xs">{rolLabel(m.role)}</Pill>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{m.nombre}</div>
-                <Pill tone="pos" size="xs">{m.rol}</Pill>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+
           <div style={{ borderTop: '1px solid var(--line)', paddingTop: 10, fontSize: 11.5, color: 'var(--fg-mute)', textAlign: 'center' }}>
             Household activo · datos compartidos
           </div>
@@ -75,23 +132,9 @@ export default function Pareja() {
               {sent ? '✓ Enviado' : 'Invitar'}
             </button>
           </div>
-        </div>
-
-        {/* ── Shared summary ── */}
-        <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 }}>
-          <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginBottom: 12, letterSpacing: '.1em', textTransform: 'uppercase' }}>
-            Resumen compartido · Abril
+          <div style={{ marginTop: 8, fontSize: 11, color: 'var(--fg-mute)' }}>
+            El enlace de invitación se enviará al correo indicado.
           </div>
-          {[
-            { label: 'Anthony gastó', value: '$487.18', color: 'var(--fg)' },
-            { label: 'Isabel gastó',  value: '$126.04', color: 'var(--fg)' },
-            { label: 'Total hogar',   value: '$613.22', color: 'var(--neg)' },
-          ].map(row => (
-            <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--line)' }}>
-              <span style={{ fontSize: 13, color: 'var(--fg-mute)' }}>{row.label}</span>
-              <span style={{ fontSize: 14, fontWeight: 600, color: row.color }}>{row.value}</span>
-            </div>
-          ))}
         </div>
 
       </div>

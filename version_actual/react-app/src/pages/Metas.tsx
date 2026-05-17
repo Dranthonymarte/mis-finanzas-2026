@@ -10,7 +10,8 @@ import { useConfig, type MetaAhorro } from '../hooks/useConfig'
 import { useFormat } from '../hooks/useFormat'
 
 const inputSt: React.CSSProperties = {
-  flex: 1, background: 'var(--ink-1)', border: '1px solid var(--line)',
+  width: '100%', boxSizing: 'border-box',
+  background: 'var(--ink-1)', border: '1px solid var(--line)',
   borderRadius: 10, padding: '8px 10px', fontSize: 13,
   color: 'var(--fg)', outline: 'none',
 }
@@ -37,14 +38,22 @@ function CircProgress({ pct, color, size = 68 }: { pct: number; color: string; s
   )
 }
 
-function MetaCard({ meta, onAbono, onDelete }: {
+function MetaCard({ meta, onAbono, onEdit, onDelete }: {
   meta:     MetaAhorro
   onAbono:  (id: string, monto: number) => void
+  onEdit:   (id: string, patch: Partial<MetaAhorro>) => void
   onDelete: (id: string) => void
 }) {
   const { fmt }    = useFormat()
   const [showAbono, setShowAbono] = useState(false)
   const [abonoVal,  setAbonoVal]  = useState('')
+  const [editMode,  setEditMode]  = useState(false)
+
+  // Edit field states — initialised on open
+  const [eNombre,   setENombre]   = useState(meta.nombre)
+  const [eObjetivo, setEObjetivo] = useState(String(meta.objetivo))
+  const [eFecha,    setEFecha]    = useState(meta.fechaLimite ?? '')
+  const [eEmoji,    setEEmoji]    = useState(meta.emoji || '🎯')
 
   const pct       = Math.min(100, meta.objetivo > 0 ? (meta.actual / meta.objetivo) * 100 : 0)
   const remaining = meta.objetivo - meta.actual
@@ -59,55 +68,107 @@ function MetaCard({ meta, onAbono, onDelete }: {
     setAbonoVal('')
   }
 
+  function openEdit() {
+    setENombre(meta.nombre)
+    setEObjetivo(String(meta.objetivo))
+    setEFecha(meta.fechaLimite ?? '')
+    setEEmoji(meta.emoji || '🎯')
+    setEditMode(true)
+  }
+
+  function submitEdit() {
+    const obj = parseFloat(eObjetivo)
+    if (!eNombre.trim() || !obj) return
+    onEdit(meta.id, { nombre: eNombre.trim(), objetivo: obj, fechaLimite: eFecha, emoji: eEmoji })
+    setEditMode(false)
+  }
+
+  /* ── Edit mode ── */
+  if (editMode) {
+    return (
+      <div style={{ background: 'var(--ink-2)', border: '1px solid var(--amber)', borderRadius: 16, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {EMOJIS.map(e => (
+            <button key={e} onClick={() => setEEmoji(e)}
+              style={{ fontSize: 18, background: eEmoji === e ? 'var(--amber)' : 'var(--ink-3)', border: 'none', borderRadius: 8, width: 34, height: 34, cursor: 'pointer' }}>
+              {e}
+            </button>
+          ))}
+        </div>
+        <input type="text"   value={eNombre}   onChange={e => setENombre(e.target.value)}   placeholder="Nombre" style={inputSt} />
+        <input type="number" value={eObjetivo}  onChange={e => setEObjetivo(e.target.value)} placeholder="Objetivo $" style={inputSt} />
+        <input type="date"   value={eFecha}     onChange={e => setEFecha(e.target.value)}                           style={inputSt} />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={submitEdit}
+            style={{ flex: 1, padding: '9px', borderRadius: 10, background: 'var(--amber)', color: 'var(--ink-0)', border: 'none', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>
+            Guardar
+          </button>
+          <button onClick={() => setEditMode(false)}
+            style={{ padding: '9px 14px', borderRadius: 10, background: 'var(--ink-3)', color: 'var(--fg-mute)', border: '1px solid var(--line)', cursor: 'pointer' }}>
+            ✕
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 16, padding: 14 }}>
 
-      {/* ── Main row: circle + info + pills ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+      {/* ── Main row: circle + info + actions ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
         {/* Circular progress */}
-        <div style={{ position: 'relative', width: 68, height: 68, flexShrink: 0 }}>
-          <CircProgress pct={pct} color={circColor} />
+        <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0 }}>
+          <CircProgress pct={pct} color={circColor} size={64} />
           <div style={{
             position: 'absolute', inset: 0,
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           }}>
-            <span style={{ fontSize: 18, lineHeight: 1 }}>{meta.emoji || '🎯'}</span>
-            <span style={{ fontSize: 9, fontWeight: 700, color: circColor, marginTop: 1 }}>
+            <span style={{ fontSize: 17, lineHeight: 1 }}>{meta.emoji || '🎯'}</span>
+            <span style={{ fontSize: 8.5, fontWeight: 700, color: circColor, marginTop: 1 }}>
               {pct.toFixed(0)}%
             </span>
           </div>
         </div>
 
-        {/* Info */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {/* Info — minWidth:0 for text truncation in flex */}
+        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {meta.nombre}
           </div>
-          <div className="num" style={{ fontSize: 13, marginTop: 2 }}>
+          <div className="num" style={{ fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {fmt(meta.actual)}
-            <span style={{ fontSize: 11, color: 'var(--fg-mute)' }}> / {fmt(meta.objetivo)}</span>
+            <span style={{ fontSize: 10.5, color: 'var(--fg-mute)' }}> / {fmt(meta.objetivo)}</span>
           </div>
           {meta.fechaLimite && (
-            <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginTop: 2 }}>
-              Meta: {new Date(meta.fechaLimite + 'T12:00:00').toLocaleDateString('es-VE', { month: 'short', year: 'numeric' })}
+            <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 2 }}>
+              Límite: {new Date(meta.fechaLimite + 'T12:00:00').toLocaleDateString('es-VE', { month: 'short', year: 'numeric' })}
             </div>
           )}
         </div>
 
-        {/* Pills */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+        {/* Action buttons — fixed width, no overflow */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, flexShrink: 0 }}>
           <Pill tone={tone} size="xs">{pct.toFixed(0)}%</Pill>
-          <button
-            onClick={() => onDelete(meta.id)}
-            style={{ width: 22, height: 22, borderRadius: 6, background: 'rgba(214,106,90,.1)', border: 'none', color: 'var(--neg)', fontSize: 13, cursor: 'pointer', display: 'grid', placeItems: 'center' }}
-          >×</button>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button
+              onClick={openEdit}
+              title="Editar"
+              style={{ width: 22, height: 22, borderRadius: 6, background: 'var(--ink-3)', border: '1px solid var(--line)', color: 'var(--fg-dim)', fontSize: 11, cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+            >✎</button>
+            <button
+              onClick={() => onDelete(meta.id)}
+              title="Eliminar"
+              style={{ width: 22, height: 22, borderRadius: 6, background: 'rgba(214,106,90,.1)', border: 'none', color: 'var(--neg)', fontSize: 13, cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+            >×</button>
+          </div>
         </div>
       </div>
 
       {/* ── Abono row ── */}
       {showAbono ? (
         <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
-          <span style={{ fontSize: 11.5, color: 'var(--fg-mute)' }}>$</span>
+          <span style={{ fontSize: 11.5, color: 'var(--fg-mute)', flexShrink: 0 }}>$</span>
           <input
             type="number"
             value={abonoVal}
@@ -119,23 +180,21 @@ function MetaCard({ meta, onAbono, onDelete }: {
           />
           <button
             onClick={submitAbono}
-            style={{ padding: '6px 11px', borderRadius: 7, background: 'var(--amber)', border: 'none', fontSize: 12, fontWeight: 700, color: 'var(--ink-0)', cursor: 'pointer' }}
+            style={{ flexShrink: 0, padding: '6px 11px', borderRadius: 7, background: 'var(--amber)', border: 'none', fontSize: 12, fontWeight: 700, color: 'var(--ink-0)', cursor: 'pointer' }}
           >OK</button>
           <button
             onClick={() => { setShowAbono(false); setAbonoVal('') }}
-            style={{ padding: '6px 9px', borderRadius: 7, background: 'var(--ink-3)', border: '1px solid var(--line)', fontSize: 11, color: 'var(--fg-mute)', cursor: 'pointer' }}
+            style={{ flexShrink: 0, padding: '6px 9px', borderRadius: 7, background: 'var(--ink-3)', border: '1px solid var(--line)', fontSize: 11, color: 'var(--fg-mute)', cursor: 'pointer' }}
           >✕</button>
         </div>
       ) : (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5 }}>
-          {remaining > 0 ? (
-            <span style={{ color: 'var(--fg-mute)' }}>Faltan {fmt(remaining)}</span>
-          ) : (
-            <span style={{ color: 'var(--pos)', fontWeight: 600 }}>¡Meta alcanzada! 🎉</span>
-          )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, gap: 8 }}>
+          <span style={{ color: remaining > 0 ? 'var(--fg-mute)' : 'var(--pos)', fontWeight: remaining <= 0 ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {remaining > 0 ? `Faltan ${fmt(remaining)}` : '¡Meta alcanzada! 🎉'}
+          </span>
           <button
             onClick={() => setShowAbono(true)}
-            style={{ padding: '4px 12px', borderRadius: 6, background: 'var(--ink-3)', border: '1px solid var(--line)', fontSize: 11, fontWeight: 600, color: 'var(--amber)', cursor: 'pointer' }}
+            style={{ flexShrink: 0, padding: '4px 12px', borderRadius: 6, background: 'var(--ink-3)', border: '1px solid var(--line)', fontSize: 11, fontWeight: 600, color: 'var(--amber)', cursor: 'pointer' }}
           >
             + Abonar
           </button>
@@ -173,6 +232,11 @@ export default function Metas() {
     setNombre(''); setObjetivo(''); setActual('0'); setFechaLim(''); setEmoji('🎯')
   }
 
+  async function editMeta(id: string, patch: Partial<MetaAhorro>) {
+    const next = metas.map(m => m.id === id ? { ...m, ...patch } : m)
+    await updateConfig('metas_ahorro', next)
+  }
+
   async function deleteMeta(id: string) {
     const next = metas.filter(m => m.id !== id)
     await updateConfig('metas_ahorro', next)
@@ -195,7 +259,7 @@ export default function Metas() {
       <div style={{ padding: '16px 16px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
 
         {active.map(m => (
-          <MetaCard key={m.id} meta={m} onAbono={abonar} onDelete={deleteMeta} />
+          <MetaCard key={m.id} meta={m} onAbono={abonar} onEdit={editMeta} onDelete={deleteMeta} />
         ))}
 
         {/* Completed section */}
@@ -205,7 +269,7 @@ export default function Metas() {
               Completadas
             </div>
             {completed.map(m => (
-              <MetaCard key={m.id} meta={m} onAbono={abonar} onDelete={deleteMeta} />
+              <MetaCard key={m.id} meta={m} onAbono={abonar} onEdit={editMeta} onDelete={deleteMeta} />
             ))}
           </>
         )}

@@ -38,22 +38,28 @@ export default function Fire() {
   const [retorno,    setRetorno]    = useState('7')
   const [saved,      setSaved]      = useState(false)
 
-  // Initialize from config once it loads
+  // Initialize from config once it loads.
+  // Real DB shape: { goal: { meta, extra, plazo, actual } }
   useEffect(() => {
     if (initialized.current) return
-    const f = config.fireConfig
-    if (f.meta || f.gastos || f.retorno) {
+    const f = config.fireConfig as { goal?: { meta?: number; extra?: number; plazo?: number; actual?: number } }
+    const g = f?.goal
+    if (g && (g.meta || g.actual || g.extra)) {
       initialized.current = true
-      if (f.gastos)  setGastos(String(f.gastos))
-      if (f.retorno) setRetorno(String(f.retorno))
+      if (g.extra)  setAhorro(String(g.extra))
+      if (g.actual) setPatrimonio(String(g.actual))
     }
   }, [config.fireConfig])
 
   async function handleSave() {
+    // Save using real DB shape: { goal: { meta, extra, plazo, actual } }
     await updateConfig('fire_config', {
-      gastos:  parseFloat(gastos)     || 15000,
-      retorno: parseFloat(retorno)    || 7,
-      meta:    fireNumber,
+      goal: {
+        meta:   Math.round(fireNumber),
+        actual: parseFloat(patrimonio) || 0,
+        plazo:  years,
+        extra:  parseFloat(ahorro)     || 500,
+      },
     })
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)

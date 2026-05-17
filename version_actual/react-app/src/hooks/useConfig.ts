@@ -21,11 +21,9 @@ export interface MetaAhorro {
   completada?: boolean
 }
 
-export interface FireConfig {
-  meta: number
-  retorno: number
-  gastos: number
-}
+// Real DB shape: { goal: { meta, extra, plazo, actual } }
+// Kept loose to allow reading the stored object without crashing
+export type FireConfig = Record<string, unknown>
 
 export interface RecurrenteConfig {
   id:               string
@@ -88,7 +86,7 @@ export const DEFAULTS: Config = {
   recurrentes:   [],
   closedMonths:  [],
   metasAhorro:   [],
-  fireConfig:    { meta: 200000, retorno: 7, gastos: 15000 },
+  fireConfig:    { goal: { meta: 200000, extra: 500, plazo: 20, actual: 0 } },
 }
 
 export function useConfig() {
@@ -128,10 +126,10 @@ export function useConfig() {
 
   async function updateConfig(campo: string, valor: unknown) {
     if (!userId) return
+    // Upsert instead of update — creates the row if it doesn't exist yet
     await supabase
       .from('config_usuario')
-      .update({ [campo]: valor })
-      .eq('user_id', userId)
+      .upsert({ user_id: userId, [campo]: valor }, { onConflict: 'user_id' })
   }
 
   return { config, loading, updateConfig }

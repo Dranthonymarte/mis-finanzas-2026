@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import AppHeader from '../components/shell/AppHeader'
+import { useConfig } from '../hooks/useConfig'
 
 function yearsToFire(patrimony: number, target: number, annualSavings: number, returnPct: number): number {
   if (target <= patrimony) return 0
   if (annualSavings <= 0 && returnPct <= 0) return 9999
   const r = returnPct / 100
-  let acc = patrimony
-  let years = 0
+  let acc = patrimony, years = 0
   while (acc < target && years < 100) {
     acc = acc * (1 + r) + annualSavings
     years++
@@ -18,24 +18,50 @@ const inp: React.CSSProperties = {
   width: '100%', background: 'var(--ink-1)', border: '1px solid var(--line)',
   borderRadius: 10, padding: '9px 12px', fontSize: 16, fontWeight: 600,
   color: 'var(--fg)', outline: 'none', fontFamily: 'var(--f-num)',
+  boxSizing: 'border-box',
 }
 
 export default function Fire() {
+  const { config, updateConfig } = useConfig()
+  const initialized = useRef(false)
+
   const [gastos,     setGastos]     = useState('15000')
   const [ahorro,     setAhorro]     = useState('500')
   const [patrimonio, setPatrimonio] = useState('5000')
   const [retorno,    setRetorno]    = useState('7')
+  const [saved,      setSaved]      = useState(false)
 
-  const annualExpenses  = parseFloat(gastos)     || 15000
-  const monthlyAhorro   = parseFloat(ahorro)      || 500
-  const currentPat      = parseFloat(patrimonio)  || 0
-  const returnPct       = parseFloat(retorno)     || 7
+  // Initialize from config once it loads
+  useEffect(() => {
+    if (initialized.current) return
+    const f = config.fireConfig
+    if (f.meta || f.gastos || f.retorno) {
+      initialized.current = true
+      if (f.gastos)  setGastos(String(f.gastos))
+      if (f.retorno) setRetorno(String(f.retorno))
+    }
+  }, [config.fireConfig])
 
-  const fireNumber   = annualExpenses / 0.04
-  const annualSav    = monthlyAhorro * 12
-  const years        = yearsToFire(currentPat, fireNumber, annualSav, returnPct)
-  const progress     = Math.min(100, (currentPat / fireNumber) * 100)
-  const fireYear     = new Date().getFullYear() + years
+  async function handleSave() {
+    await updateConfig('fire_config', {
+      gastos:  parseFloat(gastos)     || 15000,
+      retorno: parseFloat(retorno)    || 7,
+      meta:    fireNumber,
+    })
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  const annualExpenses = parseFloat(gastos)     || 15000
+  const monthlyAhorro  = parseFloat(ahorro)      || 500
+  const currentPat     = parseFloat(patrimonio)  || 0
+  const returnPct      = parseFloat(retorno)     || 7
+
+  const fireNumber  = annualExpenses / 0.04
+  const annualSav   = monthlyAhorro * 12
+  const years       = yearsToFire(currentPat, fireNumber, annualSav, returnPct)
+  const progress    = Math.min(100, (currentPat / fireNumber) * 100)
+  const fireYear    = new Date().getFullYear() + years
 
   const fields = [
     { label: 'Gastos anuales (USD)',        value: gastos,     set: setGastos     },
@@ -75,10 +101,7 @@ export default function Fire() {
           </div>
 
           <div style={{ marginTop: 16, height: 6, background: 'var(--ink-3)', borderRadius: 999, overflow: 'hidden' }}>
-            <div style={{
-              height: '100%', width: `${progress}%`,
-              background: 'var(--amber)', borderRadius: 999, transition: 'width .3s',
-            }} />
+            <div style={{ height: '100%', width: `${progress}%`, background: 'var(--amber)', borderRadius: 999, transition: 'width .3s' }} />
           </div>
           <div style={{ marginTop: 6, fontSize: 10.5, color: 'var(--fg-mute)' }}>
             {progress.toFixed(1)}% del camino · ahorro anual ${annualSav.toLocaleString('en-US')}
@@ -94,6 +117,17 @@ export default function Fire() {
             <input type="number" value={f.value} onChange={e => f.set(e.target.value)} style={inp} />
           </div>
         ))}
+
+        <button
+          onClick={handleSave}
+          style={{
+            background: saved ? 'var(--pos)' : 'var(--amber)', color: 'var(--ink-0)',
+            border: 'none', borderRadius: 12, padding: '11px', fontSize: 13,
+            fontWeight: 600, cursor: 'pointer', transition: 'background .2s',
+          }}
+        >
+          {saved ? '✓  Guardado' : 'Guardar simulador'}
+        </button>
       </div>
 
       {/* ── Info ── */}

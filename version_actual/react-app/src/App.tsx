@@ -38,6 +38,7 @@ import Pareja         from './pages/Pareja'
 import Exportar       from './pages/Exportar'
 import Escanear       from './pages/Escanear'
 import Notificaciones from './pages/Notificaciones'
+import DineroFuera    from './pages/DineroFuera'
 
 // ── Main pages ─────────────────────────────────────
 import Home     from './pages/Home'
@@ -79,6 +80,7 @@ export default function App() {
         <Route path="/exportar"        element={<Exportar />}        />
         <Route path="/escanear"        element={<Escanear />}        />
         <Route path="/notificaciones"  element={<Notificaciones />}  />
+        <Route path="/dinero-fuera"    element={<DineroFuera />}     />
 
         <Route element={<AppShell />}>
           <Route index                       element={<Home />}       />

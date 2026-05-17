@@ -1,24 +1,49 @@
 import { useState, useEffect } from 'react'
 import AppHeader from '../components/shell/AppHeader'
+import { supabase } from '../lib/supabase'
+import { useAuthStore } from '../store/auth'
 
-const LS_KEY = 'mis_finanzas_notif'
+interface Notif {
+  id:               string
+  titulo:           string
+  mensaje:          string
+  send_at:          string
+  tipo:             string
+  canal_telegram:   boolean
+  canal_push:       boolean
+  recurrente:       boolean
+  recurrencia_dias: number | null
+  activo:           boolean
+}
 
-const SCHEDULES = [
-  { id: 'morning', time: '08:00', label: 'Recordatorio matutino',  sub: 'Registra tus ingresos del día' },
-  { id: 'midday',  time: '12:00', label: 'Check del mediodía',      sub: 'Resumen rápido de gastos' },
-  { id: 'evening', time: '18:30', label: 'Cierre de tarde',         sub: 'Gastos pendientes del día' },
-  { id: 'night',   time: '21:00', label: 'Resumen nocturno',        sub: 'Balance del día completo' },
-]
+function fmtSendAt(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleString('es-VE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
 
 export default function Notificaciones() {
+  const userId     = useAuthStore(s => s.userId)
+  const [notifs,   setNotifs]   = useState<Notif[]>([])
+  const [loading,  setLoading]  = useState(true)
   const [permission, setPermission] = useState<NotificationPermission>('default')
-  const [enabled,    setEnabled]    = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     if ('Notification' in window) setPermission(Notification.permission)
-    try { setEnabled(JSON.parse(localStorage.getItem(LS_KEY) || '{}') as Record<string, boolean>) }
-    catch { /* ignore */ }
   }, [])
+
+  useEffect(() => {
+    if (!userId) { setLoading(false); return }
+    supabase
+      .from('scheduled_notifications')
+      .select('id,titulo,mensaje,send_at,tipo,canal_telegram,canal_push,recurrente,recurrencia_dias,activo')
+      .eq('user_id', userId)
+      .eq('activo', true)
+      .order('send_at', { ascending: true })
+      .then(({ data }) => {
+        setNotifs((data ?? []) as Notif[])
+        setLoading(false)
+      })
+  }, [userId])
 
   async function requestPermission() {
     if (!('Notification' in window)) return
@@ -26,12 +51,15 @@ export default function Notificaciones() {
     setPermission(perm)
   }
 
-  function toggle(id: string) {
-    if (permission !== 'granted') return
-    const next = { ...enabled, [id]: !enabled[id] }
-    setEnabled(next)
-    localStorage.setItem(LS_KEY, JSON.stringify(next))
+  async function disableNotif(id: string) {
+    await supabase.from('scheduled_notifications').update({ activo: false }).eq('id', id)
+    setNotifs(prev => prev.filter(n => n.id !== id))
   }
+
+  const canals = (n: Notif) => [
+    n.canal_telegram && '📲 Telegram',
+    n.canal_push     && '🔔 Push',
+  ].filter(Boolean).join(' · ') || '—'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
@@ -46,81 +74,73 @@ export default function Notificaciones() {
           borderRadius: 14, padding: '14px',
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
-          <span style={{ fontSize: 24 }}>
-            {permission === 'granted' ? '🔔' : '🔕'}
-          </span>
+          <span style={{ fontSize: 24 }}>{permission === 'granted' ? '🔔' : '🔕'}</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13.5, fontWeight: 600 }}>
-              {permission === 'granted'
-                ? 'Notificaciones activas'
-                : permission === 'denied'
-                  ? 'Bloqueadas por el navegador'
-                  : 'Notificaciones desactivadas'}
+              {permission === 'granted' ? 'Notificaciones push activas' : permission === 'denied' ? 'Bloqueadas por el navegador' : 'Push desactivado'}
             </div>
             <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginTop: 2 }}>
-              {permission === 'denied'
-                ? 'Actívalas en ajustes de tu navegador'
-                : 'Recibirás alertas en este dispositivo'}
+              {permission === 'denied' ? 'Actívalas en ajustes del navegador' : 'Las alertas llegan por Telegram o push'}
             </div>
           </div>
           {permission === 'default' && (
             <button
               onClick={requestPermission}
-              style={{
-                padding: '7px 13px', background: 'var(--amber)', color: 'var(--ink-0)',
-                border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-              }}
-            >
-              Activar
-            </button>
+              style={{ padding: '7px 13px', background: 'var(--amber)', color: 'var(--ink-0)', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+            >Activar</button>
           )}
         </div>
 
-        {/* ── Schedules ── */}
-        <div style={{ fontSize: 12, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase', marginTop: 4, marginBottom: 0 }}>
-          Horarios
-        </div>
-        <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
-          {SCHEDULES.map((s, i) => (
-            <div
-              key={s.id}
-              style={{
-                padding: '13px 14px',
-                borderBottom: i < SCHEDULES.length - 1 ? '1px solid var(--line)' : 'none',
-                display: 'flex', alignItems: 'center', gap: 12,
-              }}
-            >
-              <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--amber)', fontFamily: 'var(--f-num)', minWidth: 46 }}>
-                {s.time}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 500 }}>{s.label}</div>
-                <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 2 }}>{s.sub}</div>
-              </div>
-              <button
-                onClick={() => toggle(s.id)}
-                aria-label={`Toggle ${s.label}`}
-                style={{
-                  width: 44, height: 26, borderRadius: 13, flexShrink: 0,
-                  background: enabled[s.id] ? 'var(--amber)' : 'var(--ink-3)',
-                  border: '2px solid', borderColor: enabled[s.id] ? 'var(--amber)' : 'var(--ink-4)',
-                  cursor: permission !== 'granted' ? 'not-allowed' : 'pointer',
-                  position: 'relative', transition: 'background .2s, border-color .2s',
-                  opacity: permission !== 'granted' ? 0.5 : 1,
-                }}
-              >
-                <div style={{
-                  position: 'absolute', top: 3,
-                  left: enabled[s.id] ? 19 : 3,
-                  width: 16, height: 16, borderRadius: '50%', background: 'white',
-                  transition: 'left .2s',
-                }} />
-              </button>
-            </div>
-          ))}
+        {/* ── Scheduled notifications ── */}
+        <div style={{ fontSize: 12, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase', marginTop: 4 }}>
+          Programadas
         </div>
 
+        {loading && (
+          <div style={{ textAlign: 'center', color: 'var(--fg-mute)', padding: '24px 0', fontSize: 13 }}>Cargando…</div>
+        )}
+
+        {!loading && notifs.length === 0 && (
+          <div style={{ textAlign: 'center', color: 'var(--fg-mute)', padding: '24px 0', fontSize: 13 }}>Sin notificaciones programadas</div>
+        )}
+
+        {notifs.length > 0 && (
+          <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
+            {notifs.map((n, i) => (
+              <div
+                key={n.id}
+                style={{
+                  padding: '13px 14px',
+                  borderBottom: i < notifs.length - 1 ? '1px solid var(--line)' : 'none',
+                  display: 'flex', alignItems: 'flex-start', gap: 12,
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 500 }}>{n.titulo}</div>
+                  {n.mensaje && (
+                    <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {n.mensaje}
+                    </div>
+                  )}
+                  <div style={{ marginTop: 4, display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{ fontSize: 10.5, color: 'var(--amber)', fontFamily: 'var(--f-num)' }}>{fmtSendAt(n.send_at)}</span>
+                    {n.recurrente && n.recurrencia_dias && (
+                      <span style={{ fontSize: 10, color: 'var(--fg-mute)' }}>· cada {n.recurrencia_dias}d</span>
+                    )}
+                    <span style={{ fontSize: 10, color: 'var(--fg-mute)' }}>· {canals(n)}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => disableNotif(n.id)}
+                  style={{ flexShrink: 0, width: 24, height: 24, borderRadius: 6, background: 'rgba(214,106,90,.1)', border: 'none', color: 'var(--neg)', fontSize: 14, cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+                >×</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      <div style={{ height: 32 }} />
     </div>
   )
 }

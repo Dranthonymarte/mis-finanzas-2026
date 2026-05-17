@@ -9,6 +9,24 @@ export interface TipoConfig {
   color?: string
 }
 
+export interface MetaAhorro {
+  id: string
+  nombre: string
+  objetivo: number
+  actual: number
+  fechaLimite: string
+  emoji: string
+  color?: string
+  creada?: string
+  completada?: boolean
+}
+
+export interface FireConfig {
+  meta: number
+  retorno: number
+  gastos: number
+}
+
 export interface Config {
   tipos:         TipoConfig[]
   categorias:    Record<string, string[]>
@@ -16,9 +34,10 @@ export interface Config {
   presupuestos:  Record<string, number>
   recurrentes:   unknown[]
   closedMonths:  string[]
+  metasAhorro:   MetaAhorro[]
+  fireConfig:    FireConfig
 }
 
-// Fallback while config loads or user has no session
 const DEFAULTS: Config = {
   tipos: [
     { nombre: 'Gasto',                 esIngreso: false },
@@ -56,9 +75,11 @@ const DEFAULTS: Config = {
     'Freelance':       ['Diseño','Programación','Consultoría','Contenido','Traducción'],
     'Inversión':       ['Acciones','Crypto','Fondo mutuo','Dividendos','Bienes raíces'],
   },
-  presupuestos: {},
-  recurrentes: [],
-  closedMonths: [],
+  presupuestos:  {},
+  recurrentes:   [],
+  closedMonths:  [],
+  metasAhorro:   [],
+  fireConfig:    { meta: 200000, retorno: 7, gastos: 15000 },
 }
 
 export function useConfig() {
@@ -71,7 +92,7 @@ export function useConfig() {
 
     supabase
       .from('config_usuario')
-      .select('tipos,categorias,subcategorias,presupuestos,recurrentes,closed_months')
+      .select('tipos,categorias,subcategorias,presupuestos,recurrentes,closed_months,metas_ahorro,fire_config')
       .eq('user_id', userId)
       .single()
       .then(({ data, error }) => {
@@ -83,6 +104,8 @@ export function useConfig() {
           presupuestos:  (data.presupuestos   as Record<string,number> ) ?? DEFAULTS.presupuestos,
           recurrentes:   (data.recurrentes    as unknown[]             ) ?? [],
           closedMonths:  (data.closed_months  as string[]              ) ?? [],
+          metasAhorro:   (data.metas_ahorro   as MetaAhorro[]          ) ?? [],
+          fireConfig:    (data.fire_config    as FireConfig            ) ?? DEFAULTS.fireConfig,
         })
         setLoading(false)
       })

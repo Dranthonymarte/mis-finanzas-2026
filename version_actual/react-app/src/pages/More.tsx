@@ -102,6 +102,13 @@ export default function More() {
             onClick={() => navigate('/fire')}
           />
           <RowLink
+            icon={<IcoBg color="#3d1a1a"><span style={{ fontSize: 15 }}>💸</span></IcoBg>}
+            iconBg="transparent"
+            label="Dinero fuera"
+            sub="Deudas y préstamos"
+            onClick={() => navigate('/dinero-fuera')}
+          />
+          <RowLink
             icon={<IcoBg color="#2d1a3d"><HeartIcon /></IcoBg>}
             iconBg="transparent"
             label="Finanzas en pareja"

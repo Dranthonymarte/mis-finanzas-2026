@@ -5,30 +5,10 @@
    Orden: DEBE cargarse ANTES de styles.css
    ═══════════════════════════════════════════════════════════ */
 
-/* ── Self-hosted fonts (F1.1 batch54 — PWA offline) ── */
-@font-face {
-  font-family: 'Instrument Serif';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('/fonts/instrument-serif-400.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url('/fonts/inter-var.woff2') format('woff2-variations'),
-       url('/fonts/inter-var.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'JetBrains Mono';
-  font-style: normal;
-  font-weight: 100 800;
-  font-display: swap;
-  src: url('/fonts/jetbrains-mono-var.woff2') format('woff2-variations'),
-       url('/fonts/jetbrains-mono-var.woff2') format('woff2');
-}
+/* ── Fonts loaded via Google Fonts CDN (index.html) ──
+   Self-hosted woff2 files removed until /public/fonts/ is populated.
+   Fonts: Instrument Serif, Inter variable, JetBrains Mono
+── */
 
 :root {
   /* ── Base — profundidades ── */

@@ -13,6 +13,7 @@ import { ArrowLeftIcon, CheckIcon } from '../components/icons/Icons'
 import { MOCK_ACCOUNTS } from '../data/mock'
 import { useAccounts } from '../hooks/useAccounts'
 import { useAuthStore } from '../store/auth'
+import { supabase, HOUSEHOLD_ID } from '../lib/supabase'
 
 // ── Tipos exactos del vanilla ─────────────────────
 const TIPOS = [
@@ -196,11 +197,12 @@ export default function NewTransaction() {
   const isTransfer = tipo === 'Transferencia Interna'
 
   // ── Save ──────────────────────────────────────
-  function handleSave() {
+  async function handleSave() {
     if (!amountUSD || usdNum <= 0) return
-    const mes = fecha.slice(0, 7)
+    const mes = fecha.slice(0, 7) // 'YYYY-MM'
     const sign = ['Ingreso Fijo', 'Ingreso Variable', 'Prestamo recibido'].includes(tipo) ? 1 : -1
     const mov = {
+      household_id: HOUSEHOLD_ID,
       tipo, cat,
       subcat:          subcat || null,
       amount:          sign * usdNum,
@@ -217,8 +219,13 @@ export default function NewTransaction() {
       ef_contribution: efContrib > 0 ? efContrib : null,
       rate_bcv:        rateBCV,
     }
-    console.log('[NewTxn]', mov)
     setSaved(true)
+    const { error } = await supabase.from('movimientos').insert(mov)
+    if (error) {
+      console.error('[NewTxn] insert error:', error.message)
+      setSaved(false)
+      return
+    }
     setTimeout(() => navigate(-1), 400)
   }
   const meta      = TIPO_META[tipo]

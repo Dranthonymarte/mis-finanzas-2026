@@ -9,6 +9,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import CatIcon, { catColor } from '../components/ui/CatIcon'
 import { ArrowLeftIcon, TrashIcon, EditIcon, CheckIcon, CloseIcon } from '../components/icons/Icons'
 import { MOCK_TRANSACTIONS, MOCK_ACCOUNTS, fmt, txnGroup } from '../data/mock'
+import { supabase } from '../lib/supabase'
 
 // ── Editable categories (matches NewTransaction CATS_BY_TIPO for Gasto) ──
 const EDIT_CATS = [
@@ -94,9 +95,13 @@ export default function TxnDetail() {
     setEditMode(true)
   }
 
-  function saveEdit() {
-    console.log('[TxnDetail] update', txn!.id, { descripcion: editDesc, cat: editCat, fecha: editFecha })
-    setEditMode(false)
+  async function saveEdit() {
+    const { error } = await supabase
+      .from('movimientos')
+      .update({ descripcion: editDesc, cat: editCat, fecha: editFecha })
+      .eq('id', txn!.id)
+    if (!error) setEditMode(false)
+    else console.error('[TxnDetail] update error:', error.message)
   }
 
   function cancelEdit() {
@@ -307,9 +312,13 @@ export default function TxnDetail() {
                   Cancelar
                 </button>
                 <button
-                  onClick={() => {
-                    console.log('[TxnDetail] soft-delete', txn.id)
-                    navigate(-1)
+                  onClick={async () => {
+                    const { error } = await supabase
+                      .from('movimientos')
+                      .update({ deleted_at: new Date().toISOString() })
+                      .eq('id', txn.id)
+                    if (!error) navigate(-1)
+                    else console.error('[TxnDetail] delete error:', error.message)
                   }}
                   style={{
                     padding: '11px', borderRadius: 12, fontSize: 13.5, fontWeight: 700,

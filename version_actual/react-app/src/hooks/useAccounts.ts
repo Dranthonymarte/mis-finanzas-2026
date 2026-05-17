@@ -15,9 +15,9 @@ interface SupaCuenta {
   owner:                string | null
 }
 
-function inferType(nombre: string, moneda: string): string {
+function inferType(nombre: string | null, moneda: string): string {
   if (moneda === 'VES') return 'CASH'
-  if (nombre.toLowerCase().includes('ahorro')) return 'AHORRO'
+  if ((nombre ?? '').toLowerCase().includes('ahorro')) return 'AHORRO'
   return 'CORRIENTE'
 }
 

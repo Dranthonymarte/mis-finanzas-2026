@@ -84,14 +84,16 @@ export default function CsvImport() {
 
     const movs = valid.map(r => ({
       id:           crypto.randomUUID(),
-      user_id:      userId,
+      user_id:      householdId,   // RLS: movimientos.user_id = active_household_id()
       household_id: householdId,
       mes:          mesIdToDbKey(dateToMesId(new Date(r.fecha + 'T12:00:00'))),
       descripcion:  r.descripcion || r.cat,
       tipo:         r.tipo,
       cat:          r.cat,
+      subcat:       '',            // NOT NULL — CSV doesn't have subcategoría
       amount:       r.amount,
       amount_bs:    0,
+      method:       '',            // NOT NULL — CSV doesn't have method
       fecha:        r.fecha,
       author:       'anthony',
       rate_type:    'bcv',

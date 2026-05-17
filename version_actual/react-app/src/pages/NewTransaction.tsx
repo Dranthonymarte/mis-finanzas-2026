@@ -174,13 +174,13 @@ export default function NewTransaction() {
     const movId = crypto.randomUUID()
     const mov  = {
       id:           movId,
-      user_id:      userId,
+      user_id:      householdId,   // RLS: movimientos.user_id = active_household_id()
       household_id: householdId,
       mes,
       descripcion:  desc || cat,
       tipo,
       cat,
-      subcat:       subcat || null,
+      subcat:       subcat || '',  // NOT NULL — send '' instead of null
       amount:       sign * usdNum,
       amount_bs:    parseFloat(amountBs) || 0,
       method,

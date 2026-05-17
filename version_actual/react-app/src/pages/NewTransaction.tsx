@@ -64,7 +64,6 @@ function Rule() {
 export default function NewTransaction() {
   const navigate    = useNavigate()
   const userName    = useAuthStore(s => s.userName)
-  const userId      = useAuthStore(s => s.userId)
   const householdId = useAuthStore(s => s.householdId)
 
   const { accounts: liveAccounts }       = useAccounts()

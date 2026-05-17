@@ -6,7 +6,8 @@ import { ArrowLeftIcon, TrashIcon, EditIcon, CheckIcon, CloseIcon } from '../com
 import { useAccounts } from '../hooks/useAccounts'
 import { useFormat }   from '../hooks/useFormat'
 import { useConfig } from '../hooks/useConfig'
-import { supabase } from '../lib/supabase'
+import { supabase }     from '../lib/supabase'
+import { useAuthStore } from '../store/auth'
 
 interface SupaMovimiento {
   id:          string
@@ -90,6 +91,7 @@ export default function TxnDetail() {
   const { fmt }      = useFormat()
   const { accounts } = useAccounts()
   const { config }   = useConfig()
+  const householdId  = useAuthStore(s => s.householdId)
 
   const [txn,           setTxn]           = useState<SupaMovimiento | null>(null)
   const [loadingTxn,    setLoadingTxn]    = useState(true)
@@ -135,16 +137,40 @@ export default function TxnDetail() {
   const allCats   = config.categorias[txn.tipo] ?? [txn.cat]
 
   async function saveEdit() {
-    const { error } = await supabase
+    if (!txn || !householdId) return
+    // Soft-delete the original to preserve audit trail
+    const { error: delErr } = await supabase
       .from('movimientos')
-      .update({ descripcion: editDesc, cat: editCat })
-      .eq('id', txn!.id)
-    if (!error) {
-      setTxn(prev => prev ? { ...prev, descripcion: editDesc, cat: editCat } : prev)
-      setEditMode(false)
-    } else {
-      console.error('[TxnDetail] update error:', error.message)
-    }
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', txn.id)
+    if (delErr) { console.error('[TxnDetail] soft-delete:', delErr.message); return }
+
+    // Re-create with updated fields (new UUID = new row)
+    const newId = crypto.randomUUID()
+    const { error: insErr } = await supabase
+      .from('movimientos')
+      .insert({
+        id:           newId,
+        user_id:      householdId,   // RLS: user_id = active_household_id()
+        household_id: householdId,
+        mes:          txn.mes,
+        descripcion:  editDesc,
+        tipo:         txn.tipo,
+        cat:          editCat,
+        subcat:       txn.subcat ?? '',
+        amount:       txn.amount,
+        amount_bs:    txn.amount_bs ?? 0,
+        method:       '',
+        fecha:        txn.fecha,
+        author:       txn.author,
+        rate_type:    'bcv',
+        cuenta_id:    txn.cuenta_id,
+      })
+    if (insErr) { console.error('[TxnDetail] recreate:', insErr.message); return }
+
+    // Reflect changes locally
+    setTxn(prev => prev ? { ...prev, id: newId, descripcion: editDesc, cat: editCat } : prev)
+    setEditMode(false)
   }
 
   async function handleDelete() {

@@ -1,6 +1,12 @@
+// ═══════════════════════════════════════════════════
+// Fire — /fire  (BLOQUE 5)
+// FIRE number · simulador · useFormat
+// ═══════════════════════════════════════════════════
+
 import { useState, useEffect, useRef } from 'react'
 import AppHeader from '../components/shell/AppHeader'
 import { useConfig } from '../hooks/useConfig'
+import { useFormat }  from '../hooks/useFormat'
 
 function yearsToFire(patrimony: number, target: number, annualSavings: number, returnPct: number): number {
   if (target <= patrimony) return 0
@@ -23,7 +29,8 @@ const inp: React.CSSProperties = {
 
 export default function Fire() {
   const { config, updateConfig } = useConfig()
-  const initialized = useRef(false)
+  const { fmt }       = useFormat()
+  const initialized   = useRef(false)
 
   const [gastos,     setGastos]     = useState('15000')
   const [ahorro,     setAhorro]     = useState('500')
@@ -84,7 +91,7 @@ export default function Fire() {
             FIRE number · Regla del 4%
           </div>
           <div className="num" style={{ fontSize: 38, fontWeight: 700, lineHeight: 1 }}>
-            ${fireNumber.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+            {fmt(fireNumber)}
           </div>
           <div style={{ marginTop: 14, fontSize: 13, color: 'var(--fg-mute)' }}>
             {years === 0 ? (
@@ -104,7 +111,7 @@ export default function Fire() {
             <div style={{ height: '100%', width: `${progress}%`, background: 'var(--amber)', borderRadius: 999, transition: 'width .3s' }} />
           </div>
           <div style={{ marginTop: 6, fontSize: 10.5, color: 'var(--fg-mute)' }}>
-            {progress.toFixed(1)}% del camino · ahorro anual ${annualSav.toLocaleString('en-US')}
+            {progress.toFixed(1)}% del camino · ahorro anual {fmt(annualSav)}
           </div>
         </div>
       </div>

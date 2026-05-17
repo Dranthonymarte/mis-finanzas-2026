@@ -1,3 +1,8 @@
+// ═══════════════════════════════════════════════════
+// Notificaciones — /notificaciones  (BLOQUE 5)
+// Lista + form para crear alertas programadas
+// ═══════════════════════════════════════════════════
+
 import { useState, useEffect } from 'react'
 import AppHeader from '../components/shell/AppHeader'
 import { supabase } from '../lib/supabase'
@@ -21,11 +26,29 @@ function fmtSendAt(iso: string) {
   return d.toLocaleString('es-VE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+const inpSt: React.CSSProperties = {
+  background: 'var(--ink-1)', border: '1px solid var(--line)',
+  borderRadius: 10, padding: '8px 11px', fontSize: 13,
+  color: 'var(--fg)', outline: 'none', width: '100%', boxSizing: 'border-box',
+}
+
 export default function Notificaciones() {
   const userId     = useAuthStore(s => s.userId)
   const [notifs,   setNotifs]   = useState<Notif[]>([])
   const [loading,  setLoading]  = useState(true)
   const [permission, setPermission] = useState<NotificationPermission>('default')
+
+  // ── New notification form ──
+  const [showForm,   setShowForm]   = useState(false)
+  const [titulo,     setTitulo]     = useState('')
+  const [mensaje,    setMensaje]    = useState('')
+  const [sendAt,     setSendAt]     = useState(() => {
+    const d = new Date(); d.setMinutes(0, 0, 0); d.setHours(d.getHours() + 1)
+    return d.toISOString().slice(0, 16)
+  })
+  const [recurrente, setRecurrente] = useState(false)
+  const [recDias,    setRecDias]    = useState('7')
+  const [saving,     setSaving]     = useState(false)
 
   useEffect(() => {
     if ('Notification' in window) setPermission(Notification.permission)
@@ -54,6 +77,33 @@ export default function Notificaciones() {
   async function disableNotif(id: string) {
     await supabase.from('scheduled_notifications').update({ activo: false }).eq('id', id)
     setNotifs(prev => prev.filter(n => n.id !== id))
+  }
+
+  async function createNotif() {
+    if (!titulo.trim() || !userId) return
+    setSaving(true)
+    const { data, error } = await supabase
+      .from('scheduled_notifications')
+      .insert({
+        user_id:          userId,
+        titulo:           titulo.trim(),
+        mensaje:          mensaje.trim(),
+        send_at:          new Date(sendAt).toISOString(),
+        tipo:             'recordatorio',
+        canal_push:       permission === 'granted',
+        canal_telegram:   false,
+        recurrente,
+        recurrencia_dias: recurrente ? parseInt(recDias) || 7 : null,
+        activo:           true,
+      })
+      .select('id,titulo,mensaje,send_at,tipo,canal_telegram,canal_push,recurrente,recurrencia_dias,activo')
+      .single()
+    if (!error && data) {
+      setNotifs(prev => [data as Notif, ...prev])
+      setShowForm(false)
+      setTitulo(''); setMensaje('')
+    }
+    setSaving(false)
   }
 
   const canals = (n: Notif) => [
@@ -138,7 +188,61 @@ export default function Notificaciones() {
             ))}
           </div>
         )}
-      </div>
+
+        {/* ── New notification form / button ── */}
+        {showForm ? (
+          <div style={{ background: 'var(--ink-2)', border: '1px solid var(--amber)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--amber)' }}>Nueva alerta</div>
+            <input type="text" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Título *" style={inpSt} />
+            <input type="text" value={mensaje} onChange={e => setMensaje(e.target.value)} placeholder="Mensaje (opcional)" style={inpSt} />
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginBottom: 4 }}>Fecha y hora</div>
+              <input type="datetime-local" value={sendAt} onChange={e => setSendAt(e.target.value)} style={inpSt} />
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+              <input type="checkbox" checked={recurrente} onChange={e => setRecurrente(e.target.checked)} />
+              Recurrente
+              {recurrente && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--fg-mute)' }}>
+                  cada
+                  <input
+                    type="number" value={recDias} onChange={e => setRecDias(e.target.value)}
+                    style={{ width: 50, ...inpSt, padding: '4px 7px', fontSize: 12 }}
+                  />
+                  días
+                </span>
+              )}
+            </label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={createNotif} disabled={saving || !titulo.trim()}
+                style={{ flex: 1, padding: '9px', borderRadius: 10, background: 'var(--amber)', color: 'var(--ink-0)', border: 'none', fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}
+              >
+                {saving ? 'Guardando…' : 'Crear alerta'}
+              </button>
+              <button
+                onClick={() => setShowForm(false)}
+                style={{ padding: '9px 14px', borderRadius: 10, background: 'var(--ink-3)', color: 'var(--fg-mute)', border: '1px solid var(--line)', cursor: 'pointer' }}
+              >✕</button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowForm(true)}
+            style={{
+              background: 'var(--ink-2)', border: '1px dashed var(--ink-4)',
+              borderRadius: 14, padding: '13px',
+              color: 'var(--fg-mute)', fontSize: 13, fontWeight: 500,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: 8, cursor: 'pointer', width: '100%',
+            }}
+          >
+            <span style={{ fontSize: 18 }}>+</span>
+            Nueva alerta
+          </button>
+        )}
+
+      </div>{/* end inner */}
 
       <div style={{ height: 32 }} />
     </div>

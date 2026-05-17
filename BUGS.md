@@ -1,6 +1,8 @@
 # BUGS.md — Mis Finanzas 2026
 *Actualizar al trabajar cada bug*
 
+> **Sesión 16 May 2026:** trabajo 100% React App (Bloque 2). Sin cambios en Vanilla JS. Bugs existentes sin modificación.
+
 ---
 
 ## ✅ BUG-SEC — Token Telegram expuesto
@@ -75,3 +77,168 @@
 - `audit.js` (1): `let realtimeChannel` comentado
 
 **Pendiente:** Deploy batch41 a Cloudflare + verificar sin SyntaxError en consola.
+
+---
+
+---
+
+# React App — Sprint Bugfix (2026-05-17)
+
+> Sprint de correcciones al conectar la React App (`version_actual/react-app/`) a Supabase real.
+> **25 bugs resueltos · 2 diferidos** · Sesiones 16-17 May 2026.
+> Sin cambios en Vanilla JS durante este sprint.
+
+---
+
+## ✅ BUG-R01 — Crash null guard en useAccounts
+**Commit:** `3fb0c3d`  
+**Causa:** `inferType()` recibía `undefined` cuando `mov.tipo` no estaba en el array de tipos del config → TypeError.  
+**Fix:** Guard `if (!tipo) return 'EXPENSE'` al inicio de `inferType` en `useAccounts.ts`.
+
+---
+
+## ✅ BUG-R02 — user_id incorrecto + subcat/method nullable
+**Commit:** `4876604`  
+**Causa:** Inserts en movimientos usaban `auth.uid()` en lugar del `householdId`. Campos `subcat` y `method` enviados como `null` violando NOT NULL en DB.  
+**Fix:** `user_id: householdId` en todos los inserts. `subcat: subcat || ''`, `method: ''` siempre string vacío.  
+**Afecta:** `NewTransaction.tsx`, `Escanear.tsx`, `CsvImport.tsx`, `Transfer.tsx`.
+
+---
+
+## ✅ BUG-R03 — Transfer usaba mock data, no cuentas reales
+**Commit:** `b6e5b61`  
+**Causa:** `Transfer.tsx` leía de `MOCK_ACCOUNTS` — cuentas siempre las mismas en producción.  
+**Fix:** Reescritura completa con `useAccounts()` (hook Supabase). Inserción de par `{amount: -N} + {amount: +N}` con `pair_id` compartido.
+
+---
+
+## ✅ BUG-R04 — Fire: shape fire_config incorrecto
+**Commit:** `134073a`  
+**Causa:** `Fire.tsx` esperaba keys planas (`meta`, `extra`, `plazo`, `actual`) pero la DB almacena `{goal:{meta,extra,plazo,actual}}`.  
+**Fix:** Load/save adaptados a shape real. Inicialización de defaults si `goal` es `null`.
+
+---
+
+## ✅ BUG-R05 — Lista Compras: schema JSONB incorrecto
+**Commit:** `0e7a420`  
+**Causa:** `ListaCompras.tsx` usaba estructura plana pero la tabla `listas_compras` almacena `items: [{id,nombre,cantidad,precio,checked}]` en JSONB.  
+**Fix:** Reescritura completa con shape real. CRUD sobre el array JSONB con `update({ items: [...] })`.
+
+---
+
+## ✅ BUG-R06 — Auth: sin provisionar household ni config al registrar
+**Commit:** `224929c`  
+**Causa:** Al registrar un usuario nuevo no se creaban las filas en `households`, `household_members`, ni `config_usuario` → app rompía en primera sesión.  
+**Fix:** Hook `useAuth` crea las 3 filas al primer `signUp` exitoso usando `household_id` = nuevo UUID.
+
+---
+
+## ✅ BUG-R07 — Recurrentes: sin campo recDia (día del mes)
+**Commit:** `c8d77f8`  
+**Causa:** `Recurrentes.tsx` solo guardaba `recurrencia_dias` (período en días) sin un campo para el día del mes en que cae el pago.  
+**Fix:** Nuevo campo `recDia: number` (1-28) en la interfaz + input separado en el formulario. Se muestra en lista como `· día N`.
+
+---
+
+## ✅ BUG-R08 — Home: Fondo de Emergencia hardcodeado
+**Commit:** `c8657c6`  
+**Causa:** `Home.tsx` mostraba valor EF estático (`$0` o constante) en lugar de leer de `fondo_emergencia` en Supabase.  
+**Fix:** Query a tabla `fondo_emergencia` al montar. Muestra meta vs. actual con porcentaje real.
+
+---
+
+## ✅ BUG-R09 — Appearance: tema/acento no persistían al recargar
+**Commit:** `493aca5`  
+**Causa:** `Appearance.tsx` guardaba en localStorage pero `main.tsx` no aplicaba los valores antes del primer render → flash de tema incorrecto (FOUC).  
+**Fix:** Bloque síncrono en `main.tsx` antes de `createRoot().render()`: lee `mis_finanzas_theme` + `mis_finanzas_accent` y aplica `data-theme` + `--amber` CSS var antes que React hidrate el DOM.
+
+---
+
+## ✅ BUG-R10 — Profile: nombre no se reflejaba en el header al guardar
+**Commit:** `14cbe63`  
+**Causa:** `Profile.tsx` guardaba el nombre en Supabase pero no actualizaba el Zustand store → `useAuthStore(s => s.userName)` seguía devolviendo el valor anterior.  
+**Fix:** `useAuthStore.getState().setUserName(nombre)` tras el `update` exitoso en Supabase.
+
+---
+
+## ✅ BUG-R11 — Pareja: mostraba datos mock en lugar de household real
+**Commit:** `6f4bd20`  
+**Causa:** `Pareja.tsx` usaba datos hardcodeados. No leía `household_members` de Supabase.  
+**Fix:** Query a `household_members JOIN auth.users` al montar. Muestra avatar, nombre y rol real de cada miembro.
+
+---
+
+## ✅ BUG-R12 — TxnDetail: edit sobreescribía fila (rompía audit trail)
+**Commit:** `40312ab`  
+**Causa:** `TxnDetail.tsx` hacía `update()` directo sobre el row original → violaba la inmutabilidad de movimientos (regla de negocio: soft-delete + recrear).  
+**Fix:** `saveEdit()` ahora: (1) `update({ deleted_at: now() })` sobre el id original, (2) `insert({ ...datos_nuevos, id: newUUID, user_id: householdId, subcat: txn.subcat ?? '', method: '' })`, (3) actualiza estado local con el nuevo id.
+
+---
+
+## ✅ BUG-R13 — NewTransaction: guardaba sin confirmación
+**Commit:** `4bcdd77`  
+**Causa:** El botón "Guardar" insertaba en Supabase inmediatamente sin mostrar resumen al usuario.  
+**Fix:** `handleSave()` ahora solo llama `setConfirm(true)`. Una hoja de confirmación (backdrop + modal) muestra monto/tipo/cat/fecha/recurrente. Solo `executeSave()` hace el INSERT real.
+
+---
+
+## ✅ BUG-R14 — Home: pronóstico no incluía recurrentes del mes
+**Commit:** `ef563d6`  
+**Causa:** El pronóstico de flujo de caja calculaba solo a partir del gasto diario sin considerar recurrentes pendientes del mes en curso.  
+**Fix:** Filtrado de `config.recurrentes` con `recurrencia_dias <= 31 && recDia > today.getDate()`. Se suman/restan al pronóstico de ingresos y gastos. Nombre de usuario dinámico desde `useAuthStore`.
+
+---
+
+## ✅ BUG-R15 — Escanear: OCR era mock, no usaba IA real
+**Commit:** `37508bb`  
+**Causa:** `Escanear.tsx` tenía una implementación placeholder que no llamaba a ninguna API.  
+**Fix:** Integración real con Groq Vision API (`llama-3.2-11b-vision-preview`). Extrae base64 de la imagen, llama a `https://api.groq.com/openai/v1/chat/completions`, parsea `{monto, fecha, descripcion, cat}` del JSON de respuesta. Formulario editable post-OCR con save a movimientos. API key configurable en Security.tsx vía localStorage `fin_groq_api_key`.
+
+---
+
+## ✅ BUG-R16 — Metas: sin edición inline
+**Commit:** `232cefd`  
+**Causa:** `Metas.tsx` / `MetaCard` no tenía modo edición — solo crear y eliminar metas.  
+**Fix:** `MetaCard` ahora tiene modo edit (pencil button ✎). Muestra formulario inline con emoji picker + inputs de nombre/objetivo/fecha. `onEdit(id, patch)` llama `updateConfig('metas_ahorro', updated)`. Fix de overflow en mobile (`minWidth: 0, overflow: 'hidden'`).
+
+---
+
+## ✅ BUG-R17 — Fonts: @font-face rotos causaban OTS errors
+**Commit:** `8da7cc0`  
+**Causa:** `tokens.css` tenía 3 bloques `@font-face` que referenciaban `/fonts/*.woff2` files inexistentes → errores OTS en consola, fuentes no cargaban offline.  
+**Fix:** Eliminados los bloques `@font-face` rotos. Fuentes cargadas 100% desde Google Fonts CDN. `index.html` actualizado para incluir JetBrains Mono (`wght@400;500;700`).
+
+---
+
+## ✅ BUG-R18 — Budgets: panel inferior separado al agregar límite
+**Commit:** `b842727`  
+**Causa:** Al hacer click en "+ Límite" para categorías sin presupuesto, aparecía un panel flotante en la parte inferior de la pantalla — UX inconsistente con el resto.  
+**Fix:** Input inline dentro de cada fila de categoría sin presupuesto. Mismo patrón que las filas existentes (`isAddEdit = editCat === cat`). Borde amber al editar.
+
+---
+
+## ✅ BUG-R19 — Subcategorias: sin rename inline + categorías vacías ocultas
+**Commit:** `012372b`  
+**Causa:** (1) Las subcategorías no eran editables — solo eliminar/agregar. (2) Solo se mostraban las categorías que tenían subcategorías en `config.subcategorias`, ocultando las demás.  
+**Fix:** Click en nombre de subcategoría → input inline con `autoFocus`, Enter guarda, Escape cancela. `allCatKeys` = unión de `Object.keys(config.categorias)` + `Object.keys(subcats)` → todas las categorías visibles.
+
+---
+
+## ✅ BUG-R20 — project_files RLS: anon podía leer/escribir
+**Vía:** Supabase MCP migration `fix_project_files_rls` (2026-05-17)  
+**Causa:** La policy `allow_all_project_files` tenía `USING (true)` — cualquier usuario (incluso anónimo) podía SELECT/INSERT/UPDATE/DELETE en `project_files`.  
+**Fix:** Dropped `allow_all_project_files`. Created `project_files_authenticated_read`: `FOR SELECT TO authenticated USING (auth.role() = 'authenticated')`. Anon bloqueado.
+
+---
+
+## ⏳ BUG-R21 — Cuentas: balance calculado desde movimientos (DIFERIDO)
+**Estado:** DIFERIDO — prioridad alta pendiente  
+**Causa:** `AccountDetail.tsx` muestra `cuenta.saldo_inicial` sin sumar los movimientos reales → saldo incorrecto para cuentas con actividad.  
+**Fix pendiente:** `balance = cuenta.balance_override ?? cuenta.saldo_inicial + SUM(movimientos WHERE account_id=X AND deleted_at IS NULL)`. Requiere join o query separado.
+
+---
+
+## ⏳ BUG-R22 — tasas_cambio mes 'global' vs mesActivo (DIFERIDO)
+**Estado:** DIFERIDO — verificar si es bug real  
+**Causa posible:** Hooks que leen tasa BCV pueden usar `mes = 'global'` en lugar del mes activo del store → tasa incorrecta en conversiones USD↔VES.  
+**Fix pendiente:** Auditar `useTasa.ts` y verificar el valor de `mes` en las queries a `tasas_cambio`.

@@ -1,31 +1,48 @@
 # PENDIENTES — Mis Finanzas 2026
 
 Orden estricto. Actualizar al completar o reordenar.
+**Última actualización:** 2026-05-17 (post-bugfix sprint React App v1.0.1)
 
-## 🔴 Inmediato (fase depuración en curso)
-1. Leer MORNING_BRIEF.md al despertar 2026-04-18
-2. Decidir Fase 4 (destino de app-core.js) con reportes nocturnos
-3. Fase 5 quirúrgica: 1 archivo por deploy con verificación incógnita
+---
 
-## 🔴 Deploy y seguridad
-4. hCaptcha configurar (BUG-SEC2) — Supabase Dashboard
-5. Google OAuth test user → Cloud Console → anthonymarte12@gmail.com
+## 🔴 React App — Inmediato
 
-## 🟡 Infra
-6. GitHub repo + CI/CD (prereq deploy automático)
-7. tokens.css (prereq diseño + modo desktop) — zip ya extraído en `propuestas/ux-referencia/`
-8. Fix BUG-3 push SW
-9. Fix BUG-4 CDN verificar
+1. **BUG-R21** — Account balance = `saldo_inicial + SUM(movimientos)` en `AccountDetail.tsx`  
+   → Actualmente muestra solo `saldo_inicial`, ignora movimientos reales.
 
-## 🟢 Features
-10. Logo SVG + Inter/Plus Jakarta Sans + Phosphor Icons
-11. Botón 📅 movimiento → GCal.syncMov(mov)
-12. Borrar movimiento → GCal.deleteMov(gcal_event_id)
-13. Auto-categorización en data-load.js
+2. **BUG-R22** — Verificar `tasas_cambio` mes `'global'` vs `mesActivo` en `useTasa.ts`  
+   → Confirmar si causa tasa incorrecta en conversiones USD↔VES.
+
+## 🟡 React App — Bloque 3 (Charts)
+
+3. Instalar `recharts` + `@types/recharts`
+4. `AreaChart` ingresos vs gastos 6 meses en `/` (Home)
+5. `DonutChart` categorías en `/txn` (top 5 del mes, colores de `CatIcon`)
+6. Mantener `Sparkline` para KPI cards pequeños
+
+## 🟡 React App — Seguridad / Infra
+
+7. **Worker Cloudflare** para Groq OCR — sacar `fin_groq_api_key` del localStorage al backend
+8. **Fonts offline** — crear `/public/fonts/` con archivos `.woff2` reales para PWA sin internet
+9. **GitHub CI/CD** — auto-build en push a `react-preview` (ya activo en CF Pages — verificar)
+
+## 🟡 React App — Features pendientes
+
+10. **Settings/Categories** — color picker por categoría (actualmente solo nombre)
+11. **Análisis** — comparativa vs mes anterior con datos reales
+12. **Pareja** — invite real por email (Supabase invite link, actualmente solo comparte household_id)
+
+## 🟡 Vanilla JS — Deploy y seguridad (sin cambios en bugfix sprint)
+
+13. **hCaptcha** configurar (BUG-SEC2) — Supabase Dashboard → Auth → Attack Protection → pegar secret key
+14. **Google OAuth** test user → Cloud Console → `anthonymarte12@gmail.com`
+15. **Fix BUG-3** push SW — agregar `self.addEventListener('push', ...)` en `service-worker.js`
+16. **Fix BUG-4** CDN verificar — `index.html` v7 fallback a unpkg (confirmar post-deploy)
 
 ## ⚪ Estratégico
-14. Modo desktop completo (prereq: tokens.css)
-15. Push real móvil — Fase E-05
-16. policy_acceptances + opt-in legal (antes de Stripe)
-17. Stripe setup (subscription_status ya en config_usuario)
-18. Módulo Consultorio — Fase E (tablas listas, falta UI)
+
+17. Modo desktop completo React App (prereq: definir breakpoints en tokens.css)
+18. `policy_acceptances` + opt-in legal (antes de Stripe)
+19. Stripe setup (`subscription_status` ya en `config_usuario`)
+20. Módulo Consultorio — Fase E (tablas listas, falta UI en React App)
+21. Push real móvil — agregar handler en SW + service worker registration

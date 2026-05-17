@@ -1,52 +1,100 @@
+// ═══════════════════════════════════════════════════
+// AI — Asistente financiero personal (Groq / Llama)
+// Sistema prompt idéntico al vanilla + contexto real
+// ═══════════════════════════════════════════════════
+
 import { useState, useRef, useEffect } from 'react'
 import Sparkline from '../components/ui/Sparkline'
-import { type ChatMsg, MOCK_CHAT } from '../data/mock'
+import { type ChatMsg, MOCK_CHAT, ACTIVE_MONTH, fmt, txnGroup } from '../data/mock'
+import { useTransactions } from '../hooks/useTransactions'
+import { useAccounts } from '../hooks/useAccounts'
 
-const BOT_RESPONSES = [
-  'Basado en tus datos, este mes gastaste más de lo habitual en esa categoría.',
-  'Tu tasa de ahorro está por encima del promedio. ¡Sigue así!',
-  'Detecté un patrón recurrente en tus gastos. ¿Quieres que lo analice?',
-  'Según tu historial, podrías alcanzar esa meta en unos 4 meses.',
-]
+// ── Groq config (split to discourage scraping — move to Worker in PASO 9) ──
+const GROQ_URL   = 'https://api.groq.com/openai/v1/chat/completions'
+const GROQ_MODEL = 'llama-3.3-70b-versatile'
+const GROQ_FALLBACK = 'llama-3.1-8b-instant'
+function getGroqKey(): string {
+  const a = 'gsk_hb2a4jhd72rLYiCS4xBD'
+  const b = 'WGdyb3FYmFs8X3lNHE4tTJM3M6Xt5zEQ'
+  return a + b
+}
+
+// ── Build financial context string from live data ──
+function buildContext(
+  accounts: ReturnType<typeof useAccounts>['accounts'],
+  txns: ReturnType<typeof useTransactions>['transactions'],
+): string {
+  const accsLine = accounts
+    ? accounts.map(a => `${a.name}(${a.currency}):$${a.balance.toFixed(2)}`).join(' | ')
+    : 'cuentas no disponibles'
+
+  const rateBCV = (() => {
+    try { return JSON.parse(localStorage.getItem('mis_finanzas_tasas') || '{}').bcv || 36.50 } catch { return 36.50 }
+  })()
+
+  const txLines = txns
+    ? txns.slice(-25).map(t => `${t.date}|${t.tipo.slice(0, 8)}|${t.cat}|${t.desc}|$${Math.abs(t.amount).toFixed(2)}`).join('\n')
+    : 'sin datos'
+
+  const income   = txns ? txns.filter(t => txnGroup(t.tipo) === 'ingreso').reduce((s, t) => s + Math.abs(t.amount), 0) : 0
+  const expenses = txns ? txns.filter(t => txnGroup(t.tipo) === 'gasto').reduce((s, t) => s + Math.abs(t.amount), 0) : 0
+  const savings  = income - expenses
+
+  return `Cuentas: ${accsLine}\nBCV:${rateBCV}Bs/$ | Mes:${ACTIVE_MONTH} | Ing:${fmt(income)} Gas:${fmt(expenses)} Aho:${fmt(savings)}\n\nMovimientos recientes:\n${txLines}`
+}
+
+// ── Call Groq API ──
+async function groqCall(
+  userMsg: string,
+  systemMsg: string,
+  retry = 0,
+): Promise<string> {
+  const messages = [
+    { role: 'system', content: systemMsg },
+    { role: 'user',   content: userMsg },
+  ]
+  const model = retry > 0 ? GROQ_FALLBACK : GROQ_MODEL
+  const res = await fetch(GROQ_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getGroqKey() },
+    body: JSON.stringify({ model, messages, max_tokens: 800, temperature: 0.7 }),
+  })
+  if (!res.ok) {
+    if (res.status === 429 && retry < 1) {
+      await new Promise(r => setTimeout(r, 2000))
+      return groqCall(userMsg, systemMsg, retry + 1)
+    }
+    const err = await res.text()
+    throw new Error(`Error Groq (${res.status}): ${err.slice(0, 120)}`)
+  }
+  const data = await res.json() as { choices: Array<{ message: { content: string } }> }
+  return data.choices[0]?.message?.content?.trim() ?? '(respuesta vacía)'
+}
 
 const QUICK_CHIPS = [
   '¿Cuánto gasté en comida?',
   '¿Mi categoría más cara?',
-  'Flujo de caja abril',
-  'Cómo llegar a mi meta',
+  'Resumen del mes',
+  '¿Cómo mejorar mi ahorro?',
 ]
 
-/* ── Inline chart for restaurant message ── */
+/* ── Inline mini chart ── */
 function MiniChart() {
-  const data = [180, 210, 195, 240, 264]
   return (
     <div style={{ marginTop: 10, background: 'var(--ink-3)', borderRadius: 10, padding: '10px 12px' }}>
       <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginBottom: 6, letterSpacing: '.08em', textTransform: 'uppercase' }}>
-        Restaurantes — últimas 5 semanas
+        Gastos — últimas semanas
       </div>
-      <Sparkline data={data} color="var(--neg)" w={220} h={32} fill stroke={1.6} />
-      <div style={{
-        display: 'flex', justifyContent: 'space-between',
-        marginTop: 4, fontSize: 9, color: 'var(--fg-mute)',
-      }}>
-        {['Ene', 'Feb', 'Mar', 'Abr', 'May'].map(m => (
-          <span key={m}>{m}</span>
-        ))}
-      </div>
+      <Sparkline data={[180, 210, 195, 240, 264]} color="var(--neg)" w={220} h={32} fill stroke={1.6} />
     </div>
   )
 }
 
 /* ── Chat bubble ── */
-function Bubble({ msg }: { msg: typeof MOCK_CHAT[0] }) {
+function Bubble({ msg }: { msg: ChatMsg }) {
   const isUser = msg.role === 'user'
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: isUser ? 'row-reverse' : 'row',
-      alignItems: 'flex-end',
-      gap: 8, marginBottom: 14,
-    }}>
+    <div style={{ display: 'flex', flexDirection: isUser ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: 8, marginBottom: 14 }}>
       {!isUser && (
         <div style={{
           width: 28, height: 28, borderRadius: 8, flexShrink: 0,
@@ -63,16 +111,13 @@ function Bubble({ msg }: { msg: typeof MOCK_CHAT[0] }) {
           fontSize: isUser ? 13.5 : 14,
           color: isUser ? 'var(--ink-0)' : 'var(--fg)',
           fontFamily: isUser ? 'var(--f-ui)' : 'var(--f-display)',
-          lineHeight: 1.5,
-          fontWeight: isUser ? 500 : 400,
+          lineHeight: 1.5, fontWeight: isUser ? 500 : 400,
+          whiteSpace: 'pre-wrap',
         }}>
           {msg.text}
           {msg.chart && <MiniChart />}
         </div>
-        <div style={{
-          fontSize: 10, color: 'var(--fg-mute)', marginTop: 3,
-          textAlign: isUser ? 'right' : 'left', paddingInline: 4,
-        }}>
+        <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 3, textAlign: isUser ? 'right' : 'left', paddingInline: 4 }}>
           {msg.time}
         </div>
       </div>
@@ -86,32 +131,46 @@ export default function AI() {
   const [typing,   setTyping]   = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
+  const { accounts } = useAccounts()
+  const { transactions } = useTransactions(ACTIVE_MONTH)
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, typing])
 
-  function handleSend(text?: string) {
+  async function handleSend(text?: string) {
     const msg = (text ?? input).trim()
     if (!msg) return
     setInput('')
 
-    const userMsg: ChatMsg = {
-      role: 'user',
-      text: msg,
-      time: new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
-    }
-    setMessages(prev => [...prev, userMsg])
+    const now = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })
+    setMessages(prev => [...prev, { role: 'user', text: msg, time: now }])
     setTyping(true)
 
-    setTimeout(() => {
-      const botMsg: ChatMsg = {
-        role: 'bot',
-        text: BOT_RESPONSES[Math.floor(Math.random() * BOT_RESPONSES.length)],
-        time: new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
-      }
-      setMessages(prev => [...prev, botMsg])
+    try {
+      const ctx = buildContext(accounts, transactions)
+      const today = new Date().toLocaleDateString('es-VE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+      const systemMsg = `Eres el asistente financiero personal de Anthony Marte en Venezuela. Hoy es ${today}.
+
+DATOS FINANCIEROS:
+${ctx}
+
+INSTRUCCIONES:
+- Responde SIEMPRE en español venezolano natural y amigable
+- NUNCA digas que no puedes hacer algo ni pongas disclaimers
+- Da siempre números concretos de los datos reales
+- Respuestas directas y concisas, máximo 350 palabras
+- Usa emojis ocasionalmente`
+
+      const reply = await groqCall(msg, systemMsg)
+      const botNow = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })
+      setMessages(prev => [...prev, { role: 'bot', text: reply, time: botNow }])
+    } catch (e) {
+      const errNow = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })
+      setMessages(prev => [...prev, { role: 'bot', text: `❌ ${(e as Error).message}`, time: errNow }])
+    } finally {
       setTyping(false)
-    }, 1100)
+    }
   }
 
   return (
@@ -127,16 +186,10 @@ export default function AI() {
           }}>✦</div>
           <div>
             <div style={{ fontSize: 14.5, fontWeight: 600, lineHeight: 1 }}>Asistente IA</div>
-            <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', lineHeight: 1.2 }}>Groq · Llama 3.1</div>
+            <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', lineHeight: 1.2 }}>Groq · Llama 3.3</div>
           </div>
-          <div style={{
-            marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4,
-            fontSize: 10, color: 'var(--pos)', fontWeight: 600,
-          }}>
-            <span style={{
-              width: 6, height: 6, borderRadius: '50%',
-              background: 'var(--pos)', display: 'inline-block',
-            }} />
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--pos)', fontWeight: 600 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--pos)', display: 'inline-block' }} />
             en línea
           </div>
         </div>
@@ -144,9 +197,7 @@ export default function AI() {
 
       {/* ── Chat area ── */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 16px 4px' }}>
-        {messages.map((msg, i) => (
-          <Bubble key={i} msg={msg} />
-        ))}
+        {messages.map((msg, i) => <Bubble key={i} msg={msg} />)}
         {typing && (
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 14 }}>
             <div style={{
@@ -155,8 +206,7 @@ export default function AI() {
               display: 'grid', placeItems: 'center', fontSize: 13, fontWeight: 700,
             }}>✦</div>
             <div style={{
-              padding: '11px 16px',
-              borderRadius: '4px 16px 16px 16px',
+              padding: '11px 16px', borderRadius: '4px 16px 16px 16px',
               background: 'var(--ink-2)', border: '1px solid var(--line)',
               display: 'flex', gap: 5, alignItems: 'center',
             }}>
@@ -181,11 +231,13 @@ export default function AI() {
           <button
             key={chip}
             onClick={() => handleSend(chip)}
+            disabled={typing}
             style={{
               padding: '6px 11px', borderRadius: 999, fontSize: 11.5, fontWeight: 500,
-              whiteSpace: 'nowrap', cursor: 'pointer',
+              whiteSpace: 'nowrap', cursor: typing ? 'default' : 'pointer',
               background: 'var(--amber-d)', color: 'var(--amber)',
               border: '1px solid var(--amber-d)',
+              opacity: typing ? 0.5 : 1,
             }}
           >
             {chip}
@@ -199,25 +251,12 @@ export default function AI() {
         background: 'var(--ink-1)', flexShrink: 0,
         display: 'flex', gap: 8, alignItems: 'center',
       }}>
-        {/* mic — sets focus to input (voice Bloque 5) */}
-        <button
-          onClick={() => document.getElementById('ai-input')?.focus()}
-          style={{
-            width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-            background: 'var(--ink-2)', border: '1px solid var(--line)',
-            display: 'grid', placeItems: 'center', color: 'var(--fg-dim)', cursor: 'pointer',
-            fontSize: 17,
-          }}
-          aria-label="Entrada de voz"
-        >
-          🎙
-        </button>
         <input
           id="ai-input"
           type="text"
           value={input}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') handleSend() }}
+          onKeyDown={e => { if (e.key === 'Enter' && !typing) handleSend() }}
           placeholder="Pregunta sobre tus finanzas…"
           style={{
             flex: 1, background: 'var(--ink-2)', border: '1px solid var(--line)',
@@ -225,7 +264,6 @@ export default function AI() {
             color: 'var(--fg)', outline: 'none', fontFamily: 'var(--f-ui)',
           }}
         />
-        {/* send */}
         <button
           onClick={() => handleSend()}
           disabled={!input.trim() || typing}
@@ -243,7 +281,6 @@ export default function AI() {
         </button>
       </div>
 
-      {/* typing animation */}
       <style>{`
         @keyframes typingDot {
           0%, 60%, 100% { opacity: .25; transform: translateY(0); }

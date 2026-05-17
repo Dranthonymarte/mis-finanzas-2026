@@ -39,7 +39,8 @@ export default function DineroFuera() {
   const [saving,    setSaving]    = useState(false)
 
   // ── Confirmation state ──
-  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [confirmId,   setConfirmId]   = useState<string | null>(null)
+  const [confirmMode, setConfirmMode] = useState<'pagado' | 'delete'>('pagado')
 
   useEffect(() => {
     if (!householdId) { setLoading(false); return }
@@ -80,6 +81,17 @@ export default function DineroFuera() {
     const { error } = await supabase
       .from('dinero_fuera')
       .update({ pagado: true })
+      .eq('id', id)
+    if (!error) {
+      setRows(prev => prev.filter(r => r.id !== id))
+      setConfirmId(null)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    const { error } = await supabase
+      .from('dinero_fuera')
+      .delete()
       .eq('id', id)
     if (!error) {
       setRows(prev => prev.filter(r => r.id !== id))
@@ -222,7 +234,7 @@ export default function DineroFuera() {
                     + Abonar
                   </button>
                   <button
-                    onClick={() => setConfirmId(r.id)}
+                    onClick={() => { setConfirmMode('pagado'); setConfirmId(r.id) }}
                     style={{
                       flex: 1, padding: '7px 0', borderRadius: 8,
                       background: 'rgba(88,178,106,.12)', border: '1px solid rgba(88,178,106,.3)',
@@ -230,6 +242,17 @@ export default function DineroFuera() {
                     }}
                   >
                     ✓ Pagado
+                  </button>
+                  <button
+                    onClick={() => { setConfirmMode('delete'); setConfirmId(r.id) }}
+                    style={{
+                      padding: '7px 10px', borderRadius: 8,
+                      background: 'rgba(214,106,90,.1)', border: '1px solid rgba(214,106,90,.25)',
+                      fontSize: 13, color: 'var(--neg)', cursor: 'pointer',
+                    }}
+                    title="Eliminar registro"
+                  >
+                    🗑
                   </button>
                 </div>
               )}
@@ -263,15 +286,19 @@ export default function DineroFuera() {
             zIndex: 501,
           }}>
             <div style={{ textAlign: 'center', marginBottom: 16 }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>✓</div>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>
+                {confirmMode === 'delete' ? '🗑' : '✓'}
+              </div>
               <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>
-                ¿Marcar como pagado?
+                {confirmMode === 'delete' ? '¿Eliminar registro?' : '¿Marcar como pagado?'}
               </div>
               <div style={{ fontSize: 13, color: 'var(--fg-mute)' }}>
                 {rows.find(r => r.id === confirmId)?.nombre} — {fmt(rows.find(r => r.id === confirmId)?.monto_original ?? 0)}
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginTop: 6 }}>
-                Esta acción ocultará el registro de la lista activa.
+                {confirmMode === 'delete'
+                  ? 'Esta acción eliminará el registro permanentemente.'
+                  : 'Esta acción ocultará el registro de la lista activa.'}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
@@ -284,10 +311,11 @@ export default function DineroFuera() {
                 }}
               >Cancelar</button>
               <button
-                onClick={() => handlePagado(confirmId)}
+                onClick={() => confirmMode === 'delete' ? handleDelete(confirmId) : handlePagado(confirmId)}
                 style={{
                   flex: 1, padding: '12px', borderRadius: 12,
-                  background: 'var(--pos)', border: 'none',
+                  background: confirmMode === 'delete' ? 'var(--neg)' : 'var(--pos)',
+                  border: 'none',
                   fontSize: 14, fontWeight: 700, color: '#0a0b0d', cursor: 'pointer',
                 }}
               >Confirmar</button>

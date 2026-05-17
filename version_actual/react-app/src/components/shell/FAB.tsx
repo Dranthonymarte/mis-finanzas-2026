@@ -4,6 +4,7 @@
 // Portal rendering breaks TabBar stacking context (z-index fix)
 // ═══════════════════════════════════════════════════
 
+import { useEffect }    from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate }  from 'react-router-dom'
 import {
@@ -23,6 +24,12 @@ const FAB_ACTIONS = [
 export default function FAB() {
   const { fabOpen, setFabOpen } = useAppStore()
   const navigate = useNavigate()
+
+  // Lock body scroll when FAB sheet is open
+  useEffect(() => {
+    document.body.style.overflow = fabOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [fabOpen])
 
   function toggle() { setFabOpen(!fabOpen) }
   function close()  { setFabOpen(false)    }

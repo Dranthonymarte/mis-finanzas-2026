@@ -123,61 +123,57 @@ export default function Budgets() {
           )
         })}
 
-        {/* Add budget for cats without one */}
+        {/* Add budget for cats without one — inline edit within each row */}
         {noBudgetCats.length > 0 && (
           <>
             <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase', marginTop: 8 }}>
               Sin presupuesto
             </div>
-            {noBudgetCats.map(cat => (
-              <div key={cat} style={{
-                background: 'var(--ink-2)', border: '1px dashed var(--ink-4)',
-                borderRadius: 14, padding: '12px 14px',
-                display: 'flex', alignItems: 'center', gap: 10,
-              }}>
-                <CatIcon cat={cat} size={30} />
-                <span style={{ flex: 1, fontSize: 13.5, color: 'var(--fg-dim)' }}>{cat}</span>
-                <button
-                  onClick={() => { setEditCat(cat); setEditVal('') }}
-                  style={{
-                    padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                    background: 'var(--ink-3)', border: '1px solid var(--line)', color: 'var(--fg-dim)', cursor: 'pointer',
-                  }}
-                >
-                  + Límite
-                </button>
-              </div>
-            ))}
+            {noBudgetCats.map(cat => {
+              const isAddEdit = editCat === cat
+              return (
+                <div key={cat} style={{
+                  background: 'var(--ink-2)',
+                  border: `1px ${isAddEdit ? 'solid var(--amber)' : 'dashed var(--ink-4)'}`,
+                  borderRadius: 14, padding: '12px 14px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <CatIcon cat={cat} size={30} />
+                    <span style={{ flex: 1, fontSize: 13.5, color: isAddEdit ? 'var(--fg)' : 'var(--fg-dim)', fontWeight: isAddEdit ? 500 : 400 }}>{cat}</span>
+                    {isAddEdit ? (
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span style={{ fontSize: 12, color: 'var(--fg-mute)' }}>$</span>
+                        <input
+                          type="number" value={editVal} autoFocus
+                          onChange={e => setEditVal(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') saveBudget(cat, parseFloat(editVal)) }}
+                          style={inputSt}
+                        />
+                        <button
+                          onClick={() => saveBudget(cat, parseFloat(editVal))}
+                          style={{ padding: '6px 10px', borderRadius: 8, background: 'var(--amber)', border: 'none', fontSize: 12, fontWeight: 700, color: 'var(--ink-0)', cursor: 'pointer' }}
+                        >OK</button>
+                        <button
+                          onClick={() => setEditCat(null)}
+                          style={{ padding: '6px 8px', borderRadius: 8, background: 'var(--ink-3)', border: '1px solid var(--line)', color: 'var(--fg-mute)', cursor: 'pointer' }}
+                        >✕</button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setEditCat(cat); setEditVal('') }}
+                        style={{
+                          padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                          background: 'var(--ink-3)', border: '1px solid var(--line)', color: 'var(--fg-dim)', cursor: 'pointer',
+                        }}
+                      >
+                        + Límite
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </>
-        )}
-
-        {editCat && !budgetCats.includes(editCat) && (
-          <div style={{
-            background: 'var(--ink-2)', border: '1px solid var(--amber)',
-            borderRadius: 14, padding: '13px 14px',
-            display: 'flex', gap: 8, alignItems: 'center',
-          }}>
-            <span style={{ flex: 1, fontSize: 13.5, fontWeight: 500 }}>{editCat}</span>
-            <span style={{ fontSize: 12, color: 'var(--fg-mute)' }}>$</span>
-            <input
-              type="number" value={editVal} autoFocus
-              onChange={e => setEditVal(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') saveBudget(editCat, parseFloat(editVal)) }}
-              style={inputSt}
-            />
-            <button
-              onClick={() => saveBudget(editCat, parseFloat(editVal))}
-              style={{ padding: '6px 10px', borderRadius: 8, background: 'var(--amber)', border: 'none', fontSize: 12, fontWeight: 700, color: 'var(--ink-0)', cursor: 'pointer' }}
-            >
-              OK
-            </button>
-            <button
-              onClick={() => setEditCat(null)}
-              style={{ padding: '6px 8px', borderRadius: 8, background: 'var(--ink-3)', border: '1px solid var(--line)', color: 'var(--fg-mute)', cursor: 'pointer' }}
-            >
-              ✕
-            </button>
-          </div>
         )}
       </div>
 

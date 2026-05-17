@@ -8,6 +8,7 @@ import { useConfig } from '../hooks/useConfig'
 import { useTasas } from '../hooks/useTasas'
 import { useAuthStore } from '../store/auth'
 import { supabase } from '../lib/supabase'
+import { mesIdToDbKey, dateToMesId } from '../lib/mes'
 
 // ── Métodos de pago ────────────────────────────────
 const METHODS = [
@@ -94,6 +95,19 @@ export default function NewTransaction() {
   // Sync BCV rate when tasas loads
   useEffect(() => { setRateBCV(tasas.bcv) }, [tasas.bcv])
 
+  // Read voice prefill from VozTxn (/voz page)
+  useEffect(() => {
+    const raw = sessionStorage.getItem('voz_prefill')
+    if (!raw) return
+    try {
+      const { amount, desc: d } = JSON.parse(raw) as { amount: string; desc: string }
+      if (amount) { setAmountUSD(amount); setAmountBs((parseFloat(amount) * tasas.bcv).toFixed(2)) }
+      if (d)      setDesc(d)
+    } catch { /* ignore malformed */ }
+    sessionStorage.removeItem('voz_prefill')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Set default account once — useRef prevents circular re-renders
   const initialAccountSet = useRef(false)
   useEffect(() => {
@@ -154,7 +168,8 @@ export default function NewTransaction() {
   // ── Save ──────────────────────────────────────
   async function handleSave() {
     if (!amountUSD || usdNum <= 0) return
-    const mes  = fecha.slice(0, 7)
+    // "may-26" → "Mayo" — DB stores Spanish month name
+    const mes  = mesIdToDbKey(dateToMesId(new Date(fecha + 'T12:00:00')))
     const sign = tipoObj.esIngreso ? 1 : -1
     const mov  = {
       id:           crypto.randomUUID(),
@@ -172,6 +187,7 @@ export default function NewTransaction() {
       author:       autor,
       rate_type:    'bcv' as const,
       cuenta_id:    account || null,
+      recurrente,
     }
     setSaved(true)
     const { error } = await supabase.from('movimientos').insert(mov)

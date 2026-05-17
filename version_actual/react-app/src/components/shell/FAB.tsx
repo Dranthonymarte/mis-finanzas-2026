@@ -1,11 +1,21 @@
+// ═══════════════════════════════════════════════════
+// FAB — floating action button  (BLOQUE 6)
+// 5 actions: Buscar · CSV · Voz · Transferir · Movimiento
+// ═══════════════════════════════════════════════════
+
 import { useNavigate } from 'react-router-dom'
-import { PlusIcon, TxnIcon, TransferIcon, ScanIcon } from '../icons/Icons'
+import {
+  PlusIcon, TxnIcon, TransferIcon,
+  SearchIcon, MicIcon, UploadIcon,
+} from '../icons/Icons'
 import { useAppStore } from '../../store/app'
 
 const FAB_ACTIONS = [
-  { id: 'scan',     label: 'Escanear',    Icon: ScanIcon,     color: '#3d8b82' },
-  { id: 'transfer', label: 'Transferir',  Icon: TransferIcon, color: '#6a94c4' },
-  { id: 'txn',      label: 'Movimiento',  Icon: TxnIcon,      color: '#e0a84a' },
+  { id: 'search',   label: 'Buscar',       Icon: SearchIcon,   color: '#6a94c4' },
+  { id: 'csv',      label: 'Importar CSV', Icon: UploadIcon,   color: '#3d8b82' },
+  { id: 'voice',    label: 'Por voz',      Icon: MicIcon,      color: '#b0a3c7' },
+  { id: 'transfer', label: 'Transferir',   Icon: TransferIcon, color: '#4a9eda' },
+  { id: 'txn',      label: 'Movimiento',   Icon: TxnIcon,      color: '#e0a84a' },
 ]
 
 export default function FAB() {
@@ -19,7 +29,9 @@ export default function FAB() {
     close()
     if (id === 'txn')      navigate('/new-txn')
     if (id === 'transfer') navigate('/transfer')
-    if (id === 'scan')     navigate('/txn')     // TODO Bloque 5: /scanner
+    if (id === 'search')   navigate('/buscar')
+    if (id === 'voice')    navigate('/voz')
+    if (id === 'csv')      navigate('/csv-import')
   }
 
   return (
@@ -49,7 +61,7 @@ export default function FAB() {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 12,
+            gap: 10,
             zIndex: 200,
           }}
         >
@@ -60,7 +72,7 @@ export default function FAB() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 10,
-                animation: `fabItemIn 220ms ${i * 50}ms cubic-bezier(.4,0,.2,1) both`,
+                animation: `fabItemIn 200ms ${i * 40}ms cubic-bezier(.4,0,.2,1) both`,
               }}
             >
               <span
@@ -90,6 +102,7 @@ export default function FAB() {
                   color: 'var(--ink-0)',
                   boxShadow: '0 4px 12px rgba(0,0,0,.4)',
                   cursor: 'pointer',
+                  flexShrink: 0,
                 }}
               >
                 <action.Icon />
@@ -103,7 +116,7 @@ export default function FAB() {
       <button
         className="m-fab"
         onClick={toggle}
-        aria-label="Nuevo movimiento"
+        aria-label="Acciones rápidas"
         aria-expanded={fabOpen}
         style={{
           transform: fabOpen ? 'rotate(45deg) scale(.9)' : undefined,
@@ -116,8 +129,8 @@ export default function FAB() {
       {/* FAB animation keyframes */}
       <style>{`
         @keyframes fabItemIn {
-          from { opacity: 0; transform: translateY(16px) scale(.9); }
-          to   { opacity: 1; transform: translateY(0)   scale(1);   }
+          from { opacity: 0; transform: translateY(12px) scale(.92); }
+          to   { opacity: 1; transform: translateY(0)    scale(1);   }
         }
       `}</style>
     </>

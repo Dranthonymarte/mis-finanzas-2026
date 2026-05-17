@@ -39,6 +39,9 @@ import Exportar       from './pages/Exportar'
 import Escanear       from './pages/Escanear'
 import Notificaciones from './pages/Notificaciones'
 import DineroFuera    from './pages/DineroFuera'
+import Buscar         from './pages/Buscar'
+import VozTxn         from './pages/VozTxn'
+import CsvImport      from './pages/CsvImport'
 
 // ── Main pages ─────────────────────────────────────
 import Home     from './pages/Home'
@@ -81,6 +84,9 @@ export default function App() {
         <Route path="/escanear"        element={<Escanear />}        />
         <Route path="/notificaciones"  element={<Notificaciones />}  />
         <Route path="/dinero-fuera"    element={<DineroFuera />}     />
+        <Route path="/buscar"          element={<Buscar />}          />
+        <Route path="/voz"             element={<VozTxn />}          />
+        <Route path="/csv-import"      element={<CsvImport />}       />
 
         <Route element={<AppShell />}>
           <Route index                       element={<Home />}       />

@@ -158,6 +158,7 @@ export default function Home() {
   const moneda         = usePrefsStore(s => s.moneda)
   const setMoneda      = usePrefsStore(s => s.setMoneda)
   const householdId    = useAuthStore(s => s.householdId)
+  const userName       = useAuthStore(s => s.userName)
 
   const { accounts: liveAccounts }  = useAccounts()
   const { transactions: liveTxns }  = useTransactions(mesActivo)
@@ -243,13 +244,26 @@ export default function Home() {
       .map(([cat, value]) => ({ cat, value }))
   }, [liveTxns])
 
-  // ── Pronóstico 30D ──
+  // ── Pronóstico 30D — incluye recurrentes pendientes del mes ──
   const today        = new Date()
   const daysElapsed  = Math.max(1, today.getDate())
   const daysInMonth  = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
   const dailySpend   = kpiData.gastos / daysElapsed
-  const projected30  = dailySpend * 30
-  const savedByEOM   = kpiData.ingresos - dailySpend * daysInMonth
+
+  // Recurrentes mensuales cuyos recDia aún no han llegado este mes
+  const tiposEsIngreso = new Set(config.tipos.filter(t => t.esIngreso).map(t => t.nombre))
+  const recsPendientes = config.recurrentes.filter(r =>
+    r.recurrencia_dias <= 31 && (r.recDia ?? 15) > today.getDate()
+  )
+  const recIngresoPend = recsPendientes
+    .filter(r => tiposEsIngreso.has(r.tipo))
+    .reduce((s, r) => s + Math.abs(r.monto), 0)
+  const recGastoPend   = recsPendientes
+    .filter(r => !tiposEsIngreso.has(r.tipo))
+    .reduce((s, r) => s + Math.abs(r.monto), 0)
+
+  const projected30  = dailySpend * 30 + recGastoPend
+  const savedByEOM   = (kpiData.ingresos + recIngresoPend) - (dailySpend * daysInMonth + recGastoPend)
 
   const recentTxns = (liveTxns ?? []).slice(0, 5)
 
@@ -258,10 +272,10 @@ export default function Home() {
 
       {/* ─── 1. HEADER ─── */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '10px 16px 8px', gap: 10 }}>
-        <Avatar letter="A" />
+        <Avatar letter={(userName?.[0] ?? 'A').toUpperCase()} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 11, color: 'var(--fg-mute)', lineHeight: 1 }}>Hola,</div>
-          <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.2 }}>Anthony</div>
+          <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.2 }}>{userName ?? 'Tú'}</div>
         </div>
         <button onClick={toggleOcultar} style={iBtn} aria-label="Ocultar montos">
           <span style={{ fontSize: 16 }}>{ocultarMontos ? '🙈' : '👁'}</span>

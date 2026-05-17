@@ -1,116 +1,101 @@
 import { useState } from 'react'
 import AppHeader from '../../components/shell/AppHeader'
-import { LockIcon } from '../../components/icons/Icons'
+import { supabase } from '../../lib/supabase'
+
+const inputSt: React.CSSProperties = {
+  width: '100%', background: 'var(--ink-1)', border: '1px solid var(--line)',
+  borderRadius: 10, padding: '10px 12px', fontSize: 14,
+  color: 'var(--fg)', outline: 'none', boxSizing: 'border-box',
+}
 
 export default function Security() {
-  const [pinEnabled,  setPinEnabled]  = useState(false)
-  const [faceEnabled, setFaceEnabled] = useState(false)
+  const [current,  setCurrent]  = useState('')
+  const [next,     setNext]     = useState('')
+  const [confirm,  setConfirm]  = useState('')
+  const [saving,   setSaving]   = useState(false)
+  const [msg,      setMsg]      = useState<{ text: string; ok: boolean } | null>(null)
+
+  async function handleSave() {
+    if (!current || !next || !confirm) return setMsg({ text: 'Completa todos los campos.', ok: false })
+    if (next !== confirm)              return setMsg({ text: 'Las contraseñas no coinciden.', ok: false })
+    if (next.length < 8)              return setMsg({ text: 'Mínimo 8 caracteres.', ok: false })
+
+    setSaving(true)
+    setMsg(null)
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user?.email) { setSaving(false); return setMsg({ text: 'Sin sesión activa.', ok: false }) }
+
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: current,
+    })
+    if (signInErr) {
+      setSaving(false)
+      return setMsg({ text: 'Contraseña actual incorrecta.', ok: false })
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: next })
+    setSaving(false)
+
+    if (error) return setMsg({ text: error.message, ok: false })
+
+    setMsg({ text: 'Contraseña actualizada.', ok: true })
+    setCurrent(''); setNext(''); setConfirm('')
+  }
+
+  const fields: { label: string; val: string; set: (v: string) => void }[] = [
+    { label: 'Contraseña actual',    val: current, set: setCurrent },
+    { label: 'Nueva contraseña',     val: next,    set: setNext    },
+    { label: 'Confirmar nueva',      val: confirm, set: setConfirm },
+  ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       <AppHeader title="Seguridad" back />
 
-      <div style={{ padding: '16px 16px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {/* PIN toggle */}
-        <div
-          style={{
-            background: 'var(--ink-2)',
-            border: '1px solid var(--line)',
-            borderRadius: 14,
-            overflow: 'hidden',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              padding: '13px 14px',
-              borderBottom: '1px solid var(--line)',
-            }}
-          >
-            <div style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--ink-3)', display: 'grid', placeItems: 'center' }}>
-              <LockIcon />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>Bloqueo con PIN</div>
-              <div style={{ fontSize: 11, color: 'var(--fg-mute)' }}>Requiere PIN al abrir la app</div>
-            </div>
-            <Toggle enabled={pinEnabled} onChange={setPinEnabled} />
-          </div>
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              padding: '13px 14px',
-            }}
-          >
-            <div style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--ink-3)', display: 'grid', placeItems: 'center', fontSize: 18 }}>
-              🫠
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>Face ID / Huella</div>
-              <div style={{ fontSize: 11, color: 'var(--fg-mute)' }}>Desbloqueo biométrico</div>
-            </div>
-            <Toggle enabled={faceEnabled} onChange={setFaceEnabled} />
-          </div>
+      <div style={{ padding: '20px 16px 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
+          Cambiar contraseña
         </div>
 
-        {/* Session info */}
-        <div
+        {fields.map(({ label, val, set }) => (
+          <div key={label}>
+            <div style={{ fontSize: 12, color: 'var(--fg-mute)', marginBottom: 6 }}>{label}</div>
+            <input
+              type="password" value={val}
+              onChange={e => set(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSave() }}
+              style={inputSt}
+            />
+          </div>
+        ))}
+
+        {msg && (
+          <div style={{
+            fontSize: 13, color: msg.ok ? 'var(--pos)' : 'var(--neg)',
+            padding: '8px 12px',
+            background: msg.ok ? 'rgba(88,178,106,.1)' : 'rgba(214,106,90,.1)',
+            borderRadius: 10,
+          }}>
+            {msg.text}
+          </div>
+        )}
+
+        <button
+          onClick={handleSave}
+          disabled={saving}
           style={{
-            background: 'var(--ink-2)',
-            border: '1px solid var(--line)',
-            borderRadius: 14,
-            padding: '13px 14px',
+            padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 600,
+            background: 'var(--amber)', color: 'var(--ink-0)', border: 'none',
+            cursor: saving ? 'default' : 'pointer', opacity: saving ? .7 : 1,
           }}
         >
-          <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginBottom: 6, letterSpacing: '.1em', textTransform: 'uppercase' }}>
-            Sesión activa
-          </div>
-          <div style={{ fontSize: 13 }}>anthonymarte12@gmail.com</div>
-          <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 4 }}>
-            Último acceso: hoy, 9:41 AM · Chrome · Android
-          </div>
-        </div>
+          {saving ? 'Guardando…' : 'Actualizar contraseña'}
+        </button>
       </div>
-    </div>
-  )
-}
 
-function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={enabled}
-      onClick={() => onChange(!enabled)}
-      style={{
-        width: 44,
-        height: 26,
-        borderRadius: 13,
-        background: enabled ? 'var(--amber)' : 'var(--ink-4)',
-        border: 'none',
-        position: 'relative',
-        transition: 'background .2s',
-        flexShrink: 0,
-        cursor: 'pointer',
-      }}
-    >
-      <div
-        style={{
-          position: 'absolute',
-          top: 3,
-          left: enabled ? 21 : 3,
-          width: 20,
-          height: 20,
-          borderRadius: '50%',
-          background: '#fff',
-          transition: 'left .2s cubic-bezier(.4,0,.2,1)',
-          boxShadow: '0 1px 3px rgba(0,0,0,.3)',
-        }}
-      />
-    </button>
+      <div style={{ height: 32 }} />
+    </div>
   )
 }

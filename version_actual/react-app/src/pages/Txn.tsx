@@ -7,12 +7,39 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import CatIcon, { catColor } from '../components/ui/CatIcon'
-import {
-  MOCK_TRANSACTIONS, MOCK_MONTHS, MOCK_MONTH, ACTIVE_MONTH, MONTH_LABELS,
-  fmt, txnGroup,
-} from '../data/mock'
+import { fmt, txnGroup, type Transaction } from '../data/mock'
 import { useTransactions } from '../hooks/useTransactions'
+import { useConfig }       from '../hooks/useConfig'
 import { FilterIcon, LockIcon } from '../components/icons/Icons'
+
+// ── Dynamic month list (last 12 months ending at current) ────────────────────
+interface MonthEntry { id: string; label: string; shortYear: string }
+
+function generateMonths(count = 12): MonthEntry[] {
+  const result: MonthEntry[] = []
+  const now = new Date()
+  for (let i = count - 1; i >= 0; i--) {
+    const d   = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const id  = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const label = d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '').replace(/^\w/, c => c.toUpperCase())
+    result.push({ id, label, shortYear: String(d.getFullYear()).slice(2) })
+  }
+  return result
+}
+
+function currentMonth(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+function monthDisplayLabel(id: string): string {
+  const [year, month] = id.split('-')
+  const d = new Date(parseInt(year), parseInt(month) - 1, 1)
+  return d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+    .replace(/^\w/, c => c.toUpperCase())
+}
+
+const MONTHS = generateMonths(12)
 
 const LS_CLOSED = 'mis_finanzas_closed_months'
 
@@ -45,7 +72,7 @@ function CatTooltip({ active, payload }: {
 type FilterType = 'all' | 'gasto' | 'ingreso' | 'ahorro'
 
 /* ── TxnRow ── */
-function TxnRow({ t, last, onTap }: { t: typeof MOCK_TRANSACTIONS[0]; last: boolean; onTap: () => void }) {
+function TxnRow({ t, last, onTap }: { t: Transaction; last: boolean; onTap: () => void }) {
   const group = txnGroup(t.tipo)
   const isInc = group === 'ingreso'
   const isSav = group === 'ahorro'
@@ -96,7 +123,7 @@ function TxnRow({ t, last, onTap }: { t: typeof MOCK_TRANSACTIONS[0]; last: bool
 }
 
 /* ── Date group header ── */
-function DateHeader({ date, txns }: { date: string; txns: typeof MOCK_TRANSACTIONS }) {
+function DateHeader({ date, txns }: { date: string; txns: Transaction[] }) {
   const inc = txns.filter(t => txnGroup(t.tipo) === 'ingreso').reduce((s, t) => s + t.amount, 0)
   const exp = txns.filter(t => txnGroup(t.tipo) === 'gasto').reduce((s, t) => s + Math.abs(t.amount), 0)
   return (
@@ -110,8 +137,13 @@ function DateHeader({ date, txns }: { date: string; txns: typeof MOCK_TRANSACTIO
   )
 }
 
+interface Recurrente {
+  id: string; desc: string; cat: string; tipo: string
+  amount: number; recDia?: number
+}
+
 /* ── Recurrente row (simplified) ── */
-function RecRow({ t, last }: { t: typeof MOCK_TRANSACTIONS[0]; last: boolean }) {
+function RecRow({ t, last }: { t: Recurrente; last: boolean }) {
   const isInc = txnGroup(t.tipo) === 'ingreso'
   const color = isInc ? 'var(--pos)' : 'var(--neg)'
   const sign  = isInc ? '+' : '−'
@@ -135,14 +167,15 @@ function RecRow({ t, last }: { t: typeof MOCK_TRANSACTIONS[0]; last: boolean }) 
 
 export default function Txn() {
   const navigate = useNavigate()
-  const [activeMes, setActiveMes] = useState(ACTIVE_MONTH)
+  const [activeMes, setActiveMes] = useState(currentMonth)
   const [filter,    setFilter]    = useState<FilterType>('all')
   const [closed,    setClosed]    = useState<Set<string>>(loadClosed)
   const [showFilters, setShowFilters] = useState(false)
   const monthsRef = useRef<HTMLDivElement>(null)
 
   const isClosed = closed.has(activeMes)
-  const { transactions: liveTxns, loading: txnLoading } = useTransactions(activeMes)
+  const { transactions: liveTxns } = useTransactions(activeMes)
+  const { config }                 = useConfig()
 
   // Scroll active month chip into view on mount
   useEffect(() => {
@@ -158,9 +191,10 @@ export default function Txn() {
     saveClosed(next)
   }
 
-  // Live data when loaded; fall back to mock only while first loading ACTIVE_MONTH
-  const txnsForMonth = liveTxns ?? (txnLoading && activeMes === ACTIVE_MONTH ? MOCK_TRANSACTIONS : [])
-  const recurring    = (liveTxns ?? MOCK_TRANSACTIONS).filter(t => t.recurrente)
+  const txnsForMonth = liveTxns ?? []
+
+  // Recurrentes from config_usuario
+  const recurring = (config.recurrentes as Recurrente[]).filter(r => r.id)
 
   const filtered = txnsForMonth.filter(t => {
     if (filter === 'all') return true
@@ -172,7 +206,7 @@ export default function Txn() {
     return acc
   }, {})
 
-  const monthLabel = MONTH_LABELS[activeMes] ?? activeMes
+  const monthLabel = monthDisplayLabel(activeMes)
 
   // Top 5 expense categories for current month data
   const catData = (() => {
@@ -256,7 +290,7 @@ export default function Txn() {
           msOverflowStyle: 'none', scrollbarWidth: 'none',
         }}
       >
-        {MOCK_MONTHS.map(m => {
+        {MONTHS.map(m => {
           const isActive  = m.id === activeMes
           const isMeClosed = closed.has(m.id)
           return (
@@ -290,11 +324,11 @@ export default function Txn() {
         display: 'grid', gridTemplateColumns: '1fr 1px 1fr 1px 1fr',
       }}>
         {[
-          { label: 'Entradas', value: fmt(income   || MOCK_MONTH.income),   color: 'var(--pos)' },
+          { label: 'Entradas', value: fmt(income),            color: 'var(--pos)' },
           null,
-          { label: 'Salidas',  value: fmt(expenses || MOCK_MONTH.expenses), color: 'var(--neg)' },
+          { label: 'Salidas',  value: fmt(expenses),          color: 'var(--neg)' },
           null,
-          { label: 'Neto',     value: fmt((income || MOCK_MONTH.income) - (expenses || MOCK_MONTH.expenses)), color: 'var(--fg)' },
+          { label: 'Neto',     value: fmt(income - expenses), color: 'var(--fg)' },
         ].map((col, i) =>
           col === null
             ? <div key={i} style={{ background: 'var(--line)', width: 1, margin: '10px 0' }} />

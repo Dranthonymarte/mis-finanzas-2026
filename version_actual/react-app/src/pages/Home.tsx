@@ -4,12 +4,18 @@ import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Sparkline from '../components/ui/Sparkline'
 import Pill      from '../components/ui/Pill'
 import CatIcon   from '../components/ui/CatIcon'
-import { MOCK_BALANCE_SERIES, MOCK_KPIS, MOCK_TRANSACTIONS, MOCK_MONTH, ACTIVE_MONTH, fmtShort, fmt, txnGroup, type Transaction } from '../data/mock'
-import { useAccounts } from '../hooks/useAccounts'
+import { MOCK_BALANCE_SERIES, MOCK_KPIS, fmtShort, fmt, txnGroup, type Transaction } from '../data/mock'
+import { useAccounts }    from '../hooks/useAccounts'
 import { useTransactions } from '../hooks/useTransactions'
+import { useConfig }      from '../hooks/useConfig'
+import { useKPIs }        from '../hooks/useKPIs'
 import { SearchIcon, BellIcon } from '../components/icons/Icons'
 
-/* ── Ingresos vs Gastos chart data (6 months) ── */
+function currentMonth(): string {
+  return new Date().toISOString().slice(0, 7)
+}
+
+/* ── Ingresos vs Gastos — 6 months placeholder (replace when historical hook exists) ── */
 const INCOME_VS_EXP = (() => {
   const months = ['Nov', 'Dic', 'Ene', 'Feb', 'Mar', 'Abr']
   const inc = MOCK_KPIS.find(k => k.id === 'ingresos')!.spark
@@ -127,29 +133,27 @@ export default function Home() {
   const navigate      = useNavigate()
   const [showInsight, setShowInsight] = useState(true)
 
-  const { accounts: liveAccounts } = useAccounts()
-  const { transactions: liveTxns } = useTransactions(ACTIVE_MONTH)
+  const { accounts: liveAccounts }  = useAccounts()
+  const { transactions: liveTxns }  = useTransactions(currentMonth())
+  const { config }                  = useConfig()
+  const kpiData                     = useKPIs(liveTxns, config)
 
-  // Derive patrimony from real accounts (sum USD balances)
   const patrimony = liveAccounts
     ? liveAccounts.filter(a => a.currency === 'USD').reduce((s, a) => s + a.balance, 0)
-    : MOCK_MONTH.net
+    : 0
 
-  // Derive KPIs from real transactions
-  const txns = liveTxns ?? MOCK_TRANSACTIONS
-  const liveIncome   = txns.filter(t => txnGroup(t.tipo) === 'ingreso').reduce((s, t) => s + Math.abs(t.amount), 0)
-  const liveExpenses = txns.filter(t => txnGroup(t.tipo) === 'gasto').reduce((s, t) => s + Math.abs(t.amount), 0)
-  const liveSavings  = liveIncome - liveExpenses
-  const liveRate     = liveIncome > 0 ? (liveSavings / liveIncome) * 100 : 0
+  const liveRate = kpiData.ingresos > 0
+    ? (kpiData.balance / kpiData.ingresos) * 100
+    : 0
 
   const kpis = liveTxns ? [
-    { ...MOCK_KPIS[0], value: liveIncome,   delta: MOCK_KPIS[0].delta },
-    { ...MOCK_KPIS[1], value: liveExpenses, delta: MOCK_KPIS[1].delta },
-    { ...MOCK_KPIS[2], value: liveSavings,  delta: MOCK_KPIS[2].delta },
-    { ...MOCK_KPIS[3], value: parseFloat(liveRate.toFixed(1)), delta: MOCK_KPIS[3].delta },
+    { ...MOCK_KPIS[0], value: kpiData.ingresos },
+    { ...MOCK_KPIS[1], value: kpiData.gastos   },
+    { ...MOCK_KPIS[2], value: kpiData.balance  },
+    { ...MOCK_KPIS[3], value: parseFloat(liveRate.toFixed(1)) },
   ] : MOCK_KPIS
 
-  const recentTxns = txns.slice(0, 5)
+  const recentTxns = (liveTxns ?? []).slice(0, 5)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>

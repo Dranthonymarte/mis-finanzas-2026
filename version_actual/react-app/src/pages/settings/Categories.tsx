@@ -1,16 +1,8 @@
-import { useState, type CSSProperties } from 'react'
+import { useState } from 'react'
+import { type CSSProperties } from 'react'
 import AppHeader from '../../components/shell/AppHeader'
-
-const DEFAULT_CATS = [
-  { emoji: '🛒', name: 'Alimentación',    color: '#58b26a' },
-  { emoji: '🚗', name: 'Transporte',      color: '#6a94c4' },
-  { emoji: '🏠', name: 'Hogar',           color: '#e0a84a' },
-  { emoji: '🎬', name: 'Entretenimiento', color: '#d66a5a' },
-  { emoji: '💊', name: 'Salud',           color: '#5fb3a8' },
-  { emoji: '📡', name: 'Servicios',       color: '#9aa0ab' },
-  { emoji: '💼', name: 'Trabajo',         color: '#f5c572' },
-  { emoji: '📊', name: 'Inversión',       color: '#6a94c4' },
-]
+import CatIcon from '../../components/ui/CatIcon'
+import { useConfig } from '../../hooks/useConfig'
 
 const inputSt: CSSProperties = {
   flex: 1, background: 'var(--ink-1)', border: '1px solid var(--line)',
@@ -19,43 +11,80 @@ const inputSt: CSSProperties = {
 }
 
 export default function Categories() {
-  const [showForm, setShowForm] = useState(false)
-  const [newName,  setNewName]  = useState('')
+  const { config, updateConfig } = useConfig()
+  const [activeTipo, setActiveTipo] = useState(config.tipos[0]?.nombre ?? 'Gasto')
+  const [showForm,  setShowForm]   = useState(false)
+  const [newName,   setNewName]    = useState('')
+  const [saving,    setSaving]     = useState(false)
+
+  const tipos = config.tipos.map(t => t.nombre)
+  const cats  = config.categorias[activeTipo] ?? []
+
+  async function addCategory() {
+    const trimmed = newName.trim()
+    if (!trimmed || cats.includes(trimmed)) return
+    setSaving(true)
+    const next = { ...config.categorias, [activeTipo]: [...cats, trimmed] }
+    await updateConfig('categorias', next)
+    setSaving(false)
+    setShowForm(false)
+    setNewName('')
+  }
+
+  async function removeCategory(cat: string) {
+    const next = { ...config.categorias, [activeTipo]: cats.filter(c => c !== cat) }
+    await updateConfig('categorias', next)
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       <AppHeader title="Categorías" back />
 
-      <div style={{ padding: '16px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {DEFAULT_CATS.map((cat) => (
-          <div
-            key={cat.name}
+      {/* Tipo tabs */}
+      <div style={{
+        display: 'flex', gap: 6, padding: '12px 16px',
+        overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none',
+      }}>
+        {tipos.map(t => (
+          <button
+            key={t}
+            onClick={() => { setActiveTipo(t); setShowForm(false) }}
             style={{
-              background: 'var(--ink-2)',
-              border: '1px solid var(--line)',
-              borderRadius: 14,
-              padding: '13px 14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
+              flexShrink: 0, padding: '6px 12px', borderRadius: 999,
+              fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap',
+              background: activeTipo === t ? 'var(--amber)' : 'var(--ink-2)',
+              color:      activeTipo === t ? 'var(--ink-0)' : 'var(--fg-dim)',
+              border:     activeTipo === t ? 'none' : '1px solid var(--line)',
             }}
           >
-            <div
+            {t}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {cats.map(cat => (
+          <div
+            key={cat}
+            style={{
+              background: 'var(--ink-2)', border: '1px solid var(--line)',
+              borderRadius: 14, padding: '13px 14px',
+              display: 'flex', alignItems: 'center', gap: 12,
+            }}
+          >
+            <CatIcon cat={cat} size={36} />
+            <span style={{ flex: 1, fontSize: 14, fontWeight: 500 }}>{cat}</span>
+            <button
+              onClick={() => removeCategory(cat)}
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: 'var(--ink-3)',
-                display: 'grid',
-                placeItems: 'center',
-                fontSize: 18,
-                flexShrink: 0,
+                width: 28, height: 28, borderRadius: 8,
+                background: 'rgba(214,106,90,.1)', border: '1px solid rgba(214,106,90,.25)',
+                color: 'var(--neg)', fontSize: 16, cursor: 'pointer',
+                display: 'grid', placeItems: 'center',
               }}
             >
-              {cat.emoji}
-            </div>
-            <span style={{ flex: 1, fontSize: 14, fontWeight: 500 }}>{cat.name}</span>
-            <div style={{ width: 14, height: 14, borderRadius: '50%', background: cat.color, flexShrink: 0 }} />
+              ×
+            </button>
           </div>
         ))}
 
@@ -66,21 +95,30 @@ export default function Categories() {
             display: 'flex', gap: 8, alignItems: 'center',
           }}>
             <input
-              type="text"
-              value={newName}
+              type="text" value={newName}
               onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') addCategory() }}
               placeholder="Nombre de categoría"
-              autoFocus
-              style={inputSt}
+              autoFocus style={inputSt}
             />
             <button
-              onClick={() => { setShowForm(false); setNewName('') }}
+              onClick={addCategory}
+              disabled={saving}
               style={{
                 padding: '8px 12px', borderRadius: 10, fontSize: 12.5, fontWeight: 600,
                 background: 'var(--amber)', color: 'var(--ink-0)', border: 'none', cursor: 'pointer',
               }}
             >
               {newName.trim() ? 'Añadir' : 'Cancelar'}
+            </button>
+            <button
+              onClick={() => { setShowForm(false); setNewName('') }}
+              style={{
+                padding: '8px 10px', borderRadius: 10, fontSize: 12.5,
+                background: 'var(--ink-3)', color: 'var(--fg-dim)', border: '1px solid var(--line)', cursor: 'pointer',
+              }}
+            >
+              ✕
             </button>
           </div>
         ) : (
@@ -95,10 +133,12 @@ export default function Categories() {
             }}
           >
             <span style={{ fontSize: 18 }}>+</span>
-            Nueva categoría
+            Nueva categoría en {activeTipo}
           </button>
         )}
       </div>
+
+      <div style={{ height: 32 }} />
     </div>
   )
 }

@@ -1,12 +1,41 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AppHeader from '../../components/shell/AppHeader'
+import { supabase } from '../../lib/supabase'
+import { useAuthStore } from '../../store/auth'
 
 export default function Profile() {
-  const [saved, setSaved] = useState(false)
+  const storeEmail = useAuthStore(s => s.userEmail)
+  const storeName  = useAuthStore(s => s.userName)
 
-  function handleSave() {
+  const [name,   setName]   = useState(storeName)
+  const [email,  setEmail]  = useState(storeEmail)
+  const [saving, setSaving] = useState(false)
+  const [saved,  setSaved]  = useState(false)
+  const [error,  setError]  = useState<string | null>(null)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      setEmail(user.email ?? storeEmail)
+      setName(user.user_metadata?.full_name ?? storeName)
+    })
+  }, [storeEmail, storeName])
+
+  async function handleSave() {
+    setSaving(true); setError(null)
+    const { error: err } = await supabase.auth.updateUser({
+      data: { full_name: name },
+    })
+    setSaving(false)
+    if (err) { setError(err.message); return }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  const inputSt: React.CSSProperties = {
+    width: '100%', background: 'var(--ink-2)', border: '1px solid var(--line)',
+    borderRadius: 12, padding: '12px 14px', fontSize: 14,
+    color: 'var(--fg)', outline: 'none',
   }
 
   return (
@@ -14,70 +43,62 @@ export default function Profile() {
       <AppHeader title="Perfil" back />
 
       <div style={{ padding: '24px 16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-        {/* Avatar */}
-        <div
-          style={{
-            width: 80,
-            height: 80,
-            borderRadius: 22,
-            background: 'linear-gradient(135deg, var(--amber), var(--amber-s))',
-            display: 'grid',
-            placeItems: 'center',
-            fontSize: 36,
-          }}
-        >
-          👤
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--amber)', fontWeight: 600 }}>Cambiar foto</div>
-      </div>
-
-      <div style={{ padding: '20px 16px 8px', display: 'grid', gap: 8 }}>
-        <div className="m-form-field">
-          <div className="m-form-field-content">
-            <div className="m-form-field-label">Nombre completo</div>
-            <input
-              className="m-form-field-input"
-              id="sett-nombre"
-              type="text"
-              defaultValue="Anthony Marte"
-              placeholder="Tu nombre"
-              maxLength={60}
-              autoComplete="name"
-            />
-          </div>
-          <div className="m-form-field-right">
-            <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="var(--fg-mute)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 20h4l11-11-4-4L4 16v4z"/>
-            </svg>
-          </div>
-        </div>
-
-        <div className="m-form-field" style={{ opacity: .6, cursor: 'not-allowed' }}>
-          <div className="m-form-field-content">
-            <div className="m-form-field-label">Correo electrónico</div>
-            <input
-              className="m-form-field-input"
-              id="sett-correo-display"
-              type="email"
-              defaultValue="anthonymarte12@gmail.com"
-              disabled
-              autoComplete="off"
-            />
-          </div>
-          <div className="m-form-field-right" style={{ fontSize: '9.5px', color: 'var(--pos)' }}>✓</div>
+        <div style={{
+          width: 80, height: 80, borderRadius: 22,
+          background: 'linear-gradient(135deg, var(--teal), var(--amber))',
+          display: 'grid', placeItems: 'center',
+          fontSize: 32, fontWeight: 700, color: 'var(--ink-0)',
+        }}>
+          {name[0]?.toUpperCase() ?? '?'}
         </div>
       </div>
 
-      <div style={{ padding: '4px 16px' }}>
+      <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 6 }}>
+            Nombre completo
+          </div>
+          <input
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="Tu nombre"
+            maxLength={60}
+            style={inputSt}
+          />
+        </div>
+
+        <div>
+          <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 6 }}>
+            Correo electrónico
+          </div>
+          <input
+            type="email"
+            value={email}
+            disabled
+            style={{ ...inputSt, opacity: 0.55, cursor: 'not-allowed' }}
+          />
+          <div style={{ fontSize: 10.5, color: 'var(--pos)', marginTop: 4 }}>✓ Verificado</div>
+        </div>
+
+        {error && (
+          <div style={{ fontSize: 12, color: 'var(--neg)', background: 'rgba(214,106,90,.1)', borderRadius: 10, padding: '8px 12px' }}>
+            {error}
+          </div>
+        )}
+
         <button
-          className="m-save-btn"
           onClick={handleSave}
+          disabled={saving}
           style={{
-            background: saved ? 'var(--pos)' : undefined,
+            marginTop: 8, width: '100%', padding: '15px', borderRadius: 14,
+            background: saved ? 'var(--pos)' : 'var(--amber)',
+            border: 'none', fontSize: 15, fontWeight: 700,
+            color: 'var(--ink-0)', cursor: saving ? 'wait' : 'pointer',
             transition: 'background .2s',
           }}
         >
-          {saved ? '✓  Guardado' : 'Guardar cambios'}
+          {saved ? '✓  Guardado' : saving ? 'Guardando…' : 'Guardar cambios'}
         </button>
       </div>
     </div>

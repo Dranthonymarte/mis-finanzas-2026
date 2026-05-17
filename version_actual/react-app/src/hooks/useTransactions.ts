@@ -16,7 +16,6 @@ interface SupaMov {
   author:      string | null
   mes:         string
   cuenta_id:   string | null
-  recurrente:  boolean | null
 }
 
 function relativeDate(iso: string): string {
@@ -58,7 +57,7 @@ export function useTransactions(mesId: string) {
 
     supabase
       .from('movimientos')
-      .select('id,descripcion,tipo,cat,subcat,amount,fecha,author,mes,cuenta_id,recurrente')
+      .select('id,descripcion,tipo,cat,subcat,amount,fecha,author,mes,cuenta_id')
       .eq('household_id', householdId)
       .eq('mes', dbKey)
       .is('deleted_at', null)
@@ -67,19 +66,18 @@ export function useTransactions(mesId: string) {
         if (err) { handleError(err); setError(err.message); setLoading(false); return }
         setTransactions(
           (data as SupaMov[] ?? []).map(r => ({
-            id:         r.id,
-            desc:       r.descripcion,
-            cat:        r.cat,
-            subcat:     r.subcat,
-            tipo:       r.tipo,
-            amount:     r.amount,
-            date:       relativeDate(r.fecha),
-            isoDate:    r.fecha,
-            time:       '—',
-            author:     mapAuthor(r.author),
-            accountId:  r.cuenta_id ?? '',
-            mes:        r.mes,
-            recurrente: r.recurrente ?? false,
+            id:        r.id,
+            desc:      r.descripcion,
+            cat:       r.cat,
+            subcat:    r.subcat,
+            tipo:      r.tipo,
+            amount:    r.amount,
+            date:      relativeDate(r.fecha),
+            isoDate:   r.fecha,
+            time:      '—',
+            author:    mapAuthor(r.author),
+            accountId: r.cuenta_id ?? '',
+            mes:       r.mes,
           }))
         )
         setLoading(false)

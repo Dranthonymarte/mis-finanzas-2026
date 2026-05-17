@@ -67,9 +67,9 @@ export default function NewTransaction() {
   const userId      = useAuthStore(s => s.userId)
   const householdId = useAuthStore(s => s.householdId)
 
-  const { accounts: liveAccounts } = useAccounts()
-  const { config }                 = useConfig()
-  const { tasas }                  = useTasas()
+  const { accounts: liveAccounts }       = useAccounts()
+  const { config, updateConfig }         = useConfig()
+  const { tasas }                        = useTasas()
 
   const accounts = liveAccounts ?? []
   const tipos    = config.tipos
@@ -171,8 +171,9 @@ export default function NewTransaction() {
     // "may-26" → "Mayo" — DB stores Spanish month name
     const mes  = mesIdToDbKey(dateToMesId(new Date(fecha + 'T12:00:00')))
     const sign = tipoObj.esIngreso ? 1 : -1
+    const movId = crypto.randomUUID()
     const mov  = {
-      id:           crypto.randomUUID(),
+      id:           movId,
       user_id:      userId,
       household_id: householdId,
       mes,
@@ -187,7 +188,7 @@ export default function NewTransaction() {
       author:       autor,
       rate_type:    'bcv' as const,
       cuenta_id:    account || null,
-      recurrente,
+      // NOTE: 'recurrente' is NOT a DB column — stored in config.recurrentes JSONB
     }
     setSaved(true)
     const { error } = await supabase.from('movimientos').insert(mov)
@@ -195,6 +196,21 @@ export default function NewTransaction() {
       console.error('[NewTxn] insert error:', error.message)
       setSaved(false)
       return
+    }
+    // If marked recurrente, append to config.recurrentes JSONB
+    if (recurrente) {
+      const nuevos = [
+        ...config.recurrentes,
+        {
+          id:               movId,
+          descripcion:      desc || cat,
+          monto:            sign * usdNum,
+          tipo,
+          cat,
+          recurrencia_dias: recDia,
+        },
+      ]
+      await updateConfig('recurrentes', nuevos)
     }
     setTimeout(() => navigate(-1), 400)
   }

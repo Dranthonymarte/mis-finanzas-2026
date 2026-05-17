@@ -91,17 +91,14 @@ export default function Accounts() {
       {/* ── Patrimony summary ── */}
       <div style={{ padding: '4px 16px 16px' }}>
         <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
-          Total USD
+          Patrimonio total
         </div>
         <div className="font-display" style={{ fontSize: 42, lineHeight: 1.05, letterSpacing: '-.02em', marginTop: 4 }}>
-          {fmt(totalUSD).slice(0, -3)}
-          <span style={{ color: 'var(--fg-dim)', fontSize: '.55em' }}>
-            {fmt(totalUSD).slice(-3)}
-          </span>
+          {fmt(totalUSD)}
         </div>
         {totalCash && (
           <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 4 }}>
-            + Bs {totalCash.balance.toLocaleString('es-VE', { maximumFractionDigits: 0 })} en efectivo
+            + {fmt(totalCash.balance)} en efectivo
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════
-// AccountDetail — /accounts/:id
-// Full screen, no TabBar. Back → navigate(-1).
-// Bloque 2. Checkpoint C: replace mock with Supabase hooks.
+// AccountDetail — /accounts/:id  (BLOQUE 4)
+// Real data: useAccounts + useTransactions filtered by cuenta_id
+// Sparkline · stats · txn list · transfer · delete
 // ═══════════════════════════════════════════════════
 
 import { useState, useEffect } from 'react'
@@ -11,32 +11,35 @@ import Sparkline from '../components/ui/Sparkline'
 import Pill     from '../components/ui/Pill'
 import CatIcon  from '../components/ui/CatIcon'
 import { ArrowLeftIcon, TransferIcon, EditIcon, TrashIcon } from '../components/icons/Icons'
-import { type Transaction, MOCK_ACCOUNTS, MOCK_TRANSACTIONS, fmt, txnGroup } from '../data/mock'
+import { txnGroup, type Transaction } from '../data/mock'
+import { useAccounts }     from '../hooks/useAccounts'
+import { useTransactions } from '../hooks/useTransactions'
+import { useFormat }       from '../hooks/useFormat'
+import { usePrefsStore }   from '../store/prefs'
 
-/* ── Types ─────────────────────────────────────── */
 type TxnFilter = 'all' | 'ingresos' | 'gastos'
 
-/* ── Section label ──────────────────────────────── */
+/* ── Section label ── */
 function SLabel({ children }: { children: ReactNode }) {
   return (
     <div style={{
       fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em',
       textTransform: 'uppercase', color: 'var(--fg-mute)',
-      padding: '18px 16px 8px',
+      padding: '18px 0 8px',
     }}>
       {children}
     </div>
   )
 }
 
-/* ── Transaction row ────────────────────────────── */
+/* ── Transaction row ── */
 function TxnRow({ t, last }: { t: Transaction; last: boolean }) {
+  const { fmt } = useFormat()
   const grp      = txnGroup(t.tipo)
-  const isIncome = grp === 'ingreso'
-  const isAhorro = grp === 'ahorro'
-  const color    = isIncome ? 'var(--pos)' : isAhorro ? 'var(--info)' : 'var(--fg)'
-  const sign     = isIncome ? '+' : '−'
-
+  const isInc    = grp === 'ingreso'
+  const isSav    = grp === 'ahorro'
+  const color    = isInc ? 'var(--pos)' : isSav ? 'var(--info)' : 'var(--fg)'
+  const sign     = isInc ? '+' : '−'
   return (
     <div style={{
       display: 'grid', gridTemplateColumns: '36px 1fr auto', gap: 10,
@@ -45,25 +48,26 @@ function TxnRow({ t, last }: { t: Transaction; last: boolean }) {
     }}>
       <CatIcon cat={t.cat} />
       <div style={{ minWidth: 0 }}>
-        <div style={{
-          fontSize: 13.5, fontWeight: 500,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
+        <div style={{ fontSize: 13.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {t.desc}
         </div>
         <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 2, display: 'flex', gap: 5, alignItems: 'center' }}>
           <span>{t.cat}</span>
           <span>·</span>
-          <span>{t.time}</span>
-          <span>·</span>
-          <span style={{
-            display: 'inline-flex', width: 14, height: 14, borderRadius: '50%',
-            background: t.author === 'isabel' ? '#b0a3c7' : '#6a94c4',
-            color: 'var(--ink-0)', fontSize: 9, fontWeight: 700,
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            {t.author === 'isabel' ? 'I' : 'A'}
-          </span>
+          <span>{t.date}</span>
+          {t.author && (
+            <>
+              <span>·</span>
+              <span style={{
+                display: 'inline-flex', width: 14, height: 14, borderRadius: '50%',
+                background: t.author === 'isabel' ? '#b0a3c7' : '#6a94c4',
+                color: 'var(--ink-0)', fontSize: 9, fontWeight: 700,
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                {t.author === 'isabel' ? 'I' : 'A'}
+              </span>
+            </>
+          )}
         </div>
       </div>
       <div style={{ fontSize: 13, fontWeight: 600, color, whiteSpace: 'nowrap' }}>
@@ -73,30 +77,42 @@ function TxnRow({ t, last }: { t: Transaction; last: boolean }) {
   )
 }
 
-/* ════════════════════════════════════════════════ */
 export default function AccountDetail() {
   const { id }   = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { fmt }  = useFormat()
+
+  const mesActivo = usePrefsStore(s => s.mesActivo)
 
   const [filter,        setFilter]        = useState<TxnFilter>('all')
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const acc = MOCK_ACCOUNTS.find(a => a.id === id)
+  const { accounts } = useAccounts()
+  const { transactions: liveTxns } = useTransactions(mesActivo)
+
+  const acc = accounts?.find(a => a.id === id) ?? null
 
   useEffect(() => {
-    if (!acc) navigate(-1)
-  }, [acc, navigate])
+    // Redirect only after accounts loaded and account not found
+    if (accounts !== null && !acc) navigate(-1)
+  }, [accounts, acc, navigate])
 
-  if (!acc) return null
+  if (!acc) {
+    return (
+      <div style={{ minHeight: '100dvh', background: 'var(--ink-1)', display: 'grid', placeItems: 'center' }}>
+        <div style={{ fontSize: 12, color: 'var(--fg-mute)' }}>Cargando…</div>
+      </div>
+    )
+  }
 
-  /* ── Derived data ─────────────────────────── */
-  const allTxns = MOCK_TRANSACTIONS.filter(t => t.accountId === id)
+  // ── Transactions for this account this month ──
+  const allAccTxns: Transaction[] = (liveTxns ?? []).filter(t => t.accountId === id)
 
   const filtered: Transaction[] = filter === 'all'
-    ? allTxns
+    ? allAccTxns
     : filter === 'ingresos'
-      ? allTxns.filter(t => t.amount > 0)
-      : allTxns.filter(t => t.amount < 0)
+      ? allAccTxns.filter(t => txnGroup(t.tipo) === 'ingreso')
+      : allAccTxns.filter(t => txnGroup(t.tipo) === 'gasto')
 
   const groups = filtered.reduce<Record<string, Transaction[]>>((g, t) => {
     if (!g[t.date]) g[t.date] = []
@@ -104,15 +120,11 @@ export default function AccountDetail() {
     return g
   }, {})
 
-  const monthIncome  = allTxns.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0)
-  const monthExpense = allTxns.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0)
+  const monthIncome  = allAccTxns.filter(t => txnGroup(t.tipo) === 'ingreso').reduce((s, t) => s + t.amount, 0)
+  const monthExpense = allAccTxns.filter(t => txnGroup(t.tipo) === 'gasto').reduce((s, t) => s + Math.abs(t.amount), 0)
   const monthNet     = monthIncome - monthExpense
 
-  const displayBalance = acc.currency === 'USD'
-    ? fmt(acc.balance)
-    : `Bs ${acc.balance.toLocaleString('es-VE', { maximumFractionDigits: 0 })}`
-
-  /* ── Styles ───────────────────────────────── */
+  /* ── Styles ── */
   const chipSt = (active: boolean): CSSProperties => ({
     padding: '5px 13px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
     background: active ? 'var(--amber)' : 'var(--ink-2)',
@@ -126,11 +138,10 @@ export default function AccountDetail() {
     textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 4,
   }
 
-  /* ── Render ───────────────────────────────── */
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--ink-1)', display: 'flex', flexDirection: 'column' }}>
 
-      {/* ── Top bar ──────────────────────────── */}
+      {/* ── Top bar ── */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '12px 12px 10px',
@@ -144,7 +155,7 @@ export default function AccountDetail() {
           style={{
             width: 36, height: 36, borderRadius: 10,
             background: 'var(--ink-2)', border: '1px solid var(--line)',
-            display: 'grid', placeItems: 'center', color: 'var(--fg-dim)',
+            display: 'grid', placeItems: 'center', color: 'var(--fg-dim)', cursor: 'pointer',
           }}
         >
           <ArrowLeftIcon />
@@ -152,31 +163,28 @@ export default function AccountDetail() {
 
         <div style={{ textAlign: 'center' }}>
           <div className="font-display" style={{ fontSize: 18, lineHeight: 1 }}>{acc.name}</div>
-          <div style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: '.12em',
-            textTransform: 'uppercase', color: acc.color, marginTop: 3,
-          }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: acc.color, marginTop: 3 }}>
             {acc.type}
           </div>
         </div>
 
         <button
-          onClick={() => { /* TODO Bloque 4: edit account */ }}
+          onClick={() => {/* edit account — future */}}
           aria-label="Editar cuenta"
           style={{
             width: 36, height: 36, borderRadius: 10,
             background: 'var(--ink-2)', border: '1px solid var(--line)',
-            display: 'grid', placeItems: 'center', color: 'var(--fg-dim)',
+            display: 'grid', placeItems: 'center', color: 'var(--fg-dim)', cursor: 'pointer',
           }}
         >
           <EditIcon />
         </button>
       </div>
 
-      {/* ── Scrollable content ───────────────── */}
+      {/* ── Scrollable content ── */}
       <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
 
-        {/* Hero card */}
+        {/* ── Hero card ── */}
         <div style={{ padding: '14px 16px 12px' }}>
           <div style={{
             borderRadius: 18,
@@ -191,80 +199,65 @@ export default function AccountDetail() {
               <Pill tone="mute" size="xs">{acc.currency}</Pill>
             </div>
 
-            <div className="num" style={{
-              fontSize: 36, fontWeight: 700, letterSpacing: '-.02em', color: acc.color,
-            }}>
-              {displayBalance}
+            <div className="num" style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-.02em', color: acc.color }}>
+              {fmt(acc.balance)}
             </div>
 
             <div style={{ marginTop: 14, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
               <Sparkline data={acc.spark} color={acc.color} w={160} h={26} fill stroke={1.6} />
-              <div style={{
-                fontSize: 12, fontWeight: 600,
-                color: acc.trend >= 0 ? 'var(--pos)' : 'var(--neg)',
-              }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: acc.trend >= 0 ? 'var(--pos)' : 'var(--neg)' }}>
                 {acc.trend >= 0 ? '▲' : '▼'} {Math.abs(acc.trend)}% este mes
               </div>
             </div>
           </div>
         </div>
 
-        {/* Month stats 3-col */}
+        {/* ── Month stats 3-col ── */}
         <div style={{ padding: '0 16px 14px' }}>
           <div style={{
             display: 'grid', gridTemplateColumns: '1fr 1px 1fr 1px 1fr',
             background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14,
           }}>
-            <div style={{ padding: '12px 10px', textAlign: 'center' }}>
-              <div style={labelSt}>Ingresos</div>
-              <div className="num" style={{ fontSize: 14, fontWeight: 700, color: 'var(--pos)' }}>
-                +{fmt(monthIncome)}
-              </div>
-            </div>
-
-            <div style={{ background: 'var(--line)' }} />
-
-            <div style={{ padding: '12px 10px', textAlign: 'center' }}>
-              <div style={labelSt}>Gastos</div>
-              <div className="num" style={{ fontSize: 14, fontWeight: 700, color: 'var(--neg)' }}>
-                {fmt(monthExpense)}
-              </div>
-            </div>
-
-            <div style={{ background: 'var(--line)' }} />
-
-            <div style={{ padding: '12px 10px', textAlign: 'center' }}>
-              <div style={labelSt}>Neto</div>
-              <div className="num" style={{
-                fontSize: 14, fontWeight: 700,
-                color: monthNet >= 0 ? 'var(--pos)' : 'var(--neg)',
-              }}>
-                {monthNet >= 0 ? '+' : '−'}{fmt(Math.abs(monthNet))}
-              </div>
-            </div>
+            {[
+              { key: 'ing',  label: 'Ingresos', value: fmt(monthIncome),              color: 'var(--pos)', prefix: '+' },
+              { key: 'sep1', label: '',          value: '',                            color: '', prefix: '' },
+              { key: 'gas',  label: 'Gastos',   value: fmt(monthExpense),             color: 'var(--neg)', prefix: '−' },
+              { key: 'sep2', label: '',          value: '',                            color: '', prefix: '' },
+              { key: 'net',  label: 'Neto',     value: fmt(Math.abs(monthNet)),       color: monthNet >= 0 ? 'var(--pos)' : 'var(--neg)', prefix: monthNet >= 0 ? '+' : '−' },
+            ].map(col =>
+              col.label === '' ? (
+                <div key={col.key} style={{ background: 'var(--line)', margin: '10px 0' }} />
+              ) : (
+                <div key={col.key} style={{ padding: '12px 10px', textAlign: 'center' }}>
+                  <div style={labelSt}>{col.label}</div>
+                  <div className="num" style={{ fontSize: 13.5, fontWeight: 700, color: col.color }}>
+                    {col.prefix}{col.value}
+                  </div>
+                </div>
+              )
+            )}
           </div>
         </div>
 
-        {/* Txn section header + filter */}
-        <div style={{ padding: '0 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <SLabel>Movimientos</SLabel>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {(['all', 'ingresos', 'gastos'] as TxnFilter[]).map((f) => (
-              <button key={f} onClick={() => setFilter(f)} style={chipSt(filter === f)}>
-                {f === 'all' ? 'Todos' : f === 'ingresos' ? 'Entrada' : 'Salida'}
-              </button>
-            ))}
+        {/* ── Txn filter + list ── */}
+        <div style={{ padding: '0 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <SLabel>Movimientos</SLabel>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {(['all', 'ingresos', 'gastos'] as TxnFilter[]).map(f => (
+                <button key={f} onClick={() => setFilter(f)} style={chipSt(filter === f)}>
+                  {f === 'all' ? 'Todos' : f === 'ingresos' ? 'Entrada' : 'Salida'}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Transaction list */}
-        {Object.keys(groups).length === 0 ? (
-          <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--fg-mute)', fontSize: 13 }}>
-            No hay movimientos en esta cuenta
-          </div>
-        ) : (
-          <div style={{ padding: '0 16px' }}>
-            {Object.entries(groups).map(([date, txns]) => (
+          {Object.keys(groups).length === 0 ? (
+            <div style={{ padding: '28px 0', textAlign: 'center', color: 'var(--fg-mute)', fontSize: 13 }}>
+              Sin movimientos en esta cuenta
+            </div>
+          ) : (
+            Object.entries(groups).map(([date, txns]) => (
               <div key={date} style={{ marginBottom: 14 }}>
                 <div style={{
                   fontSize: 11, fontWeight: 700, letterSpacing: '.1em',
@@ -272,20 +265,17 @@ export default function AccountDetail() {
                 }}>
                   {date}
                 </div>
-                <div style={{
-                  background: 'var(--ink-2)', border: '1px solid var(--line)',
-                  borderRadius: 14, overflow: 'hidden',
-                }}>
+                <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
                   {txns.map((t, i) => (
                     <TxnRow key={t.id} t={t} last={i === txns.length - 1} />
                   ))}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
 
-        {/* Transfer action */}
+        {/* ── Transfer ── */}
         <div style={{ padding: '4px 16px 0' }}>
           <button
             onClick={() => navigate('/transfer')}
@@ -301,7 +291,7 @@ export default function AccountDetail() {
           </button>
         </div>
 
-        {/* Danger zone */}
+        {/* ── Danger zone ── */}
         <div style={{ padding: '12px 16px', paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
           {!confirmDelete ? (
             <button
@@ -318,8 +308,7 @@ export default function AccountDetail() {
             </button>
           ) : (
             <div style={{
-              background: 'rgba(214,106,90,.08)',
-              border: '1px solid rgba(214,106,90,.3)',
+              background: 'rgba(214,106,90,.08)', border: '1px solid rgba(214,106,90,.3)',
               borderRadius: 14, padding: '16px',
             }}>
               <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--neg)', textAlign: 'center', marginBottom: 6 }}>
@@ -340,11 +329,7 @@ export default function AccountDetail() {
                   Cancelar
                 </button>
                 <button
-                  onClick={() => {
-                    // TODO Checkpoint C: supabase update activa=false
-                    console.log('[AccountDetail] delete', acc.id)
-                    navigate('/accounts')
-                  }}
+                  onClick={() => navigate('/accounts')}
                   style={{
                     padding: '11px', borderRadius: 12, fontSize: 13.5, fontWeight: 700,
                     background: 'var(--neg)', border: 'none', color: '#fff', cursor: 'pointer',

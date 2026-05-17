@@ -1,17 +1,23 @@
 // ═══════════════════════════════════════════════════
 // TxnDetail — /txn/:id
-// Full screen, no TabBar. Back → navigate(-1).
-// Capa 1: UIX mock. Capa 4: Supabase CRUD.
+// View + inline edit + soft-delete
 // ═══════════════════════════════════════════════════
 
 import { useState } from 'react'
 import { type CSSProperties } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import CatIcon, { catColor } from '../components/ui/CatIcon'
-import { ArrowLeftIcon, TrashIcon } from '../components/icons/Icons'
+import { ArrowLeftIcon, TrashIcon, EditIcon, CheckIcon, CloseIcon } from '../components/icons/Icons'
 import { MOCK_TRANSACTIONS, MOCK_ACCOUNTS, fmt, txnGroup } from '../data/mock'
 
-/* ── Detail row ── */
+// ── Editable categories (matches NewTransaction CATS_BY_TIPO for Gasto) ──
+const EDIT_CATS = [
+  'Alimentación', 'Restaurantes', 'Transporte', 'Entretenimiento',
+  'Salud', 'Hogar', 'Servicios', 'Suscripciones', 'Ropa', 'Ocio', 'Educación',
+  'Trabajo', 'Inversión',
+]
+
+/* ── View row ── */
 function DetailRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
   return (
     <div style={{
@@ -25,6 +31,27 @@ function DetailRow({ label, value, last }: { label: string; value: string; last?
   )
 }
 
+/* ── Edit field row ── */
+function EditRow({
+  label, children, last,
+}: { label: string; children: React.ReactNode; last?: boolean }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+      borderBottom: last ? 'none' : '1px solid var(--line)',
+    }}>
+      <span style={{ fontSize: 12, color: 'var(--fg-mute)', width: 80, flexShrink: 0 }}>{label}</span>
+      {children}
+    </div>
+  )
+}
+
+const inputSt: CSSProperties = {
+  flex: 1, background: 'var(--ink-3)', border: '1px solid var(--line)',
+  borderRadius: 8, padding: '7px 10px', fontSize: 13, color: 'var(--fg)',
+  outline: 'none',
+}
+
 const labelSt: CSSProperties = {
   fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em',
   textTransform: 'uppercase', color: 'var(--fg-mute)',
@@ -35,22 +62,46 @@ export default function TxnDetail() {
   const { id }   = useParams<{ id: string }>()
   const navigate = useNavigate()
 
-  const [confirmDelete, setConfirmDelete] = useState(false)
-
   const txn = MOCK_TRANSACTIONS.find(t => t.id === id)
   const acc = txn ? MOCK_ACCOUNTS.find(a => a.id === txn.accountId) : undefined
+
+  const [editMode,      setEditMode]      = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  // Edit state — initialized from txn
+  const [editDesc,   setEditDesc]   = useState(txn?.desc ?? '')
+  const [editCat,    setEditCat]    = useState(txn?.cat ?? '')
+  const [editAmount, setEditAmount] = useState(txn ? String(Math.abs(txn.amount)) : '')
+  const [editFecha,  setEditFecha]  = useState(txn?.date ?? '')
 
   if (!txn) {
     navigate(-1)
     return null
   }
 
-  const group   = txnGroup(txn.tipo)
-  const isInc   = group === 'ingreso'
+  const group    = txnGroup(txn.tipo)
+  const isInc    = group === 'ingreso'
   const isAhorro = group === 'ahorro'
-  const color   = isInc ? 'var(--pos)' : isAhorro ? 'var(--info)' : 'var(--neg)'
-  const sign    = isInc ? '+' : '−'
-  const catC    = catColor(txn.cat)
+  const color    = isInc ? 'var(--pos)' : isAhorro ? 'var(--info)' : 'var(--neg)'
+  const sign     = isInc ? '+' : '−'
+  const catC     = catColor(editMode ? editCat : txn.cat)
+
+  function enterEdit() {
+    setEditDesc(txn!.desc)
+    setEditCat(txn!.cat)
+    setEditAmount(String(Math.abs(txn!.amount)))
+    setEditFecha(txn!.date)
+    setEditMode(true)
+  }
+
+  function saveEdit() {
+    console.log('[TxnDetail] update', txn!.id, { descripcion: editDesc, cat: editCat, fecha: editFecha })
+    setEditMode(false)
+  }
+
+  function cancelEdit() {
+    setEditMode(false)
+  }
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--ink-1)', display: 'flex', flexDirection: 'column' }}>
@@ -64,32 +115,59 @@ export default function TxnDetail() {
         borderBottom: '1px solid var(--line)',
       }}>
         <button
-          onClick={() => navigate(-1)}
-          aria-label="Volver"
+          onClick={() => editMode ? cancelEdit() : navigate(-1)}
+          aria-label={editMode ? 'Cancelar' : 'Volver'}
           style={{
             width: 36, height: 36, borderRadius: 10,
             background: 'var(--ink-2)', border: '1px solid var(--line)',
             display: 'grid', placeItems: 'center', color: 'var(--fg-dim)', cursor: 'pointer',
           }}
         >
-          <ArrowLeftIcon />
+          {editMode ? <CloseIcon /> : <ArrowLeftIcon />}
         </button>
 
         <div className="font-display" style={{ fontSize: 18, lineHeight: 1 }}>
-          Movimiento
+          {editMode ? 'Editar' : 'Movimiento'}
         </div>
 
-        <button
-          onClick={() => setConfirmDelete(true)}
-          aria-label="Eliminar"
-          style={{
-            width: 36, height: 36, borderRadius: 10,
-            background: 'var(--ink-2)', border: '1px solid var(--line)',
-            display: 'grid', placeItems: 'center', color: 'var(--neg)', cursor: 'pointer',
-          }}
-        >
-          <TrashIcon />
-        </button>
+        {editMode ? (
+          <button
+            onClick={saveEdit}
+            aria-label="Guardar"
+            style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: 'var(--pos)', border: 'none',
+              display: 'grid', placeItems: 'center', color: '#fff', cursor: 'pointer',
+            }}
+          >
+            <CheckIcon />
+          </button>
+        ) : (
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={enterEdit}
+              aria-label="Editar"
+              style={{
+                width: 36, height: 36, borderRadius: 10,
+                background: 'var(--ink-2)', border: '1px solid var(--line)',
+                display: 'grid', placeItems: 'center', color: 'var(--fg-dim)', cursor: 'pointer',
+              }}
+            >
+              <EditIcon />
+            </button>
+            <button
+              onClick={() => setConfirmDelete(true)}
+              aria-label="Eliminar"
+              style={{
+                width: 36, height: 36, borderRadius: 10,
+                background: 'var(--ink-2)', border: '1px solid var(--line)',
+                display: 'grid', placeItems: 'center', color: 'var(--neg)', cursor: 'pointer',
+              }}
+            >
+              <TrashIcon />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Scrollable content ── */}
@@ -103,17 +181,17 @@ export default function TxnDetail() {
             background: `${catC}22`, border: `1px solid ${catC}44`,
             display: 'grid', placeItems: 'center',
           }}>
-            <CatIcon cat={txn.cat} size={48} />
+            <CatIcon cat={editMode ? editCat : txn.cat} size={48} />
           </div>
           <div style={{ textAlign: 'center' }}>
-            <div className="num" style={{
-              fontSize: 42, fontWeight: 700, color, letterSpacing: '-.02em', lineHeight: 1,
-            }}>
-              {sign}{fmt(Math.abs(txn.amount))}
+            <div className="num" style={{ fontSize: 42, fontWeight: 700, color, letterSpacing: '-.02em', lineHeight: 1 }}>
+              {sign}{fmt(Math.abs(editMode ? parseFloat(editAmount) || txn.amount : txn.amount))}
             </div>
-            <div style={{ fontSize: 15, fontWeight: 500, marginTop: 6 }}>{txn.desc}</div>
+            <div style={{ fontSize: 15, fontWeight: 500, marginTop: 6 }}>
+              {editMode ? editDesc : txn.desc}
+            </div>
             <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginTop: 4 }}>
-              {txn.cat} · {txn.date} · {txn.time}
+              {editMode ? editCat : txn.cat} · {txn.date} · {txn.time}
             </div>
           </div>
         </div>
@@ -130,22 +208,85 @@ export default function TxnDetail() {
           </span>
         </div>
 
-        {/* ── Details card ── */}
-        <div style={labelSt}>Detalles</div>
-        <div style={{ margin: '0 16px', background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
-          <DetailRow label="Categoría"    value={txn.cat} />
-          <DetailRow label="Fecha"        value={txn.date} />
-          <DetailRow label="Hora"         value={txn.time} />
-          <DetailRow label="Registrado por" value={txn.author === 'isabel' ? 'Isabel' : 'Anthony'} />
-          <DetailRow label="Cuenta" value={acc?.name ?? '—'} last />
-        </div>
+        {/* ── EDIT MODE fields ── */}
+        {editMode ? (
+          <>
+            <div style={labelSt}>Editar detalles</div>
+            <div style={{ margin: '0 16px', background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
+
+              <EditRow label="Monto USD">
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={editAmount}
+                  onChange={e => setEditAmount(e.target.value)}
+                  style={{ ...inputSt, textAlign: 'right', fontWeight: 700, color }}
+                />
+              </EditRow>
+
+              <EditRow label="Descripción">
+                <input
+                  type="text"
+                  value={editDesc}
+                  onChange={e => setEditDesc(e.target.value)}
+                  style={inputSt}
+                />
+              </EditRow>
+
+              <EditRow label="Categoría">
+                <select
+                  value={editCat}
+                  onChange={e => setEditCat(e.target.value)}
+                  style={{ ...inputSt, cursor: 'pointer' }}
+                >
+                  {EDIT_CATS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </EditRow>
+
+              <EditRow label="Fecha" last>
+                <input
+                  type="date"
+                  value={editFecha}
+                  onChange={e => setEditFecha(e.target.value)}
+                  style={inputSt}
+                />
+              </EditRow>
+
+            </div>
+
+            <div style={{ margin: '12px 16px' }}>
+              <button
+                onClick={saveEdit}
+                style={{
+                  width: '100%', padding: '14px', borderRadius: 14,
+                  background: 'var(--amber)', border: 'none',
+                  fontSize: 15, fontWeight: 700, color: 'var(--ink-0)', cursor: 'pointer',
+                }}
+              >
+                Guardar cambios
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* ── VIEW MODE details ── */}
+            <div style={labelSt}>Detalles</div>
+            <div style={{ margin: '0 16px', background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
+              <DetailRow label="Categoría"      value={txn.cat} />
+              <DetailRow label="Fecha"          value={txn.date} />
+              <DetailRow label="Hora"           value={txn.time} />
+              <DetailRow label="Registrado por" value={txn.author === 'isabel' ? 'Isabel' : 'Anthony'} />
+              {txn.recurrente && <DetailRow label="Recurrente" value={`Día ${txn.recDia} de cada mes`} />}
+              <DetailRow label="Cuenta" value={acc?.name ?? '—'} last />
+            </div>
+          </>
+        )}
 
         {/* ── Delete confirmation ── */}
-        {confirmDelete && (
+        {confirmDelete && !editMode && (
           <div style={{ margin: '20px 16px 0' }}>
             <div style={{
-              background: 'rgba(214,106,90,.08)',
-              border: '1px solid rgba(214,106,90,.3)',
+              background: 'rgba(214,106,90,.08)', border: '1px solid rgba(214,106,90,.3)',
               borderRadius: 14, padding: '16px',
             }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--neg)', textAlign: 'center', marginBottom: 6 }}>
@@ -167,7 +308,6 @@ export default function TxnDetail() {
                 </button>
                 <button
                   onClick={() => {
-                    // TODO Capa 4: supabase soft-delete
                     console.log('[TxnDetail] soft-delete', txn.id)
                     navigate(-1)
                   }}

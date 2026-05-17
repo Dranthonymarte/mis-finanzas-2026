@@ -5,7 +5,7 @@
 // fondo emergencia, top gastos, pronóstico, IA, txns
 // ═══════════════════════════════════════════════════
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Sparkline          from '../components/ui/Sparkline'
@@ -18,8 +18,10 @@ import { useConfig }       from '../hooks/useConfig'
 import { useKPIs }         from '../hooks/useKPIs'
 import { useFormat }       from '../hooks/useFormat'
 import { usePrefsStore, type Moneda } from '../store/prefs'
+import { useAuthStore }    from '../store/auth'
+import { supabase }        from '../lib/supabase'
+import { generateMeses, mesLabel, mesIdToDbKey } from '../lib/mes'
 import { SearchIcon, BellIcon } from '../components/icons/Icons'
-import { generateMeses, mesLabel } from '../lib/mes'
 
 const MONTHS_6 = generateMeses(6)
 
@@ -155,12 +157,29 @@ export default function Home() {
   const toggleOcultar  = usePrefsStore(s => s.toggleOcultarMontos)
   const moneda         = usePrefsStore(s => s.moneda)
   const setMoneda      = usePrefsStore(s => s.setMoneda)
+  const householdId    = useAuthStore(s => s.householdId)
 
   const { accounts: liveAccounts }  = useAccounts()
   const { transactions: liveTxns }  = useTransactions(mesActivo)
   const { config }                  = useConfig()
   const kpiData                     = useKPIs(liveTxns, config)
   const { fmt, fmtShort }           = useFormat()
+
+  // ── Fondo emergencia desde tabla fondo_emergencia ──
+  const [efDbBalance, setEfDbBalance] = useState<number | null>(null)
+  useEffect(() => {
+    if (!householdId) return
+    const dbKey = mesIdToDbKey(mesActivo)
+    supabase
+      .from('fondo_emergencia')
+      .select('monto')
+      .eq('user_id', householdId)
+      .eq('mes', dbKey)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.monto != null) setEfDbBalance(parseFloat(String(data.monto)))
+      })
+  }, [householdId, mesActivo])
 
   // ── Patrimonio total (cuentas USD) ──
   const patrimony = liveAccounts
@@ -202,12 +221,11 @@ export default function Home() {
     return base
   }, [kpiData.ingresos, kpiData.gastos, mesActivo])
 
-  // ── Fondo emergencia ──
-  const emergencyBalance = (liveAccounts ?? [])
-    .filter(a =>
-      ['SAVING', 'AHORRO', 'EMERGENCY', 'EMERGENCIA'].some(t => a.type.toUpperCase().includes(t))
-    )
+  // ── Fondo emergencia — leer de fondo_emergencia DB; fallback a cuentas AHORRO ──
+  const efAccountsBalance = (liveAccounts ?? [])
+    .filter(a => a.type.toUpperCase().includes('AHORRO'))
     .reduce((s, a) => s + a.balance, 0)
+  const emergencyBalance = efDbBalance ?? efAccountsBalance
   const emergencyTarget = kpiData.gastos * 3
   const emergencyPct    = emergencyTarget > 0 ? Math.min(100, (emergencyBalance / emergencyTarget) * 100) : 0
   const emergencyMonths = kpiData.gastos > 0 ? (emergencyBalance / kpiData.gastos).toFixed(1) : '0'

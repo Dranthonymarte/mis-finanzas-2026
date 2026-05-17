@@ -4,7 +4,9 @@ import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Sparkline from '../components/ui/Sparkline'
 import Pill      from '../components/ui/Pill'
 import CatIcon   from '../components/ui/CatIcon'
-import { MOCK_BALANCE_SERIES, MOCK_KPIS, MOCK_TRANSACTIONS, MOCK_MONTH, fmtShort, fmt, txnGroup } from '../data/mock'
+import { MOCK_BALANCE_SERIES, MOCK_KPIS, MOCK_TRANSACTIONS, MOCK_MONTH, ACTIVE_MONTH, fmtShort, fmt, txnGroup, type Transaction } from '../data/mock'
+import { useAccounts } from '../hooks/useAccounts'
+import { useTransactions } from '../hooks/useTransactions'
 import { SearchIcon, BellIcon } from '../components/icons/Icons'
 
 /* ── Ingresos vs Gastos chart data (6 months) ── */
@@ -78,7 +80,7 @@ function PillBtn({ primary, children, onClick }: { primary?: boolean; children: 
 }
 
 /* ── TxnRow preview (home) ── */
-function TxnRowPreview({ t, last }: { t: typeof MOCK_TRANSACTIONS[0]; last: boolean }) {
+function TxnRowPreview({ t, last }: { t: Transaction; last: boolean }) {
   const isIncome = txnGroup(t.tipo) === 'ingreso'
   const isAhorro = txnGroup(t.tipo) === 'ahorro'
   const color = isIncome ? 'var(--pos)' : isAhorro ? 'var(--info)' : 'var(--fg)'
@@ -125,6 +127,30 @@ export default function Home() {
   const navigate      = useNavigate()
   const [showInsight, setShowInsight] = useState(true)
 
+  const { accounts: liveAccounts } = useAccounts()
+  const { transactions: liveTxns } = useTransactions(ACTIVE_MONTH)
+
+  // Derive patrimony from real accounts (sum USD balances)
+  const patrimony = liveAccounts
+    ? liveAccounts.filter(a => a.currency === 'USD').reduce((s, a) => s + a.balance, 0)
+    : MOCK_MONTH.net
+
+  // Derive KPIs from real transactions
+  const txns = liveTxns ?? MOCK_TRANSACTIONS
+  const liveIncome   = txns.filter(t => txnGroup(t.tipo) === 'ingreso').reduce((s, t) => s + Math.abs(t.amount), 0)
+  const liveExpenses = txns.filter(t => txnGroup(t.tipo) === 'gasto').reduce((s, t) => s + Math.abs(t.amount), 0)
+  const liveSavings  = liveIncome - liveExpenses
+  const liveRate     = liveIncome > 0 ? (liveSavings / liveIncome) * 100 : 0
+
+  const kpis = liveTxns ? [
+    { ...MOCK_KPIS[0], value: liveIncome,   delta: MOCK_KPIS[0].delta },
+    { ...MOCK_KPIS[1], value: liveExpenses, delta: MOCK_KPIS[1].delta },
+    { ...MOCK_KPIS[2], value: liveSavings,  delta: MOCK_KPIS[2].delta },
+    { ...MOCK_KPIS[3], value: parseFloat(liveRate.toFixed(1)), delta: MOCK_KPIS[3].delta },
+  ] : MOCK_KPIS
+
+  const recentTxns = txns.slice(0, 5)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
 
@@ -151,9 +177,9 @@ export default function Home() {
           Patrimonio neto · USD
         </div>
         <div className="font-display" style={{ fontSize: 52, lineHeight: 1, letterSpacing: '-.02em', marginTop: 6 }}>
-          {fmtShort(MOCK_MONTH.net).slice(0, -3)}
+          {fmtShort(patrimony).slice(0, -3)}
           <span style={{ color: 'var(--fg-dim)', fontSize: '.55em' }}>
-            {fmt(MOCK_MONTH.net).slice(-3)}
+            {fmt(patrimony).slice(-3)}
           </span>
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -195,7 +221,7 @@ export default function Home() {
 
       {/* ── KPI cards 2×2 ── */}
       <div style={{ padding: '12px 16px 4px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        {MOCK_KPIS.map((k) => {
+        {kpis.map((k) => {
           const good = k.neg ? k.delta < 0 : k.delta > 0
           return (
             <div key={k.id} style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
@@ -302,7 +328,7 @@ export default function Home() {
           </button>
         </div>
         <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
-          {MOCK_TRANSACTIONS.slice(0, 5).map((t, i, arr) => (
+          {recentTxns.map((t, i, arr) => (
             <TxnRowPreview key={t.id} t={t} last={i === arr.length - 1} />
           ))}
         </div>

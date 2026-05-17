@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom'
 import Sparkline from '../components/ui/Sparkline'
 import Pill     from '../components/ui/Pill'
-import { MOCK_ACCOUNTS, fmt } from '../data/mock'
+import { MOCK_ACCOUNTS, fmt, type Account } from '../data/mock'
+import { useAccounts } from '../hooks/useAccounts'
 
 /* ── Account card ── */
-function AccountCard({ acc, onClick }: { acc: typeof MOCK_ACCOUNTS[0]; onClick: () => void }) {
+function AccountCard({ acc, onClick }: { acc: Account; onClick: () => void }) {
   const trendPos = acc.trend >= 0
   const displayBalance = acc.currency === 'USD'
     ? fmt(acc.balance)
@@ -55,11 +56,12 @@ function AccountCard({ acc, onClick }: { acc: typeof MOCK_ACCOUNTS[0]; onClick: 
 }
 
 export default function Accounts() {
-  const navigate  = useNavigate()
-  const totalUSD  = MOCK_ACCOUNTS
-    .filter(a => a.currency === 'USD')
-    .reduce((s, a) => s + a.balance, 0)
-  const totalCash = MOCK_ACCOUNTS.find(a => a.type === 'CASH')
+  const navigate = useNavigate()
+  const { accounts: liveAccounts, loading } = useAccounts()
+  const accounts = liveAccounts ?? (loading ? MOCK_ACCOUNTS : [])
+
+  const totalUSD  = accounts.filter(a => a.currency === 'USD').reduce((s, a) => s + a.balance, 0)
+  const totalCash = accounts.find(a => a.type === 'CASH')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -105,7 +107,7 @@ export default function Accounts() {
 
       {/* ── Account cards ── */}
       <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {MOCK_ACCOUNTS.map(acc => (
+        {accounts.map(acc => (
           <AccountCard key={acc.id} acc={acc} onClick={() => navigate(`/accounts/${acc.id}`)} />
         ))}
       </div>

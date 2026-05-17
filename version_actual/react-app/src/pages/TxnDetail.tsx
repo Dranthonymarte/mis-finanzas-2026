@@ -3,8 +3,8 @@ import { type CSSProperties } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import CatIcon, { catColor } from '../components/ui/CatIcon'
 import { ArrowLeftIcon, TrashIcon, EditIcon, CheckIcon, CloseIcon } from '../components/icons/Icons'
-import { fmt } from '../data/mock'
 import { useAccounts } from '../hooks/useAccounts'
+import { useFormat }   from '../hooks/useFormat'
 import { useConfig } from '../hooks/useConfig'
 import { supabase } from '../lib/supabase'
 
@@ -87,6 +87,7 @@ const labelSt: CSSProperties = {
 export default function TxnDetail() {
   const { id }    = useParams<{ id: string }>()
   const navigate  = useNavigate()
+  const { fmt }      = useFormat()
   const { accounts } = useAccounts()
   const { config }   = useConfig()
 

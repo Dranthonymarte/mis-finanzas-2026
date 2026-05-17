@@ -4,11 +4,13 @@ import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Sparkline from '../components/ui/Sparkline'
 import Pill      from '../components/ui/Pill'
 import CatIcon   from '../components/ui/CatIcon'
-import { MOCK_BALANCE_SERIES, MOCK_KPIS, fmtShort, fmt, txnGroup, type Transaction } from '../data/mock'
+import { MOCK_BALANCE_SERIES, MOCK_KPIS, txnGroup, type Transaction } from '../data/mock'
 import { useAccounts }    from '../hooks/useAccounts'
 import { useTransactions } from '../hooks/useTransactions'
 import { useConfig }      from '../hooks/useConfig'
 import { useKPIs }        from '../hooks/useKPIs'
+import { useFormat }      from '../hooks/useFormat'
+import { usePrefsStore, type Moneda } from '../store/prefs'
 import { SearchIcon, BellIcon } from '../components/icons/Icons'
 import { currentMes } from '../lib/mes'
 
@@ -84,6 +86,7 @@ function PillBtn({ primary, children, onClick }: { primary?: boolean; children: 
 
 /* ── TxnRow preview (home) ── */
 function TxnRowPreview({ t, last }: { t: Transaction; last: boolean }) {
+  const { fmt } = useFormat()
   const isIncome = txnGroup(t.tipo) === 'ingreso'
   const isAhorro = txnGroup(t.tipo) === 'ahorro'
   const color = isIncome ? 'var(--pos)' : isAhorro ? 'var(--info)' : 'var(--fg)'
@@ -134,6 +137,11 @@ export default function Home() {
   const { transactions: liveTxns }  = useTransactions(currentMes())
   const { config }                  = useConfig()
   const kpiData                     = useKPIs(liveTxns, config)
+  const { fmt }                     = useFormat()
+  const ocultarMontos               = usePrefsStore(s => s.ocultarMontos)
+  const toggleOcultarMontos         = usePrefsStore(s => s.toggleOcultarMontos)
+  const moneda                      = usePrefsStore(s => s.moneda)
+  const setMoneda                   = usePrefsStore(s => s.setMoneda)
 
   const patrimony = liveAccounts
     ? liveAccounts.filter(a => a.currency === 'USD').reduce((s, a) => s + a.balance, 0)
@@ -162,8 +170,15 @@ export default function Home() {
           <div style={{ fontSize: 11, color: 'var(--fg-mute)', lineHeight: 1 }}>Hola,</div>
           <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.2 }}>Anthony</div>
         </div>
+        {/* Ojo — toggle ocultarMontos global */}
+        <button onClick={toggleOcultarMontos} style={iBtn} aria-label="Ocultar montos">
+          <span style={{ fontSize: 16 }}>{ocultarMontos ? '🙈' : '👁'}</span>
+        </button>
         <button style={iBtn} aria-label="Buscar"><SearchIcon /></button>
-        <button style={{ ...iBtn, position: 'relative' }} aria-label="Notificaciones">
+        <button
+          onClick={() => navigate('/notificaciones')}
+          style={{ ...iBtn, position: 'relative' }} aria-label="Notificaciones"
+        >
           <BellIcon />
           <span style={{
             position: 'absolute', top: 7, right: 7,
@@ -172,16 +187,30 @@ export default function Home() {
         </button>
       </div>
 
+      {/* ── Moneda pills ── */}
+      <div style={{ display: 'flex', gap: 6, padding: '0 16px 6px' }}>
+        {(['USD','BS','EUR'] as Moneda[]).map(m => (
+          <button
+            key={m}
+            onClick={() => setMoneda(m)}
+            style={{
+              padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+              background: moneda === m ? 'var(--amber)' : 'var(--ink-2)',
+              color:      moneda === m ? 'var(--ink-0)' : 'var(--fg-mute)',
+              border:     moneda === m ? 'none' : '1px solid var(--line)',
+              cursor: 'pointer',
+            }}
+          >{m}</button>
+        ))}
+      </div>
+
       {/* ── Hero balance ── */}
       <div style={{ padding: '14px 22px 8px' }}>
         <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', letterSpacing: '.14em', textTransform: 'uppercase' }}>
-          Patrimonio neto · USD
+          Patrimonio neto · {moneda}
         </div>
-        <div className="font-display" style={{ fontSize: 52, lineHeight: 1, letterSpacing: '-.02em', marginTop: 6 }}>
-          {fmtShort(patrimony).slice(0, -3)}
-          <span style={{ color: 'var(--fg-dim)', fontSize: '.55em' }}>
-            {fmt(patrimony).slice(-3)}
-          </span>
+        <div className="font-display" style={{ fontSize: 44, lineHeight: 1, letterSpacing: '-.02em', marginTop: 6 }}>
+          {fmt(patrimony)}
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <Pill tone="pos" size="xs">↑ +$342.18</Pill>
@@ -237,7 +266,7 @@ export default function Home() {
               <div className="num" style={{ fontSize: 17, fontWeight: 600 }}>
                 {k.suffix
                   ? `${k.value}${k.suffix}`
-                  : `$${k.value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
+                  : fmt(k.value)}
               </div>
               <div style={{ marginTop: 5 }}>
                 <Sparkline data={k.spark} color={k.neg ? 'var(--neg)' : 'var(--amber)'} w={140} h={18} fill stroke={1.4} />

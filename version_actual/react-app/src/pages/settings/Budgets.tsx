@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import AppHeader from '../../components/shell/AppHeader'
 import CatIcon, { catColor } from '../../components/ui/CatIcon'
-import { fmt } from '../../data/mock'
 import { useConfig } from '../../hooks/useConfig'
+import { useFormat } from '../../hooks/useFormat'
 import { useTransactions } from '../../hooks/useTransactions'
 import { txnGroup } from '../../data/mock'
 import { currentMes } from '../../lib/mes'
@@ -14,6 +14,7 @@ const inputSt: React.CSSProperties = {
 }
 
 export default function Budgets() {
+  const { fmt }                  = useFormat()
   const { config, updateConfig } = useConfig()
   const { transactions }         = useTransactions(currentMes())
   const [editCat, setEditCat]    = useState<string | null>(null)

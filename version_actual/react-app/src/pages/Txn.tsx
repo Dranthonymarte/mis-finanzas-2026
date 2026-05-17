@@ -7,7 +7,8 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import CatIcon, { catColor } from '../components/ui/CatIcon'
-import { fmt, txnGroup, type Transaction } from '../data/mock'
+import { txnGroup, type Transaction } from '../data/mock'
+import { useFormat } from '../hooks/useFormat'
 import { useTransactions } from '../hooks/useTransactions'
 import { useConfig }       from '../hooks/useConfig'
 import { FilterIcon, LockIcon } from '../components/icons/Icons'
@@ -30,6 +31,7 @@ function CatTooltip({ active, payload }: {
   active?: boolean
   payload?: Array<{ payload: { cat: string; value: number; fill: string } }>
 }) {
+  const { fmt } = useFormat()
   if (!active || !payload?.length) return null
   const d = payload[0].payload
   return (
@@ -47,6 +49,7 @@ type FilterType = 'all' | 'gasto' | 'ingreso' | 'ahorro'
 
 /* ── TxnRow ── */
 function TxnRow({ t, last, onTap }: { t: Transaction; last: boolean; onTap: () => void }) {
+  const { fmt } = useFormat()
   const group = txnGroup(t.tipo)
   const isInc = group === 'ingreso'
   const isSav = group === 'ahorro'
@@ -98,6 +101,7 @@ function TxnRow({ t, last, onTap }: { t: Transaction; last: boolean; onTap: () =
 
 /* ── Date group header ── */
 function DateHeader({ date, txns }: { date: string; txns: Transaction[] }) {
+  const { fmt } = useFormat()
   const inc = txns.filter(t => txnGroup(t.tipo) === 'ingreso').reduce((s, t) => s + t.amount, 0)
   const exp = txns.filter(t => txnGroup(t.tipo) === 'gasto').reduce((s, t) => s + Math.abs(t.amount), 0)
   return (
@@ -118,6 +122,7 @@ interface Recurrente {
 
 /* ── Recurrente row (simplified) ── */
 function RecRow({ t, last }: { t: Recurrente; last: boolean }) {
+  const { fmt } = useFormat()
   const isInc = txnGroup(t.tipo) === 'ingreso'
   const color = isInc ? 'var(--pos)' : 'var(--neg)'
   const sign  = isInc ? '+' : '−'
@@ -140,7 +145,8 @@ function RecRow({ t, last }: { t: Recurrente; last: boolean }) {
 }
 
 export default function Txn() {
-  const navigate = useNavigate()
+  const navigate   = useNavigate()
+  const { fmt }    = useFormat()
   const [activeMes, setActiveMes] = useState(currentMes)
   const [filter,    setFilter]    = useState<FilterType>('all')
   const [closed,    setClosed]    = useState<Set<string>>(loadClosed)

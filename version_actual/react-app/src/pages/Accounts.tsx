@@ -1,15 +1,15 @@
 import { useNavigate } from 'react-router-dom'
 import Sparkline from '../components/ui/Sparkline'
 import Pill     from '../components/ui/Pill'
-import { MOCK_ACCOUNTS, fmt, type Account } from '../data/mock'
+import { MOCK_ACCOUNTS, type Account } from '../data/mock'
 import { useAccounts } from '../hooks/useAccounts'
+import { useFormat }   from '../hooks/useFormat'
 
 /* ── Account card ── */
 function AccountCard({ acc, onClick }: { acc: Account; onClick: () => void }) {
+  const { fmt } = useFormat()
   const trendPos = acc.trend >= 0
-  const displayBalance = acc.currency === 'USD'
-    ? fmt(acc.balance)
-    : `Bs ${acc.balance.toLocaleString('es-VE', { maximumFractionDigits: 0 })}`
+  const displayBalance = fmt(acc.balance)
 
   return (
     <div
@@ -57,6 +57,7 @@ function AccountCard({ acc, onClick }: { acc: Account; onClick: () => void }) {
 
 export default function Accounts() {
   const navigate = useNavigate()
+  const { fmt }  = useFormat()
   const { accounts: liveAccounts, loading } = useAccounts()
   const accounts = liveAccounts ?? (loading ? MOCK_ACCOUNTS : [])
 

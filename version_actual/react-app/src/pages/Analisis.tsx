@@ -159,14 +159,20 @@ export default function Analisis() {
     )
   }, [txns])
 
-  // ── Ingresos por tipo ────────────────────────────
+  // ── Ingresos por descripción (más útil que por tipo) ──────
   const ingresosPorTipo = useMemo<BarEntry[]>(() => {
-    const acc: Record<string, number> = {}
+    const byDesc: Record<string, number> = {}
+    const byTipo: Record<string, number> = {}
     for (const t of txns) {
-      if (txnGroup(t.tipo) === 'ingreso')
-        acc[t.tipo] = (acc[t.tipo] ?? 0) + Math.abs(t.amount)
+      if (txnGroup(t.tipo) !== 'ingreso') continue
+      const desc = t.desc?.trim() || t.tipo
+      byDesc[desc] = (byDesc[desc] ?? 0) + Math.abs(t.amount)
+      byTipo[t.tipo] = (byTipo[t.tipo] ?? 0) + Math.abs(t.amount)
     }
-    return Object.entries(acc).sort(([, a], [, b]) => b - a).slice(0, 6).map(([label, value]) => ({ label, value }))
+    // If there are meaningful descriptions, show those; else fall back to tipos
+    const hasDesc = Object.keys(byDesc).some(k => !Object.keys(byTipo).includes(k))
+    const src = hasDesc ? byDesc : byTipo
+    return Object.entries(src).sort(([, a], [, b]) => b - a).slice(0, 8).map(([label, value]) => ({ label, value }))
   }, [txns])
 
   // ── Desglose semanal (gastos) ────────────────────
@@ -326,7 +332,7 @@ export default function Analisis() {
 
           {/* ── Ingresos por tipo ── */}
           <Card>
-            <SLabel>Ingresos por tipo — {mesLabel(mesActivo)}</SLabel>
+            <SLabel>Ingresos — {mesLabel(mesActivo)}</SLabel>
             <HBar data={ingresosPorTipo} color="var(--pos)" />
           </Card>
 

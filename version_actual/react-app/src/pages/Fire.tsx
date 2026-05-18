@@ -7,6 +7,10 @@ import { useState, useEffect, useRef } from 'react'
 import AppHeader from '../components/shell/AppHeader'
 import { useConfig } from '../hooks/useConfig'
 import { useFormat }  from '../hooks/useFormat'
+import { useAccounts } from '../hooks/useAccounts'
+import { useTransactions } from '../hooks/useTransactions'
+import { usePrefsStore } from '../store/prefs'
+import { txnGroup } from '../data/mock'
 
 function yearsToFire(patrimony: number, target: number, annualSavings: number, returnPct: number): number {
   if (target <= patrimony) return 0
@@ -28,14 +32,20 @@ const inp: React.CSSProperties = {
 }
 
 export default function Fire() {
-  const { config, updateConfig } = useConfig()
-  const { fmt }       = useFormat()
-  const initialized   = useRef(false)
+  const { config, updateConfig }   = useConfig()
+  const { fmt }                    = useFormat()
+  const initialized                = useRef(false)
+  const mesActivo                  = usePrefsStore(s => s.mesActivo)
+
+  // Live data for auto-calc
+  const { accounts }               = useAccounts()
+  const { transactions }           = useTransactions(mesActivo)
 
   const [gastos,     setGastos]     = useState('15000')
   const [ahorro,     setAhorro]     = useState('500')
   const [patrimonio, setPatrimonio] = useState('5000')
   const [retorno,    setRetorno]    = useState('7')
+  const [autoCalc,   setAutoCalc]   = useState(false)
   const [saved,      setSaved]      = useState(false)
 
   // Initialize from config once it loads.
@@ -50,6 +60,26 @@ export default function Fire() {
       if (g.actual) setPatrimonio(String(g.actual))
     }
   }, [config.fireConfig])
+
+  // Auto-calc: populate from live data when user opts in
+  useEffect(() => {
+    if (!autoCalc) return
+    // Patrimonio = sum of USD accounts
+    const pat = (accounts ?? []).filter(a => a.currency === 'USD').reduce((s, a) => s + a.balance, 0)
+    if (pat > 0) setPatrimonio(pat.toFixed(0))
+    // Monthly gastos from current month
+    const gastosM = (transactions ?? []).reduce((s, t) => {
+      if (txnGroup(t.tipo) === 'gasto') return s + Math.abs(t.amount)
+      return s
+    }, 0)
+    if (gastosM > 0) setGastos((gastosM * 12).toFixed(0))
+    // Monthly ahorro
+    const ahorroM = (transactions ?? []).reduce((s, t) => {
+      if (t.tipo === 'Ahorro en efectivo') return s + Math.abs(t.amount)
+      return s
+    }, 0)
+    if (ahorroM > 0) setAhorro(ahorroM.toFixed(0))
+  }, [autoCalc, accounts, transactions])
 
   async function handleSave() {
     // Save using real DB shape: { goal: { meta, extra, plazo, actual } }
@@ -124,10 +154,25 @@ export default function Fire() {
 
       {/* ── Inputs ── */}
       <div style={{ padding: '20px 16px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+        {/* Auto-calc toggle */}
+        <button
+          onClick={() => setAutoCalc(v => !v)}
+          style={{
+            padding: '9px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            background: autoCalc ? 'rgba(88,178,106,.15)' : 'var(--ink-2)',
+            color:      autoCalc ? 'var(--pos)' : 'var(--fg-dim)',
+            border:     autoCalc ? '1px solid rgba(88,178,106,.3)' : '1px solid var(--line)',
+            textAlign: 'left',
+          }}
+        >
+          {autoCalc ? '✓ ' : ''}⚡ Auto-calcular desde mis datos reales
+        </button>
+
         {fields.map(f => (
           <div key={f.label} style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, padding: '12px 14px' }}>
             <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginBottom: 6 }}>{f.label}</div>
-            <input type="number" value={f.value} onChange={e => f.set(e.target.value)} style={inp} />
+            <input type="number" value={f.value} onChange={e => { f.set(e.target.value); if (autoCalc) setAutoCalc(false) }} style={inp} />
           </div>
         ))}
 

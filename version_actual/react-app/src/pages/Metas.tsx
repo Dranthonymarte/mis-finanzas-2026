@@ -48,6 +48,8 @@ function MetaCard({ meta, onAbono, onEdit, onDelete }: {
   const [showAbono, setShowAbono] = useState(false)
   const [abonoVal,  setAbonoVal]  = useState('')
   const [editMode,  setEditMode]  = useState(false)
+  const [showSim,   setShowSim]   = useState(false)
+  const [simVal,    setSimVal]    = useState('')
 
   // Edit field states — initialised on open
   const [eNombre,   setENombre]   = useState(meta.nombre)
@@ -198,6 +200,52 @@ function MetaCard({ meta, onAbono, onEdit, onDelete }: {
           >
             + Abonar
           </button>
+        </div>
+      )}
+
+      {/* ── Simulador ── */}
+      {remaining > 0 && (
+        <div style={{ marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 8 }}>
+          {showSim ? (
+            <div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: 11, color: 'var(--fg-mute)', flexShrink: 0 }}>Ahorro/mes $</span>
+                <input
+                  type="number"
+                  value={simVal}
+                  onChange={e => setSimVal(e.target.value)}
+                  placeholder="ej: 200"
+                  style={{ ...inputSt, padding: '5px 8px', fontSize: 12, flex: 1 }}
+                />
+                <button
+                  onClick={() => setShowSim(false)}
+                  style={{ padding: '5px 8px', borderRadius: 6, background: 'var(--ink-3)', border: '1px solid var(--line)', color: 'var(--fg-mute)', fontSize: 11, cursor: 'pointer' }}
+                >✕</button>
+              </div>
+              {(() => {
+                const mens = parseFloat(simVal) || 0
+                if (mens <= 0) return null
+                const months = Math.ceil(remaining / mens)
+                const eta    = new Date()
+                eta.setMonth(eta.getMonth() + months)
+                return (
+                  <div style={{ fontSize: 11.5, color: 'var(--fg-dim)', background: 'var(--ink-3)', borderRadius: 8, padding: '7px 10px' }}>
+                    <span style={{ color: 'var(--amber)', fontWeight: 700 }}>
+                      {months} {months === 1 ? 'mes' : 'meses'}
+                    </span>
+                    {' '}para alcanzarla — {eta.toLocaleDateString('es-VE', { month: 'long', year: 'numeric' })}
+                  </div>
+                )
+              })()}
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowSim(true)}
+              style={{ fontSize: 11, color: 'var(--fg-mute)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0' }}
+            >
+              📊 Simulador
+            </button>
+          )}
         </div>
       )}
     </div>

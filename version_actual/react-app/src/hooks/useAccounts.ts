@@ -17,7 +17,7 @@ interface SupaCuenta {
 
 interface MovSum {
   cuenta_id: string
-  total:     number
+  amount:    number
 }
 
 function inferType(nombre: string | null, moneda: string): string {

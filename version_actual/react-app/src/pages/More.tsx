@@ -15,6 +15,7 @@ import {
 import { useAuthStore } from '../store/auth'
 import { supabase }     from '../lib/supabase'
 import Sheet            from '../components/ui/Sheet'
+import { usePwaInstall } from '../hooks/usePwaInstall'
 
 // ── Quick-access grid item ──────────────────────────
 interface GridItem {
@@ -65,6 +66,7 @@ export default function More() {
   const userName        = useAuthStore(s => s.userName)
   const userEmail       = useAuthStore(s => s.userEmail)
   const [confirmLogout, setConfirmLogout] = useState(false)
+  const { canInstall, install } = usePwaInstall()
 
   // Initial for avatar
   const initial = (userName ?? 'A')[0].toUpperCase()
@@ -303,6 +305,28 @@ export default function More() {
             onClick={() => navigate('/exportar')}
           />
         </RowGroup>
+
+        {/* ── Instalar PWA (visible cuando Chrome lo permite) ── */}
+        {canInstall && (
+          <RowGroup>
+            <RowLink
+              icon={
+                <div style={{
+                  width: 28, height: 28, borderRadius: 8,
+                  background: 'rgba(224,168,74,.15)',
+                  display: 'grid', placeItems: 'center', fontSize: 15,
+                }}>
+                  📲
+                </div>
+              }
+              iconBg="transparent"
+              label="Instalar app"
+              sub="Acceso directo desde la pantalla de inicio"
+              last
+              onClick={install}
+            />
+          </RowGroup>
+        )}
 
         {/* ── Logout ── */}
         <RowGroup>

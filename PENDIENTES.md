@@ -1,18 +1,52 @@
 # PENDIENTES — Mis Finanzas 2026
 
 Orden estricto. Actualizar al completar.
-**Última actualización:** 2026-05-17 sesión 2 (v1.0.3-bugfix — 0 bugs conocidos activos)
+**Última actualización:** 2026-05-18 FASE 3.2 — rama `develop` = `react-preview`, HEAD `85e856f`
 
 ---
 
-## 🔴 React App — Inmediato
+## 🔴 React App — Pendiente inmediato (próxima sesión)
 
-1. **Bloque 3: Charts recharts**
-   - `npm install recharts` en `version_actual/react-app/`
-   - `AreaChart` ingresos vs gastos 6M en `Home.tsx` (datos reales de `useKPIs` + 5M estáticos)
-   - `DonutChart` top-5 categorías en `Analisis.tsx` (colores de `catColor()`)
-   - Mantener `Sparkline` para KPI cards — no tocar
-   - Colores: `var(--pos)` ingresos, `var(--neg)` gastos, fondo `var(--ink-2)`, tooltip oscuro
+> Contexto: FASE 3/3.2 corrigió de raíz auth (refresh/loop/datos
+> desconfigurados), Lista de compras, Subcat/Cat, patrimonio, sheets,
+> tasa manual, PWA install. Lo siguiente NO está hecho:
+
+1. **Fondo emergencia — lógica editable + integración**
+   - Columnas YA existen en `config_usuario`: `emergency_fund_base`,
+     `emergency_fund_goal`, `ef_manual_base`, `ef_auto_contrib`,
+     `ef_reset_date`; + tabla `fondo_emergencia` (por mes, col `monto`).
+   - `Home.tsx`: `emergencyBalance`/`emergencyTarget` hoy semi-hardcoded
+     (`kpiData.gastos*3`). Debe: meta editable desde `emergency_fund_goal`,
+     base de `ahorroAcumulado` (misma lógica de ahorro), aporte auto
+     `ef_auto_contrib`. NO requiere migración.
+   - `NewTransaction.tsx` ya muestra "30% → fondo emergencia" en Ahorro;
+     integrar persistencia real (col `ef_contribution` en `movimientos`).
+
+2. **Dashboard — iconos info por card + reordenar**
+   - Columna YA existe: `config_usuario.dashboard_order` (jsonb).
+   - `Home.tsx`: cada card con ícono ℹ️ (tooltip explicativo) y permitir
+     reordenar (drag o ↑↓) persistiendo en `dashboard_order` vía
+     `updateConfig('dashboard_order', …)` (añadir a campoMap en useConfig).
+
+3. **Auditoría quirúrgica de los 28 bugs reportados**
+   - Verificar uno por uno: integración en código + soporte en Supabase.
+   - Lista original en `BUGS.md` / mensajes de usuario FASE 2-3.
+
+4. **Groq producción (acción ANTHONY, no código)**
+   - Cloudflare Pages → Settings → Environment variables →
+     `VITE_GROQ_API_KEY` = (valor en `.env.local`). Sin esto, IA no
+     funciona en el deploy (`.env.local` es gitignored).
+
+5. **Verificación móvil** del deploy `85e856f`: login + carga ≤3s +
+   datos correctos + banner/instalar PWA.
+
+## 🟡 React App — Charts / pulido
+
+6. **Bloque 3: Charts recharts**
+   - `AreaChart` ingresos vs gastos 6M en `Home.tsx` (ya hay datos reales
+     6M en `incomeVsExp` desde Supabase — falta migrar de BarChart si se
+     desea AreaChart) · `DonutChart` top-5 en `Analisis.tsx`
+   - Mantener `Sparkline` KPI cards — no tocar
 
 ## 🟡 React App — Seguridad / Infra
 

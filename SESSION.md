@@ -33,13 +33,23 @@
 - Tabla `fondo_emergencia` (por mes) + `listas_compras` + `dinero_fuera`
   (10 filas) ya existen. NINGUNA requiere migración.
 
-### Pendiente (NO hecho — documentado, columnas listas)
-- Fondo emergencia: lógica completa + integración (usar columnas ef_* de
-  config_usuario + tabla fondo_emergencia).
-- Dashboard: iconos info por card + reordenar (usar `dashboard_order`).
-- Groq prod: setear `VITE_GROQ_API_KEY` en env vars de Cloudflare Pages
-  (acción de Anthony — no es código).
-- Verificación en móvil del deploy.
+### Cierre FASE 3.2 — commits finales (rama develop = react-preview)
+```
+9831108  fix(auth): revertir storageKey + endurecer onAuthStateChange
+f1e689a  feat(config): Lista de compras + Categorías rename + Subcat filtro
+9b9c0a8  fix(auth): CRÍTICO householdId=userId, sin provisionHousehold
+         (datos desconfigurados + loop + carga lenta) — cache-first 3.5s
+85e856f  feat(pwa): captura global beforeinstallprompt + Instalar app (More)
+```
+HEAD `85e856f` pusheado a `develop` y `react-preview`. Build ✓ dist/sw.js.
+
+### Pendiente próxima sesión (NO hecho — columnas listas, sin migración)
+Ver `PENDIENTES.md` §1-5:
+- Fondo emergencia (cols `emergency_fund_*`, `ef_*` en config_usuario)
+- Dashboard iconos info + reordenar (col `dashboard_order`)
+- Auditoría quirúrgica 28 bugs (código + Supabase)
+- Groq prod: `VITE_GROQ_API_KEY` en CF Pages env (acción Anthony)
+- Verificación móvil del deploy `85e856f`
 
 ---
 

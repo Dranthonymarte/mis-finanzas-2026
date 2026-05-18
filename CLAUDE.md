@@ -25,13 +25,21 @@ Supabase: jcgoccaisemrfsuwwrrl | Cloudflare Pages: finanzasprueba.pages.dev
 Proyecto Cloudflare: finanzasapp | Dual-currency USD/VES | RLS activo
 ```
 
-### React App (nueva UIX — v1.0.3-bugfix)
+### React App (nueva UIX — FASE 3.2, HEAD 85e856f, 2026-05-18)
 ```
-React 19 + TypeScript strict + Vite + Zustand v5 + recharts
+React 19 + TypeScript strict + Vite + Zustand v5 + recharts + vite-plugin-pwa
 Branch: develop → push también a react-preview (CF Pages auto-build)
 Ruta local: version_actual/react-app/
 31 rutas — todas conectadas a Supabase real
 ```
+REGLA CRÍTICA datos: TODO está keyed por `user_id` (= fa3f7b3b para
+Anthony). `householdId === userId` SIEMPRE (useAuth ya no consulta
+household_members ni provisiona — eso corrompía). NUNCA reintroducir
+`provisionHousehold` ni filtrar por `household_id` en queries de datos.
+Auth es cache-first (persist store) + timeout 3.5s. PWA: `registerSW`
+en main.tsx + `usePwaInstall` (no customizar `storageKey` de Supabase).
+Pendiente: ver `PENDIENTES.md` §1-5 (Fondo emergencia, Dashboard
+reorder/info, auditoría 28 bugs, Groq env CF, verif. móvil).
 
 ---
 

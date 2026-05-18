@@ -3,6 +3,78 @@
 
 ---
 
+## SESIÓN — 18 May 2026 (FASE 4 — PWA instalable + modelo household REAL + RLS + P1.1)
+
+📊 **Modelo: Opus** (arquitectura datos/RLS, decisiones top-3)
+
+### Hecho y pusheado (rama develop = react-preview)
+```
+a71cf9b fix(pwa): _redirects + _headers (instalabilidad Cloudflare Pages)
+f49ee9e fix(pwa): iconos PNG reales (replica config vanilla instalable)
+85b72dc docs+data: modelo household-scoped (CLAUDE.md+SCHEMA) + migracion backfill
+1471294 fix(data): useAuth resuelve household + reads household_id + RLS prod
+5f62870 feat(dinero-fuera): CRUD completo Me deben/Yo debo/Pagados + useDineroFuera
+```
+
+### Verdad del modelo de datos (verificada en Supabase live — CLAUDE.md ya corregido)
+- Anthony uid `fa3f7b3b` = owner household `fa3f7b3b`. Isabel uid
+  `455c23cd` = **partner/accepted** del MISMO household `fa3f7b3b`
+  (tiene household propio legacy `d806a2b6` SIN uso — ignorar).
+- Datos (`movimientos`,`cuentas`,`dinero_fuera`) scoped por `household_id`.
+  `config_usuario`/`fondo_emergencia`/`tasas` son per-user (sin col
+  household_id) — quedan correctos vía householdId resuelto = fa3f7b3b.
+- **Migraciones en PRODUCCIÓN aplicadas (confirmadas por Anthony):**
+  1. Backfill: 240 movimientos + 4 cuentas (owner, household_id NULL→fa3f7b3b). 0 NULL restante.
+  2. `active_household_id()` ahora determinista: `ORDER BY CASE role WHEN 'partner' THEN 0 WHEN 'owner' THEN 1 ELSE 2 END LIMIT 1`.
+  3. RLS `movimientos_household` + `dinero_fuera_household`: `user_id` → `household_id = active_household_id()` (cuentas ya lo era).
+  - Verificado: Anthony e Isabel → fa3f7b3b. 611 mov activos, 13 cuentas, 10 dinero_fuera.
+- `useAuth`: resuelve householdId de household_members (prefiere partner),
+  cache-first, NO bloqueante, sin provisionHousehold (no regresa 9b9c0a8).
+
+### Asunción documentada (P1.1 — confirmar con Anthony)
+`tipo='prestamo'` = **Me deben** · `tipo='deuda'` = **Yo debo**. El
+paréntesis del prompt estaba invertido; lo binding ("Luis Eduardo en
+me deben") coincide con prestamo=me deben. Si Anthony dice lo contrario
+→ invertir labels en DineroFuera.tsx + useDineroFuera.ts (trivial).
+
+### PENDIENTE — próxima sesión (orden estricto). 📊 Modelo: Opus
+**Verif. móvil de Anthony primero:** (a) PWA instalable en Chrome Android
+(deploy `5f62870` o posterior; incógnito; ⋮→Instalar — Chrome ya NO da
+banner automático); (b) Anthony e Isabel ven los MISMOS 611 mov / mismo
+patrimonio; (c) DineroFuera: crear/editar/eliminar, Cashea editable,
+Luis Eduardo en "Me deben".
+
+1. **P1.2 Patrimonio Neto** (`Home.tsx` ~243-249): fórmula correcta =
+   `saldo_cuentas_y_billeteras + fondo_emergencia + ahorros_acumulados +
+   meDebenActivo`. `meDebenActivo` ya disponible vía
+   `useDineroFuera().meDebenActivo` (USD). Saldo disponible (Dashboard)
+   debe EXCLUIR fondo de emergencia. Coherencia patrimonio↔saldo. Cuentas
+   DEBT excluidas del balance. Verificar `useAccounts` balanceUSD.
+2. **P1.3 Presupuesto**: identificar error exacto ANTES de tocar
+   (consultar `BUGS.md`, buscar entrada presupuesto/budget; revisar
+   `pages/settings/Budgets.tsx` + `Txn.tsx` + `useConfig` presupuestos).
+   Corregir de raíz.
+3. **P1.4 Groq (ACCIÓN ANTHONY, no código):** Cloudflare Pages →
+   proyecto react-preview → Settings → Environment variables → Production
+   → añadir `VITE_GROQ_API_KEY` = (key de console.groq.com). Sin esto la
+   IA no funciona en prod (`.env.local` es gitignored). Confirmado uso en
+   `src/pages/AI.tsx:18`.
+4. **P2 (2.1–2.7):** 2.1 Fondo emergencia editable/integrado · 2.2
+   autologin · 2.3 Subcat/Cat filtro+edición (prefijo 2 letras bug) ·
+   2.4 Lista de compras rediseño completo (Google Maps) · 2.5 Dashboard
+   cards info+reorder (dashboard_order jsonb) · 2.6 Análisis ingresos ·
+   2.7 botón "Obtener tasa BCV" en NewTransaction. Commit atómico+push
+   por feature; pedir verificación a Anthony entre bloques.
+5. **P3:** auditoría tabla de los 28 bugs de BUGS.md (solo tras confirmar).
+
+### Reglas activas de esta línea de trabajo
+- Reads dinero por `household_id`; inserts `user_id=auth.uid()` (creador)
+  + `household_id=householdId`. NUNCA reintroducir provisionHousehold.
+- `npm run build` verde antes de cada push. Commit atómico por bloque.
+- Claude NO deploya (wrangler/CF lo hace Anthony). Push develop+react-preview OK.
+
+---
+
 ## SESIÓN — 18 May 2026 (FASE 3.2 — auth loop FIX real + Lista/Subcat/Cat)
 
 📊 **Modelo: Opus**

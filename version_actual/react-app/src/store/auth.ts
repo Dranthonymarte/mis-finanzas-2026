@@ -14,17 +14,17 @@ export interface SessionPayload {
 }
 
 export interface AuthState {
-  // Persisted
+  // Persisted — survives F5 for fast cache-first load
   hasSeenOnboarding: boolean
   pin:               string
   userName:          string
   userInitial:       string
   userEmail:         string
+  userId:            string | null  // cached for fast-path on reload
+  householdId:       string | null  // cached for fast-path on reload
 
   // Session-only (NOT persisted)
   isAuthenticated: boolean
-  userId:          string | null
-  householdId:     string | null
 
   // Actions
   completeOnboarding: () => void
@@ -33,6 +33,7 @@ export interface AuthState {
   setPin:             (pin: string) => void
   setSession:         (payload: SessionPayload) => void
   clearSession:       () => void
+  setUserName:        (name: string) => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -44,9 +45,9 @@ export const useAuthStore = create<AuthState>()(
       userName:          'Anthony',
       userInitial:       'A',
       userEmail:         'anthonymarte12@gmail.com',
-      isAuthenticated:   false,
       userId:            null,
       householdId:       null,
+      isAuthenticated:   false,
 
       // ── Actions ───────────────────────────────────
       completeOnboarding: () => set({ hasSeenOnboarding: true }),
@@ -71,16 +72,20 @@ export const useAuthStore = create<AuthState>()(
         }),
 
       clearSession: () => set({ isAuthenticated: false, userId: null, householdId: null }),
+
+      setUserName: (name: string) => set({ userName: name, userInitial: name[0]?.toUpperCase() ?? 'U' }),
     }),
     {
       name: 'mis-finanzas-auth',
-      // isAuthenticated intentionally excluded → session-only
+      // isAuthenticated intentionally excluded → session-only (re-verified each load)
       partialize: (s) => ({
         hasSeenOnboarding: s.hasSeenOnboarding,
         pin:               s.pin,
         userName:          s.userName,
         userInitial:       s.userInitial,
         userEmail:         s.userEmail,
+        userId:            s.userId,       // fast-path: skip resolveHousehold on F5
+        householdId:       s.householdId, // fast-path: skip resolveHousehold on F5
       }),
     },
   ),

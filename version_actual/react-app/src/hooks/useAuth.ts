@@ -3,6 +3,9 @@ import { supabase } from '../lib/supabase'
 import { useAuthStore, type SessionPayload } from '../store/auth'
 import { DEFAULTS } from './useConfig'
 
+// Stable reference for current store values (avoids closure staleness)
+const getStore = () => useAuthStore.getState()
+
 /** Creates household + membership + config for a brand-new user. */
 async function provisionHousehold(userId: string): Promise<string> {
   const newId = crypto.randomUUID()
@@ -71,22 +74,41 @@ async function buildSession(
 }
 
 export function useAuth() {
-  const setSession  = useAuthStore(s => s.setSession)
+  const setSession   = useAuthStore(s => s.setSession)
   const clearSession = useAuthStore(s => s.clearSession)
 
   useEffect(() => {
-    // 1. Fast cached check — avoids flash of /login on reload
+    // 1. Fast path — getSession() returns from Supabase's in-memory cache (no network).
+    //    If the persisted store already has the matching userId+householdId,
+    //    we can set isAuthenticated immediately without a DB round-trip.
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        buildSession(
-          session.user.id,
-          session.user.email ?? null,
-          session.user.user_metadata,
-        ).then(setSession)
+      if (!session?.user) return
+
+      const uid  = session.user.id
+      const store = getStore()
+
+      if (store.userId === uid && store.householdId) {
+        // ✅ Cache-hit: set isAuthenticated instantly, verify household in background
+        setSession({
+          userId:      uid,
+          householdId: store.householdId,
+          email:       session.user.email ?? null,
+          userName:    store.userName ?? null,
+        })
+        // Background verify — updates store if household ever changed (rare)
+        resolveHousehold(uid).then(hid => {
+          if (hid && hid !== store.householdId) {
+            setSession({ userId: uid, householdId: hid, email: session.user.email ?? null })
+          }
+        })
+      } else {
+        // ❄️ Cold start or different user — need DB round-trip
+        buildSession(uid, session.user.email ?? null, session.user.user_metadata)
+          .then(setSession)
       }
     })
 
-    // 2. Reactive — handles login/logout/token refresh
+    // 2. Reactive — handles login, logout, token refresh events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (session?.user) {

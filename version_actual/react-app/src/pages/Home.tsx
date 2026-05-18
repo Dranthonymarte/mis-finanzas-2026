@@ -20,10 +20,17 @@ import { useFormat }       from '../hooks/useFormat'
 import { usePrefsStore, type Moneda } from '../store/prefs'
 import { useAuthStore }    from '../store/auth'
 import { supabase }        from '../lib/supabase'
-import { generateMeses, mesLabel, mesIdToDbKey } from '../lib/mes'
+import { generateMeses, mesLabel, mesIdToDbKey, dateToMesId } from '../lib/mes'
+import { DEFAULTS } from '../hooks/useConfig'
 import { SearchIcon, BellIcon } from '../components/icons/Icons'
 
 const MONTHS_6 = generateMeses(6)
+
+/** Next calendar month id (for "abrir mes siguiente" button) */
+function nextMesId(): string {
+  const now = new Date()
+  return dateToMesId(new Date(now.getFullYear(), now.getMonth() + 1, 1))
+}
 
 /* ── Bar chart custom tooltip ── */
 function BarTooltip({ active, payload, label }: {
@@ -149,7 +156,10 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 export default function Home() {
   const navigate  = useNavigate()
-  const [showInsight, setShowInsight] = useState(true)
+  const [dismissedInsights, setDismissedInsights] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('mf-insights-dismissed') || '[]') as string[]) }
+    catch { return new Set() }
+  })
 
   const mesActivo      = usePrefsStore(s => s.mesActivo)
   const setMesActivo   = usePrefsStore(s => s.setMesActivo)
@@ -165,6 +175,35 @@ export default function Home() {
   const { config }                  = useConfig()
   const kpiData                     = useKPIs(liveTxns, config)
   const { fmt, fmtShort }           = useFormat()
+
+  // ── Bar chart 6M: real data for prior 5 months ──
+  interface MonthKPI { month: string; ingresos: number; gastos: number }
+  const [histKPIs, setHistKPIs] = useState<MonthKPI[]>([])
+  useEffect(() => {
+    if (!householdId) return
+    const MONTHS_5 = generateMeses(6).slice(0, 5)   // last 5 months (exclude current)
+    const incomeTipos = new Set(DEFAULTS.tipos.filter(t => t.esIngreso).map(t => t.nombre))
+
+    Promise.all(
+      MONTHS_5.map(m =>
+        supabase
+          .from('movimientos')
+          .select('tipo,amount')
+          .eq('user_id', householdId)
+          .eq('mes', m.dbKey)
+          .is('deleted_at', null)
+          .then(({ data }) => {
+            let ing = 0, gas = 0
+            for (const r of data ?? []) {
+              const v = Math.abs(parseFloat(String(r.amount)) || 0)
+              if (incomeTipos.has(r.tipo)) ing += v
+              else gas += v
+            }
+            return { month: m.label.split('.')[0], ingresos: ing, gastos: gas } as MonthKPI
+          })
+      )
+    ).then(setHistKPIs)
+  }, [householdId])
 
   // ── Ahorro acumulado all-time (tipo "Ahorro en efectivo") ──
   const [ahorroAcumulado, setAhorroAcumulado] = useState<number>(0)
@@ -225,25 +264,27 @@ export default function Home() {
     { ...MOCK_KPIS[3], value: parseFloat(savingsRate.toFixed(1)) },
   ] : MOCK_KPIS
 
-  // ── Bar chart 6M: 5 meses estáticos + mes activo real ──
+  // ── Bar chart 6M: 5 meses reales + mes activo ──
   const incomeVsExp = useMemo(() => {
-    const base = [
-      { month: 'Nov', ingresos: 2650, gastos: 1890 },
-      { month: 'Dic', ingresos: 2400, gastos: 2100 },
-      { month: 'Ene', ingresos: 2800, gastos: 1950 },
-      { month: 'Feb', ingresos: 2550, gastos: 1820 },
-      { month: 'Mar', ingresos: 2900, gastos: 2050 },
-    ]
-    const cur = mesLabel(mesActivo).split(' ')[0].substring(0, 3)
-    base.push({ month: cur, ingresos: kpiData.ingresos, gastos: kpiData.gastos })
-    return base
-  }, [kpiData.ingresos, kpiData.gastos, mesActivo])
+    const base = histKPIs.length === 5
+      ? histKPIs
+      : [
+          { month: 'Nov', ingresos: 0, gastos: 0 },
+          { month: 'Dic', ingresos: 0, gastos: 0 },
+          { month: 'Ene', ingresos: 0, gastos: 0 },
+          { month: 'Feb', ingresos: 0, gastos: 0 },
+          { month: 'Mar', ingresos: 0, gastos: 0 },
+        ]
+    const cur = mesLabel(mesActivo).split(' ')[0]
+    return [...base, { month: cur, ingresos: kpiData.ingresos, gastos: kpiData.gastos }]
+  }, [histKPIs, kpiData.ingresos, kpiData.gastos, mesActivo])
 
   // ── Fondo emergencia — leer de fondo_emergencia DB; fallback a cuentas AHORRO ──
   const efAccountsBalance = (liveAccounts ?? [])
     .filter(a => a.type.toUpperCase().includes('AHORRO'))
     .reduce((s, a) => s + a.balance, 0)
-  const emergencyBalance = efDbBalance ?? efAccountsBalance
+  // Use cumulative ahorro transactions (same logic as savings) as primary fallback
+  const emergencyBalance = efDbBalance ?? ahorroAcumulado || efAccountsBalance
   const emergencyTarget = kpiData.gastos * 3
   const emergencyPct    = emergencyTarget > 0 ? Math.min(100, (emergencyBalance / emergencyTarget) * 100) : 0
   const emergencyMonths = kpiData.gastos > 0 ? (emergencyBalance / kpiData.gastos).toFixed(1) : '0'
@@ -333,6 +374,26 @@ export default function Home() {
             </button>
           )
         })}
+        {/* Abrir mes siguiente */}
+        {(() => {
+          const nid = nextMesId()
+          const isActive = mesActivo === nid
+          return (
+            <button
+              onClick={() => setMesActivo(nid)}
+              title="Abrir mes siguiente"
+              style={{
+                padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700,
+                whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer',
+                background: isActive ? 'var(--amber)' : 'rgba(224,168,74,.1)',
+                color:      isActive ? 'var(--ink-0)' : 'var(--amber)',
+                border:     isActive ? 'none' : '1px dashed rgba(224,168,74,.4)',
+              }}
+            >
+              {isActive ? mesLabel(nid).split(' ')[0] : '+ Nuevo mes'}
+            </button>
+          )
+        })()}
       </div>
 
       {/* Pills moneda */}
@@ -625,7 +686,7 @@ export default function Home() {
       )}
 
       {/* ─── 10. ANÁLISIS IA ─── */}
-      {showInsight && (
+      {!dismissedInsights.has(mesActivo) && (
         <div style={{ padding: '12px 16px 4px' }}>
           <div style={{
             padding: 14, borderRadius: 14,
@@ -654,7 +715,12 @@ export default function Home() {
             </div>
             <div style={{ marginTop: 10, display: 'flex', gap: 6 }}>
               <PillBtn primary onClick={() => navigate('/ia')}>Preguntar IA</PillBtn>
-              <PillBtn onClick={() => setShowInsight(false)}>Descartar</PillBtn>
+              <PillBtn onClick={() => {
+                const next = new Set(dismissedInsights)
+                next.add(mesActivo)
+                setDismissedInsights(next)
+                localStorage.setItem('mf-insights-dismissed', JSON.stringify([...next]))
+              }}>Descartar</PillBtn>
             </div>
           </div>
         </div>

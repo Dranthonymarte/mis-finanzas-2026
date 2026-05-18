@@ -2,7 +2,7 @@
 
 > Documento vivo. Actualizar al cerrar cada sesión.
 > Fuente de verdad para la nueva UIX (react-app/).
-> **Última actualización:** 2026-05-17 (30 bugs corregidos — v1.0.2-bugfix)
+> **Última actualización:** 2026-05-17 sesión 2 (33 bugs corregidos — v1.0.3-bugfix)
 
 ---
 
@@ -134,6 +134,9 @@ verbatimModuleSyntax: true  # → import { type X } en lugar de import { X }
 ## 📝 Commit history (React App — bugfix sprint)
 
 ```
+9fe7992 fix(data): balance real en cuentas + tasas por mes activo (BUG-R25/R26)
+6ab2a97 fix(crash): null guard en CatIcon.cat + txnGroup.tipo (BUG-R24)
+5e672eb perf(auth): login instantaneo en F5 via cache householdId persistido
 0153570 fix(data): useAccounts usa householdId en lugar de userId (BUG-R23)
 c52da61 fix(crash): null guards toLowerCase + balance real en AccountDetail (BUG-R21)
 fabc1c8 fix(new-txn): eliminar variable userId no usada (TS6133)
@@ -178,4 +181,4 @@ subcat/method: NUNCA null → siempre '' (NOT NULL en DB)
 | Worker Cloudflare para Groq OCR (no exponer key en frontend localStorage) | 🟡 Media |
 | Fonts self-hosted PWA offline: crear /public/fonts/ con woff2 reales | 🟠 Baja |
 | Invite real a pareja (email link via Supabase invite) | 🟠 Baja |
-| useAuth.ts: paralelizar resolveHousehold para login más rápido en mobile | 🟡 Media |
+| useAuth.ts: paralelizar resolveHousehold para login más rápido en mobile | ✅ Resuelto 5e672eb |

@@ -82,7 +82,7 @@
 
 ---
 
-# React App — Sprint Bugfix (2026-05-17)
+# React App — Sprint Bugfix (2026-05-17 → 2026-05-17 sesión 2)
 
 > Sprint de correcciones al conectar la React App (`version_actual/react-app/`) a Supabase real.
 > **25 bugs resueltos · 2 diferidos** · Sesiones 16-17 May 2026.
@@ -241,6 +241,27 @@
 ## ✅ BUG-R22 — tasas_cambio mes 'global' — verificado, por diseño
 **Estado:** VERIFICADO — no es bug  
 **Verificación:** `useTasas.ts` usa `.eq('mes', 'global')` para leer la tasa activa. `saveTasas()` también graba con `mes: 'global'` y además persiste en `tasas_historicas` para historial. Diseño correcto.
+
+---
+
+## ✅ BUG-R24 — CatIcon.cat null crash + txnGroup null guard
+**Commit:** `6ab2a97`  
+**Causa:** `cat.slice(0, 2)` en `CatIcon.tsx` crashaba cuando `cat` era null desde DB real. `txnGroup()` aceptaba `string` pero podía recibir undefined.  
+**Fix:** `CatIcon`: `cat: string|null|undefined`, safe = `cat ?? ''`, fallback `'??'`. `txnGroup`: guard `if (!tipo) return 'gasto'`.
+
+---
+
+## ✅ BUG-R25 — useAccounts balance estático sin movimientos
+**Commit:** `9fe7992`  
+**Causa:** `useAccounts` retornaba `balance_override ?? saldo_inicial` sin sumar movimientos reales → saldo incorrecto en la lista de cuentas.  
+**Fix:** 2 queries paralelas (cuentas + `movimientos SELECT cuenta_id,amount`). Construye `Map<cuenta_id, SUM>` → `balance = override ?? saldoInicial + movTotal`.
+
+---
+
+## ✅ BUG-R26 — useTasas siempre usaba mes 'global'
+**Commit:** `9fe7992`  
+**Causa:** Tasa de cambio siempre leída del row `mes='global'` sin considerar el mes activo → tasa desactualizada al cambiar de mes.  
+**Fix:** `useTasas` lee `mesActivo` del prefs store → query con `mesIdToDbKey(mesActivo)`, fallback a 'global'. `saveTasas` acepta `mesId` opcional, guarda mes-específico + actualiza 'global' para compat.
 
 ---
 

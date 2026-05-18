@@ -16,6 +16,8 @@ export default function Categories() {
   const [showForm,  setShowForm]   = useState(false)
   const [newName,   setNewName]    = useState('')
   const [saving,    setSaving]     = useState(false)
+  const [editCat,   setEditCat]    = useState<string | null>(null)
+  const [editVal,   setEditVal]    = useState('')
 
   const tipos = config.tipos.map(t => t.nombre)
   const cats  = config.categorias[activeTipo] ?? []
@@ -34,6 +36,26 @@ export default function Categories() {
   async function removeCategory(cat: string) {
     const next = { ...config.categorias, [activeTipo]: cats.filter(c => c !== cat) }
     await updateConfig('categorias', next)
+  }
+
+  async function renameCategory() {
+    if (!editCat) return
+    const trimmed = editVal.trim()
+    if (!trimmed || trimmed === editCat || cats.includes(trimmed)) { setEditCat(null); return }
+    // Rename inside categorias[tipo]
+    const nextCats = {
+      ...config.categorias,
+      [activeTipo]: cats.map(c => c === editCat ? trimmed : c),
+    }
+    await updateConfig('categorias', nextCats)
+    // Keep subcategorias coherent: migrate the key oldName → newName
+    const subs = config.subcategorias
+    if (subs[editCat]) {
+      const nextSubs = { ...subs, [trimmed]: subs[editCat] }
+      delete nextSubs[editCat]
+      await updateConfig('subcategorias', nextSubs)
+    }
+    setEditCat(null)
   }
 
   return (
@@ -73,18 +95,51 @@ export default function Categories() {
             }}
           >
             <CatIcon cat={cat} size={36} />
-            <span style={{ flex: 1, fontSize: 14, fontWeight: 500 }}>{cat}</span>
-            <button
-              onClick={() => removeCategory(cat)}
-              style={{
-                width: 28, height: 28, borderRadius: 8,
-                background: 'rgba(214,106,90,.1)', border: '1px solid rgba(214,106,90,.25)',
-                color: 'var(--neg)', fontSize: 16, cursor: 'pointer',
-                display: 'grid', placeItems: 'center',
-              }}
-            >
-              ×
-            </button>
+            {editCat === cat ? (
+              <input
+                type="text" value={editVal} autoFocus
+                onChange={e => setEditVal(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') renameCategory(); if (e.key === 'Escape') setEditCat(null) }}
+                onBlur={renameCategory}
+                style={{ ...inputSt, flex: 1, padding: '6px 10px' }}
+              />
+            ) : (
+              <span
+                style={{ flex: 1, fontSize: 14, fontWeight: 500, cursor: 'text' }}
+                onClick={() => { setEditCat(cat); setEditVal(cat) }}
+                title="Toca para renombrar"
+              >
+                {cat}
+              </span>
+            )}
+            {editCat !== cat && (
+              <>
+                <button
+                  onClick={() => { setEditCat(cat); setEditVal(cat) }}
+                  style={{
+                    width: 28, height: 28, borderRadius: 8,
+                    background: 'var(--ink-3)', border: '1px solid var(--line)',
+                    color: 'var(--fg-dim)', fontSize: 13, cursor: 'pointer',
+                    display: 'grid', placeItems: 'center',
+                  }}
+                  aria-label={`Renombrar ${cat}`}
+                >
+                  ✎
+                </button>
+                <button
+                  onClick={() => removeCategory(cat)}
+                  style={{
+                    width: 28, height: 28, borderRadius: 8,
+                    background: 'rgba(214,106,90,.1)', border: '1px solid rgba(214,106,90,.25)',
+                    color: 'var(--neg)', fontSize: 16, cursor: 'pointer',
+                    display: 'grid', placeItems: 'center',
+                  }}
+                  aria-label={`Eliminar ${cat}`}
+                >
+                  ×
+                </button>
+              </>
+            )}
           </div>
         ))}
 

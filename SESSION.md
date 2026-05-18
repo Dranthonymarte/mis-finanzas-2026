@@ -3,6 +3,46 @@
 
 ---
 
+## SESIÓN — 18 May 2026 (FASE 3.2 — auth loop FIX real + Lista/Subcat/Cat)
+
+📊 **Modelo: Opus**
+
+### Crítico resuelto de raíz (commit 9831108)
+- **Refresh→login/loop PERSISTÍA** porque en `d3a2983` yo había puesto
+  `storageKey:'mis-finanzas-sb-auth'` en `supabase.ts` → invalidó la sesión
+  persistida (Supabase la buscaba en key nueva vacía). **REVERTIDO** al
+  storageKey por defecto. Además `onAuthStateChange` ahora SOLO limpia en
+  `SIGNED_OUT` (antes limpiaba ante cualquier null transitorio →
+  ping-pong de redirects). `getSession().catch()` → spinner nunca colgado.
+
+### Integrado (commit siguiente)
+- **Lista de compras**: causa de "no funciona" = filtraba `household_id`
+  (el householdId de household_members ≠ key real). Fix → filtra `user_id`
+  (= auth uid, como movimientos). Tabla `listas_compras` YA existía (la usa
+  la app vieja). Añadido: precio editable por ítem, total estimado, total
+  pendiente, "limpiar comprados".
+- **Categorías**: añadido rename inline (faltaba "modificar"); al renombrar
+  migra también la key en `subcategorias` para coherencia.
+- **Subcategorías**: añadido filtro de categoría (búsqueda). CRUD ya
+  funcionaba (updateConfig optimista arreglado en FASE 3).
+
+### Hallazgos de esquema (para próxima sesión, SIN migración)
+- `config_usuario` ya tiene: `dashboard_order` (jsonb) → reordenar cards;
+  `emergency_fund_base/goal`, `ef_manual_base`, `ef_auto_contrib`,
+  `ef_reset_date` → lógica fondo emergencia; `cat_emojis`, `cat_rules`.
+- Tabla `fondo_emergencia` (por mes) + `listas_compras` + `dinero_fuera`
+  (10 filas) ya existen. NINGUNA requiere migración.
+
+### Pendiente (NO hecho — documentado, columnas listas)
+- Fondo emergencia: lógica completa + integración (usar columnas ef_* de
+  config_usuario + tabla fondo_emergencia).
+- Dashboard: iconos info por card + reordenar (usar `dashboard_order`).
+- Groq prod: setear `VITE_GROQ_API_KEY` en env vars de Cloudflare Pages
+  (acción de Anthony — no es código).
+- Verificación en móvil del deploy.
+
+---
+
 ## SESIÓN — 18 May 2026 (FASE 3 — críticos: PWA, auth refresh, patrimonio, sheets)
 
 📊 **Modelo: Opus** (debugging causa-raíz multi-archivo)

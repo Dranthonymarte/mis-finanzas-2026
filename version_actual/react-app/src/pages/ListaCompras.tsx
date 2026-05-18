@@ -54,10 +54,12 @@ export default function ListaCompras() {
   useEffect(() => {
     if (!householdId || !userId) { setLoading(false); return }
 
+    // Filter by user_id (auth uid) — the data key, like movimientos.
+    // household_id from household_members may differ from the data's key.
     supabase
       .from('listas_compras')
       .select('id,user_id,household_id,nombre,items,activa,archivada')
-      .eq('household_id', householdId)
+      .eq('user_id', userId)
       .eq('archivada', false)
       .order('updated_at', { ascending: false })
       .then(async ({ data, error }) => {
@@ -67,12 +69,12 @@ export default function ListaCompras() {
         let active = rows.find(r => r.activa) ?? rows[0] ?? null
 
         if (!active) {
-          // Create a default list for this household
+          // Create a default list — both keys = auth uid for consistency
           const newId = crypto.randomUUID()
           const newRow = {
             id:           newId,
             user_id:      userId,
-            household_id: householdId,
+            household_id: householdId ?? userId,
             nombre:       'Compras',
             items:        [],
             activa:       true,
@@ -127,8 +129,23 @@ export default function ListaCompras() {
     setSaving(false)
   }
 
+  async function setPrecio(itemId: string, precio: number) {
+    if (!lista) return
+    await persistItems(lista.items.map(i =>
+      i.id === itemId ? { ...i, precio: precio >= 0 ? precio : 0 } : i
+    ))
+  }
+
+  async function clearChecked() {
+    if (!lista) return
+    await persistItems(lista.items.filter(i => !i.checked))
+  }
+
   const items  = lista?.items ?? []
   const sorted = [...items.filter(i => !i.checked), ...items.filter(i => i.checked)]
+  const totalAll     = items.reduce((s, i) => s + i.cantidad * i.precio, 0)
+  const totalPending = items.filter(i => !i.checked).reduce((s, i) => s + i.cantidad * i.precio, 0)
+  const checkedCount = items.filter(i => i.checked).length
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
@@ -193,6 +210,25 @@ export default function ListaCompras() {
                 ×{item.cantidad}
               </span>
 
+              {/* Precio unitario (editable) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                <span style={{ fontSize: 11, color: 'var(--fg-mute)' }}>$</span>
+                <input
+                  type="number" min={0} step="0.01"
+                  defaultValue={item.precio || ''}
+                  placeholder="0"
+                  onBlur={e => {
+                    const v = parseFloat(e.target.value)
+                    if (!isNaN(v) && v !== item.precio) setPrecio(item.id, v)
+                  }}
+                  style={{
+                    width: 52, background: 'var(--ink-1)', border: '1px solid var(--line)',
+                    borderRadius: 6, padding: '3px 5px', fontSize: 12,
+                    color: 'var(--fg)', outline: 'none', textAlign: 'right',
+                  }}
+                />
+              </div>
+
               {/* Delete */}
               <button
                 onClick={() => remove(item.id)}
@@ -245,10 +281,36 @@ export default function ListaCompras() {
             </button>
           </div>
 
-          {/* Summary */}
+          {/* Summary + totals */}
           {items.length > 0 && (
-            <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', textAlign: 'center', marginTop: 4 }}>
-              {items.filter(i => i.checked).length} / {items.length} comprados
+            <div style={{
+              background: 'var(--ink-2)', border: '1px solid var(--line)',
+              borderRadius: 14, padding: '12px 14px', marginTop: 8,
+              display: 'flex', flexDirection: 'column', gap: 8,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
+                <span style={{ color: 'var(--fg-mute)' }}>Total estimado</span>
+                <span className="num" style={{ fontWeight: 700 }}>${totalAll.toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                <span style={{ color: 'var(--fg-mute)' }}>Pendiente por comprar</span>
+                <span className="num" style={{ fontWeight: 600, color: 'var(--amber)' }}>${totalPending.toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, color: 'var(--fg-mute)', borderTop: '1px solid var(--line)', paddingTop: 8 }}>
+                <span>{checkedCount} / {items.length} comprados</span>
+                {checkedCount > 0 && (
+                  <button
+                    onClick={clearChecked}
+                    style={{
+                      padding: '5px 12px', borderRadius: 8, fontSize: 11.5, fontWeight: 600,
+                      background: 'rgba(214,106,90,.1)', border: '1px solid rgba(214,106,90,.25)',
+                      color: 'var(--neg)', cursor: 'pointer',
+                    }}
+                  >
+                    Limpiar comprados
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>

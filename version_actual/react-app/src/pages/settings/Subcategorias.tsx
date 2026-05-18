@@ -25,6 +25,8 @@ export default function Subcategorias() {
   const [draftMap, setDraftMap] = useState<Record<string, string>>({})
   // inline rename state
   const [editSub,  setEditSub]  = useState<EditSub | null>(null)
+  // category filter (search)
+  const [filter,   setFilter]   = useState('')
 
   const subcats = config.subcategorias   // Record<string, string[]>
 
@@ -32,7 +34,7 @@ export default function Subcategorias() {
   const allCatKeys = Array.from(new Set([
     ...Object.keys(config.categorias),
     ...Object.keys(subcats),
-  ]))
+  ])).filter(cat => cat.toLowerCase().includes(filter.trim().toLowerCase()))
 
   function toggleExpand(cat: string) {
     setExpanded(prev => ({ ...prev, [cat]: !prev[cat] }))
@@ -79,6 +81,25 @@ export default function Subcategorias() {
       <AppHeader title="Subcategorías" back />
 
       <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+        {/* Category filter */}
+        <input
+          type="text"
+          placeholder="Filtrar categoría…"
+          value={filter}
+          onChange={e => setFilter(e.target.value)}
+          style={{
+            background: 'var(--ink-2)', border: '1px solid var(--line)',
+            borderRadius: 10, padding: '9px 12px', fontSize: 13,
+            color: 'var(--fg)', outline: 'none', marginBottom: 4,
+          }}
+        />
+
+        {allCatKeys.length === 0 && (
+          <div style={{ fontSize: 12.5, color: 'var(--fg-mute)', textAlign: 'center', padding: '16px 0' }}>
+            Ninguna categoría coincide con “{filter}”.
+          </div>
+        )}
 
         {allCatKeys.map(cat => {
           const isOpen = !!expanded[cat]

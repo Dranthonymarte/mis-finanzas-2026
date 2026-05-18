@@ -284,7 +284,7 @@ export default function Home() {
     .filter(a => a.type.toUpperCase().includes('AHORRO'))
     .reduce((s, a) => s + a.balance, 0)
   // Use cumulative ahorro transactions (same logic as savings) as primary fallback
-  const emergencyBalance = efDbBalance ?? ahorroAcumulado || efAccountsBalance
+  const emergencyBalance = efDbBalance ?? (ahorroAcumulado || efAccountsBalance)
   const emergencyTarget = kpiData.gastos * 3
   const emergencyPct    = emergencyTarget > 0 ? Math.min(100, (emergencyBalance / emergencyTarget) * 100) : 0
   const emergencyMonths = kpiData.gastos > 0 ? (emergencyBalance / kpiData.gastos).toFixed(1) : '0'

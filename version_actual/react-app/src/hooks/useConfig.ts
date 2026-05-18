@@ -154,6 +154,19 @@ export function useConfig() {
 
   async function updateConfig(campo: string, valor: unknown) {
     if (!userId) return
+    // Optimistic local update so UI reflects changes immediately
+    const campoMap: Record<string, keyof Config> = {
+      tipos:         'tipos',
+      categorias:    'categorias',
+      subcategorias: 'subcategorias',
+      presupuestos:  'presupuestos',
+      recurrentes:   'recurrentes',
+      closed_months: 'closedMonths',
+      metas_ahorro:  'metasAhorro',
+      fire_config:   'fireConfig',
+    }
+    const key = campoMap[campo]
+    if (key) setConfig(prev => ({ ...prev, [key]: valor }))
     // Upsert instead of update — creates the row if it doesn't exist yet
     await supabase
       .from('config_usuario')

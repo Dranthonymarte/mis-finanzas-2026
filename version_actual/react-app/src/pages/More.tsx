@@ -25,7 +25,7 @@ interface GridItem {
 
 const GRID_ITEMS: GridItem[] = [
   // Row 1
-  { emoji: '🧮', label: 'Calculadora',  path: '/monedas',       color: '#2a1f0a' },
+  { emoji: '🧮', label: 'Calculadora',  path: '/calculadora',   color: '#2a1f0a' },
   { emoji: '💳', label: 'Cuentas',      path: '/accounts',      color: '#1a2a1a' },
   { emoji: '🔍', label: 'Buscar',       path: '/buscar',        color: '#1a1a3a' },
   { emoji: '✦',  label: 'IA',           path: '/ia',            color: '#2a1f0a' },
@@ -71,9 +71,8 @@ export default function More() {
   async function handleLogout() {
     // Invalidate Supabase session server-side → onAuthStateChange fires SIGNED_OUT
     await supabase.auth.signOut()
-    // Clear persisted credentials from localStorage
-    localStorage.removeItem('mis-finanzas-auth')
     // Reset Zustand store (isAuthenticated=false, userId=null, householdId=null)
+    // Zustand persist re-writes localStorage — preserves hasSeenOnboarding
     logout()
     navigate('/login')
   }
@@ -342,7 +341,7 @@ export default function More() {
             width: '100%', maxWidth: 430,
             background: 'var(--ink-1)', borderRadius: '20px 20px 0 0',
             border: '1px solid var(--line)',
-            padding: '20px 20px max(24px, calc(24px + env(safe-area-inset-bottom, 0px)))',
+            padding: '20px 20px calc(env(safe-area-inset-bottom, 20px) + 40px)',
             zIndex: 501, textAlign: 'center',
           }}>
             <div style={{

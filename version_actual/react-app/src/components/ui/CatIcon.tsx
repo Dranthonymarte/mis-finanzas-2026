@@ -22,8 +22,16 @@ const CAT_COLORS: Record<string, string> = {
   'Ocio':            '#b8a870',
 }
 
+/** Deterministic hue from string so unknown cats get consistent, non-gray colors. */
+function hashHue(str: string): number {
+  let h = 0
+  for (let i = 0; i < str.length; i++) { h = str.charCodeAt(i) + ((h << 5) - h); h |= 0 }
+  return Math.abs(h) % 360
+}
+
 export function catColor(cat: string | null | undefined): string {
-  return (cat ? CAT_COLORS[cat] : undefined) || '#6e7681'
+  if (!cat) return '#6e7681'
+  return CAT_COLORS[cat] ?? `hsl(${hashHue(cat)}, 50%, 52%)`
 }
 
 interface CatIconProps {

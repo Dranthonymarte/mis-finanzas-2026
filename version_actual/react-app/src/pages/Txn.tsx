@@ -518,7 +518,7 @@ export default function Txn() {
             width: '100%', maxWidth: 430,
             background: 'var(--ink-1)', borderRadius: '20px 20px 0 0',
             border: '1px solid var(--line)',
-            padding: '20px 20px max(24px, calc(24px + env(safe-area-inset-bottom, 0px)))',
+            padding: '20px 20px calc(env(safe-area-inset-bottom, 20px) + 40px)',
             zIndex: 501, textAlign: 'center',
           }}>
             <div style={{

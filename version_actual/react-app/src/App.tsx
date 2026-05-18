@@ -40,6 +40,7 @@ const TxnDetail      = lazy(() => import('./pages/TxnDetail'))
 const NewAccount     = lazy(() => import('./pages/NewAccount'))
 const Transfer       = lazy(() => import('./pages/Transfer'))
 const Monedas        = lazy(() => import('./pages/Monedas'))
+const Calculadora    = lazy(() => import('./pages/Calculadora'))
 const Fire           = lazy(() => import('./pages/Fire'))
 const Metas          = lazy(() => import('./pages/Metas'))
 const Pareja         = lazy(() => import('./pages/Pareja'))
@@ -94,6 +95,7 @@ export default function App() {
             <Route path="/new-account"     element={<NewAccount />}      />
             <Route path="/transfer"        element={<Transfer />}         />
             <Route path="/monedas"         element={<Monedas />}         />
+            <Route path="/calculadora"     element={<Calculadora />}     />
             <Route path="/fire"            element={<Fire />}            />
             <Route path="/metas"           element={<Metas />}           />
             <Route path="/pareja"          element={<Pareja />}          />

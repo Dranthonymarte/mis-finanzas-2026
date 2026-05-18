@@ -94,12 +94,12 @@ export default function Budgets() {
                   </div>
                 ) : (
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span
-                      style={{ fontSize: 12, color: over ? 'var(--neg)' : 'var(--fg-mute)', cursor: 'pointer' }}
+                    <button
                       onClick={() => { setEditCat(cat); setEditVal(String(limit)) }}
+                      style={{ fontSize: 12, color: over ? 'var(--neg)' : 'var(--fg-mute)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 2px' }}
                     >
                       {fmt(spent)} / {fmt(limit)}
-                    </span>
+                    </button>
                     <button
                       onClick={() => removeBudget(cat)}
                       style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(214,106,90,.1)', border: 'none', color: 'var(--neg)', fontSize: 14, cursor: 'pointer', display: 'grid', placeItems: 'center' }}

@@ -32,6 +32,7 @@ export default function DineroFuera() {
   const [rows,      setRows]      = useState<DineroFueraRow[]>([])
   const [loading,   setLoading]   = useState(true)
   const [tab,       setTab]       = useState<'all' | 'debt' | 'loan'>('all')
+  const [showPaid,  setShowPaid]  = useState(false)
 
   // ── Abono inline state ──
   const [abonoId,   setAbonoId]   = useState<string | null>(null)
@@ -44,17 +45,17 @@ export default function DineroFuera() {
 
   useEffect(() => {
     if (!householdId) { setLoading(false); return }
-    supabase
+    let q = supabase
       .from('dinero_fuera')
       .select('id,tipo,nombre,concepto,monto_original,monto_abonado,abonos,fecha_inicio,fecha_vencimiento,pagado')
-      .eq('household_id', householdId)
-      .eq('pagado', false)
+      .eq('user_id', householdId)
       .order('fecha_inicio', { ascending: false })
-      .then(({ data }) => {
-        setRows((data ?? []) as DineroFueraRow[])
-        setLoading(false)
-      })
-  }, [householdId])
+    if (!showPaid) q = q.eq('pagado', false)
+    q.then(({ data }) => {
+      setRows((data ?? []) as DineroFueraRow[])
+      setLoading(false)
+    })
+  }, [householdId, showPaid])
 
   async function handleAbono(id: string) {
     const monto = parseFloat(abonoVal)
@@ -99,7 +100,7 @@ export default function DineroFuera() {
     }
   }
 
-  const filtered   = tab === 'all' ? rows : rows.filter(r => r.tipo === tab)
+  const filtered   = (tab === 'all' ? rows : rows.filter(r => r.tipo === tab))
   const totalDebt  = rows.filter(r => r.tipo === 'debt').reduce((s, r) => s + (r.monto_original - r.monto_abonado), 0)
   const totalLoan  = rows.filter(r => r.tipo === 'loan').reduce((s, r) => s + (r.monto_original - r.monto_abonado), 0)
 
@@ -126,7 +127,7 @@ export default function DineroFuera() {
       </div>
 
       {/* ── Tabs ── */}
-      <div style={{ display: 'flex', gap: 6, padding: '14px 16px 0' }}>
+      <div style={{ display: 'flex', gap: 6, padding: '14px 16px 0', alignItems: 'center' }}>
         {TABS.map(t => (
           <button
             key={t.id}
@@ -140,6 +141,18 @@ export default function DineroFuera() {
             }}
           >{t.label}</button>
         ))}
+        <button
+          onClick={() => { setLoading(true); setShowPaid(p => !p) }}
+          style={{
+            marginLeft: 'auto', padding: '6px 12px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+            background: showPaid ? 'rgba(88,178,106,.15)' : 'var(--ink-2)',
+            color:      showPaid ? 'var(--pos)' : 'var(--fg-mute)',
+            border:     showPaid ? '1px solid rgba(88,178,106,.3)' : '1px solid var(--line)',
+            cursor: 'pointer',
+          }}
+        >
+          {showPaid ? '✓ Con pagados' : 'Ver pagados'}
+        </button>
       </div>
 
       {/* ── List ── */}
@@ -282,7 +295,7 @@ export default function DineroFuera() {
             background: 'var(--ink-1)',
             borderRadius: '20px 20px 0 0',
             border: '1px solid var(--line)',
-            padding: '20px 20px max(24px, calc(24px + env(safe-area-inset-bottom, 0px)))',
+            padding: '20px 20px calc(env(safe-area-inset-bottom, 20px) + 40px)',
             zIndex: 501,
           }}>
             <div style={{ textAlign: 'center', marginBottom: 16 }}>

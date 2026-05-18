@@ -78,11 +78,17 @@ export function useAuth() {
   const clearSession = useAuthStore(s => s.clearSession)
 
   useEffect(() => {
+    // Safety net: if getSession() hangs (offline, slow network), unblock RequireAuth after 5s
+    const readyTimer = setTimeout(() => {
+      if (!getStore().authReady) getStore().setAuthReady()
+    }, 5000)
+
     // 1. Fast path — getSession() returns from Supabase's in-memory cache (no network).
     //    If the persisted store already has the matching userId+householdId,
     //    we can set isAuthenticated immediately without a DB round-trip.
     //    setAuthReady() is called in BOTH branches so RequireAuth never flashes /login.
     supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(readyTimer)
       const setAuthReady = getStore().setAuthReady
 
       if (!session?.user) {
@@ -132,6 +138,6 @@ export function useAuth() {
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => { clearTimeout(readyTimer); subscription.unsubscribe() }
   }, [setSession, clearSession])
 }

@@ -88,12 +88,15 @@ export default function NewTransaction() {
   const [recurrente, setRecurrente] = useState(false)
   const [recDia,     setRecDia]     = useState(1)
   const [notes,      setNotes]      = useState('')
-  const [rateBCV,    setRateBCV]    = useState(tasas.bcv)
-  const [saved,      setSaved]      = useState(false)
-  const [confirm,    setConfirm]    = useState(false)  // confirmation sheet
+  const [rateBCV,       setRateBCV]       = useState(tasas.bcv)
+  const [userEditedRate, setUserEditedRate] = useState(false)
+  const [saved,         setSaved]         = useState(false)
+  const [confirm,       setConfirm]       = useState(false)  // confirmation sheet
 
-  // Sync BCV rate when tasas loads
-  useEffect(() => { setRateBCV(tasas.bcv) }, [tasas.bcv])
+  // Sync BCV rate when tasas loads FROM DB — but not if user already edited it manually
+  useEffect(() => {
+    if (!userEditedRate) setRateBCV(tasas.bcv)
+  }, [tasas.bcv, userEditedRate])
 
   // Read voice prefill from VozTxn (/voz page)
   useEffect(() => {
@@ -533,6 +536,7 @@ export default function NewTransaction() {
               onChange={e => {
                 const v = parseFloat(e.target.value) || tasas.bcv
                 setRateBCV(v)
+                setUserEditedRate(true)
                 if (amountUSD) setAmountBs((parseFloat(amountUSD) * v).toFixed(2))
               }}
               style={{ ...inputSt, flex: 1, fontFamily: 'var(--f-num)', fontWeight: 600 }}

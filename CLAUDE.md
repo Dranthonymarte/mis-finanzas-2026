@@ -17,11 +17,74 @@ Guía para Claude Code. Reglas vinculantes. Español latino siempre.
 Si una decisión se desvía del estándar top 3 → **interrumpe, explica, propón alternativa, espera confirmación**. Aplica para naming, estructura, errores, auth, performance, seguridad, deuda técnica, atajos dañinos.
 
 ## STACK
+
+### Vanilla JS (producción)
 ```
-Vanilla JS + HTML + CSS | SIN React | SIN bundler | PWA offline-first
+Vanilla JS + HTML + CSS | SIN bundler | PWA offline-first
 Supabase: jcgoccaisemrfsuwwrrl | Cloudflare Pages: finanzasprueba.pages.dev
-Proyecto Cloudflare: finanzasapp
-Dual-currency USD/VES | RLS activo
+Proyecto Cloudflare: finanzasapp | Dual-currency USD/VES | RLS activo
+```
+
+### React App (nueva UIX — v1.0.3-bugfix)
+```
+React 19 + TypeScript strict + Vite + Zustand v5 + recharts
+Branch: develop → push también a react-preview (CF Pages auto-build)
+Ruta local: version_actual/react-app/
+31 rutas — todas conectadas a Supabase real
+```
+
+---
+
+## REACT APP — REGLAS CRÍTICAS (vinculantes)
+
+```
+user_id en INSERT movimientos = householdId (NUNCA auth.uid())
+subcat / method: NUNCA null → siempre ''
+Edición movimientos: soft-delete (deleted_at=now()) + INSERT nuevo UUID
+Transferencias: par TRANSFER_DEBIT+CREDIT con pair_id compartido
+mes DB: "Mayo" | prefs store: "may-26" → convertir con mesIdToDbKey()
+household_id: fa3f7b3b-148b-4dea-8e2a-37f740c08b3d
+```
+
+### TypeScript strict
+```
+noUnusedLocals: true | noUnusedParameters: true
+verbatimModuleSyntax: true → import { type X } no import { X }
+Build 0 errores antes de cada commit
+```
+
+### Arquitectura React App
+```
+src/
+├── components/
+│   ├── brand/   Logo, AppIcon
+│   ├── shell/   AppShell, TabBar, FAB, AuthGuard, ErrorBoundary, SkeletonScreen, Toast
+│   ├── ui/      Sparkline, Pill, CatIcon (null-safe), catColor()
+│   └── icons/   Icons.tsx (SVG set)
+├── store/
+│   ├── auth.ts  isAuthenticated, userId, householdId (persistidos), userName
+│   ├── prefs.ts mesActivo ("may-26"), moneda, ocultarMontos
+│   └── toast.ts
+├── hooks/
+│   ├── useAuth.ts        fast-path cache, provisionHousehold
+│   ├── useAccounts.ts    2 queries paralelas, balance real
+│   ├── useTransactions.ts household_id, mesIdToDbKey
+│   ├── useConfig.ts      upsert, DEFAULTS fallback
+│   ├── useTasas.ts       mesActivo + fallback global
+│   ├── useKPIs.ts        null guards tipos
+│   └── useFormat.ts
+├── pages/        31 rutas — todas conectadas Supabase real
+└── lib/
+    ├── supabase.ts
+    ├── mes.ts     mesIdToDbKey("may-26" → "Mayo")
+    └── handleError.ts
+```
+
+### Git React App
+```
+# Push SIEMPRE con PowerShell (bash no tiene auth):
+/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -Command
+"cd 'C:\Users\Anthony Marte\Documents\Documentos de Anthony\Proyectos Anthony\APP WEB - FINANZAS\version_actual\react-app'; git push origin develop develop:react-preview 2>&1"
 ```
 
 ---
@@ -236,4 +299,4 @@ Cloudflare Worker: telegramcron → scheduled_notifications → Telegram
 - `SUPABASE_SCHEMA.md` — **schema cache** de Supabase (tablas, columnas, queries de referencia). Consultar SIEMPRE antes de queries/features. Si código contradice → re-query MCP + actualizar el doc en el mismo cambio. Evita gastar tokens releyendo BD.
 
 ---
-*Versión: 25 Abr 2026 — schema cache + redesign F3 dashboard*
+*Versión: 18 May 2026 — React App v1.0.3-bugfix añadida (31 rutas, Supabase real, reglas críticas)*

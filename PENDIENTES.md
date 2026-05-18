@@ -1,48 +1,41 @@
 # PENDIENTES — Mis Finanzas 2026
 
-Orden estricto. Actualizar al completar o reordenar.
-**Última actualización:** 2026-05-17 (post-bugfix sprint React App v1.0.1)
+Orden estricto. Actualizar al completar.
+**Última actualización:** 2026-05-17 sesión 2 (v1.0.3-bugfix — 0 bugs conocidos activos)
 
 ---
 
 ## 🔴 React App — Inmediato
 
-1. **BUG-R21** — Account balance = `saldo_inicial + SUM(movimientos)` en `AccountDetail.tsx`  
-   → Actualmente muestra solo `saldo_inicial`, ignora movimientos reales.
-
-2. **BUG-R22** — Verificar `tasas_cambio` mes `'global'` vs `mesActivo` en `useTasa.ts`  
-   → Confirmar si causa tasa incorrecta en conversiones USD↔VES.
-
-## 🟡 React App — Bloque 3 (Charts)
-
-3. Instalar `recharts` + `@types/recharts`
-4. `AreaChart` ingresos vs gastos 6 meses en `/` (Home)
-5. `DonutChart` categorías en `/txn` (top 5 del mes, colores de `CatIcon`)
-6. Mantener `Sparkline` para KPI cards pequeños
+1. **Bloque 3: Charts recharts**
+   - `npm install recharts` en `version_actual/react-app/`
+   - `AreaChart` ingresos vs gastos 6M en `Home.tsx` (datos reales de `useKPIs` + 5M estáticos)
+   - `DonutChart` top-5 categorías en `Analisis.tsx` (colores de `catColor()`)
+   - Mantener `Sparkline` para KPI cards — no tocar
+   - Colores: `var(--pos)` ingresos, `var(--neg)` gastos, fondo `var(--ink-2)`, tooltip oscuro
 
 ## 🟡 React App — Seguridad / Infra
 
-7. **Worker Cloudflare** para Groq OCR — sacar `fin_groq_api_key` del localStorage al backend
-8. **Fonts offline** — crear `/public/fonts/` con archivos `.woff2` reales para PWA sin internet
-9. **GitHub CI/CD** — auto-build en push a `react-preview` (ya activo en CF Pages — verificar)
+2. **Worker Cloudflare para Groq OCR** — sacar `fin_groq_api_key` del localStorage al backend Worker con secret
+3. **Fonts offline** — crear `/public/fonts/` con `.woff2` reales (Inter, Instrument Serif, JetBrains Mono) para PWA sin internet
+4. **Settings/Categories** — color picker por categoría (actualmente solo nombre)
+5. **Analisis** — comparativa vs mes anterior con datos reales (hoy: estática)
 
-## 🟡 React App — Features pendientes
+## 🟡 React App — Features
 
-10. **Settings/Categories** — color picker por categoría (actualmente solo nombre)
-11. **Análisis** — comparativa vs mes anterior con datos reales
-12. **Pareja** — invite real por email (Supabase invite link, actualmente solo comparte household_id)
+6. **Pareja** — invite real por email (Supabase auth.admin.inviteUserByEmail, actualmente: compartir household_id manual)
+7. **NewAccount** — conectar a Supabase (actualmente: Checkpoint B — TODO comentado en código)
+8. **useAuth.ts** — `onAuthStateChange` también puede beneficiarse de cache (actualmente: siempre llama resolveHousehold)
 
-## 🟡 Vanilla JS — Deploy y seguridad (sin cambios en bugfix sprint)
+## 🟡 Vanilla JS — Seguridad (sin cambios en sprint React)
 
-13. **hCaptcha** configurar (BUG-SEC2) — Supabase Dashboard → Auth → Attack Protection → pegar secret key
-14. **Google OAuth** test user → Cloud Console → `anthonymarte12@gmail.com`
-15. **Fix BUG-3** push SW — agregar `self.addEventListener('push', ...)` en `service-worker.js`
-16. **Fix BUG-4** CDN verificar — `index.html` v7 fallback a unpkg (confirmar post-deploy)
+9. **hCaptcha BUG-SEC2** — Supabase Dashboard → Auth → Attack Protection → pegar secret key
+10. **Google OAuth** — Cloud Console → anthonymarte12@gmail.com como test user aprobado
+11. **Push SW BUG-3** — agregar `self.addEventListener('push', ...)` en `service-worker.js`
 
 ## ⚪ Estratégico
 
-17. Modo desktop completo React App (prereq: definir breakpoints en tokens.css)
-18. `policy_acceptances` + opt-in legal (antes de Stripe)
-19. Stripe setup (`subscription_status` ya en `config_usuario`)
-20. Módulo Consultorio — Fase E (tablas listas, falta UI en React App)
-21. Push real móvil — agregar handler en SW + service worker registration
+12. Modo desktop completo React App (breakpoints en tokens.css)
+13. `policy_acceptances` + opt-in legal (prereq Stripe)
+14. Stripe setup (`subscription_status` ya en `config_usuario`)
+15. Módulo Consultorio — Fase E (tablas en DB listas, falta UI React)

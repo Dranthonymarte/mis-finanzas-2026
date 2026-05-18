@@ -4,7 +4,7 @@
 > 1. Mapa de la Vanilla JS app — verificar que ningún botón/flujo se rompió tras rediseño UIX
 > 2. Blueprint para la React App — qué pantallas/features recrear con la nueva UIX
 >
-> **Última actualización:** 2026-05-17
+> **Última actualización:** 2026-05-17 sesión 2
 
 ---
 
@@ -37,7 +37,7 @@
 | PIN Login | login screen | Supabase auth | ✅ Producción |
 | Offline/PWA | SW `finanzas-v59-batch54` | | ✅ Producción |
 
-### React App (nueva UIX — v1.0.1-bugfix · 2026-05-17)
+### React App (nueva UIX — v1.0.3-bugfix · 2026-05-17 sesión 2)
 | Feature | Ruta | Estado | Checkpoint |
 |---------|------|--------|------------|
 | Onboarding 3 slides | `/onboarding` | ✅ Done | B (auth) |
@@ -71,7 +71,11 @@
 | Settings Security | `/settings/security` | ✅ Done | Bloque 4 + bugfix |
 | Settings Tipos | `/settings/tipos` | ✅ Done | Bloque 4 |
 | Settings Subcategorias | `/settings/subcategorias` | ✅ Done | Bloque 4 + bugfix |
-| Charts recharts (Home/Txn) | Home/Txn | ⏳ Pendiente | Bloque 3 |
+| Balance cuentas real (SUM movimientos) | useAccounts | ✅ Done | BUG-R25 |
+| Tasas por mes activo | useTasas | ✅ Done | BUG-R26 |
+| Login instantáneo F5 | useAuth/store | ✅ Done | perf sesión 2 |
+| CatIcon null-safe | CatIcon.tsx | ✅ Done | BUG-R24 |
+| Charts recharts (Home/Analisis) | Home/Analisis | ⏳ Pendiente | Bloque 3 |
 | Supabase datos reales | Global | ✅ Done | Checkpoint C (bugfix) |
 
 ---

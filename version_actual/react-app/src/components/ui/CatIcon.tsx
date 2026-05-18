@@ -22,17 +22,18 @@ const CAT_COLORS: Record<string, string> = {
   'Ocio':            '#b8a870',
 }
 
-export function catColor(cat: string): string {
-  return CAT_COLORS[cat] || '#6e7681'
+export function catColor(cat: string | null | undefined): string {
+  return (cat ? CAT_COLORS[cat] : undefined) || '#6e7681'
 }
 
 interface CatIconProps {
-  cat: string
+  cat: string | null | undefined
   size?: number
 }
 
 export default function CatIcon({ cat, size = 36 }: CatIconProps) {
-  const c = catColor(cat)
+  const safe = cat ?? ''
+  const c = catColor(safe)
   return (
     <div
       style={{
@@ -50,7 +51,7 @@ export default function CatIcon({ cat, size = 36 }: CatIconProps) {
         lineHeight:    1,
       }}
     >
-      {cat.slice(0, 2).toUpperCase()}
+      {safe.slice(0, 2).toUpperCase() || '??'}
     </div>
   )
 }

@@ -199,7 +199,8 @@ export function fmtShort(n: number): string {
   return '$' + abs.toLocaleString('en-US', { maximumFractionDigits: 0 })
 }
 
-export function txnGroup(tipo: string): 'ingreso' | 'ahorro' | 'ajuste' | 'gasto' {
+export function txnGroup(tipo: string | null | undefined): 'ingreso' | 'ahorro' | 'ajuste' | 'gasto' {
+  if (!tipo) return 'gasto'
   if (['Ingreso Fijo', 'Ingreso Variable', 'Prestamo recibido'].includes(tipo)) return 'ingreso'
   if (['Ahorro en efectivo'].includes(tipo)) return 'ahorro'
   if (['Ajuste'].includes(tipo)) return 'ajuste'

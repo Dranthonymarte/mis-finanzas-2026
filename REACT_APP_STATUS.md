@@ -2,7 +2,7 @@
 
 > Documento vivo. Actualizar al cerrar cada sesión.
 > Fuente de verdad para la nueva UIX (react-app/).
-> **Última actualización:** 2026-05-17 (27 bugs corregidos — v1.0.1-bugfix)
+> **Última actualización:** 2026-05-17 (30 bugs corregidos — v1.0.2-bugfix)
 
 ---
 
@@ -134,15 +134,19 @@ verbatimModuleSyntax: true  # → import { type X } en lugar de import { X }
 ## 📝 Commit history (React App — bugfix sprint)
 
 ```
-012372b feat(subcategorias): CRUD completo — rename inline + todas las cats (BUG-24)
-b842727 fix(budgets): inline edit dentro de cada fila (BUG-23)
-8da7cc0 fix(fonts): eliminar @font-face rotos, CDN incluye JetBrains Mono (BUG-22)
-232cefd fix(metas): inline edit + overflow mobile en MetaCard (BUG-21)
-37508bb feat(escanear): OCR real via Groq Vision + API key en Seguridad (BUG-19)
-ef563d6 fix(home): pronostico recurrentes pendientes + nombre dinamico header (BUG-20)
-4bcdd77 fix(txn-detail): soft-delete + recrear en saveEdit; user_id=householdId (BUG-15)
-...      [commits anteriores de BUG-1 a BUG-14 en misma sesión]
-92f46da feat(app): FAB voz busqueda CSV NewTransaction  ← BLOQUE 6+7
+0153570 fix(data): useAccounts usa householdId en lugar de userId (BUG-R23)
+c52da61 fix(crash): null guards toLowerCase + balance real en AccountDetail (BUG-R21)
+fabc1c8 fix(new-txn): eliminar variable userId no usada (TS6133)
+98122bf docs: actualizar MDs restantes post-bugfix sprint React App v1.0.1
+63890d7 docs: actualizar SUPABASE_SCHEMA + REACT_APP_STATUS con estado post-bugfix
+012372b feat(subcategorias): CRUD completo — rename inline + todas las cats (BUG-R19)
+b842727 fix(budgets): inline edit dentro de cada fila (BUG-R18)
+8da7cc0 fix(fonts): eliminar @font-face rotos, CDN incluye JetBrains Mono (BUG-R17)
+232cefd fix(metas): inline edit + overflow mobile en MetaCard (BUG-R16)
+37508bb feat(escanear): OCR real via Groq Vision + API key en Seguridad (BUG-R15)
+ef563d6 fix(home): pronostico recurrentes pendientes + nombre dinamico header (BUG-R14)
+4bcdd77 feat(new-txn): hoja de confirmacion antes de guardar movimiento (BUG-R13)
+...      [commits anteriores BUG-R01 a BUG-R12 en sesiones anteriores]
 ```
 
 ---
@@ -169,10 +173,9 @@ subcat/method: NUNCA null → siempre '' (NOT NULL en DB)
 
 | Item | Prioridad |
 |------|-----------|
-| BUG-10: Account balance = balance_override ?? saldo_inicial + movements (join complejo) | 🔴 Alta |
-| BUG-11: tasas_cambio mes 'global' vs mesActivo — verificar si es bug real | 🟡 Media |
 | settings/Categories — CRUD colores por categoría | 🟡 Media |
-| Analisis — comparativa mes anterior real | 🟠 Baja |
+| Analisis — comparativa mes anterior real con recharts | 🟡 Media |
 | Worker Cloudflare para Groq OCR (no exponer key en frontend localStorage) | 🟡 Media |
 | Fonts self-hosted PWA offline: crear /public/fonts/ con woff2 reales | 🟠 Baja |
 | Invite real a pareja (email link via Supabase invite) | 🟠 Baja |
+| useAuth.ts: paralelizar resolveHousehold para login más rápido en mobile | 🟡 Media |

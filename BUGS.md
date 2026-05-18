@@ -231,14 +231,20 @@
 
 ---
 
-## ⏳ BUG-R21 — Cuentas: balance calculado desde movimientos (DIFERIDO)
-**Estado:** DIFERIDO — prioridad alta pendiente  
-**Causa:** `AccountDetail.tsx` muestra `cuenta.saldo_inicial` sin sumar los movimientos reales → saldo incorrecto para cuentas con actividad.  
-**Fix pendiente:** `balance = cuenta.balance_override ?? cuenta.saldo_inicial + SUM(movimientos WHERE account_id=X AND deleted_at IS NULL)`. Requiere join o query separado.
+## ✅ BUG-R21 — Cuentas: balance calculado desde movimientos
+**Commit:** `c52da61`  
+**Causa:** `AccountDetail.tsx` mostraba `cuenta.saldo_inicial` sin sumar los movimientos reales → saldo incorrecto para cuentas con actividad.  
+**Fix:** `realBalance = balanceOverride ?? saldoInicial + SUM(movimientos WHERE cuenta_id=X AND deleted_at IS NULL)`. Query a movimientos en `useEffect` con `householdId`. Muestra a 50% opacidad mientras carga.
 
 ---
 
-## ⏳ BUG-R22 — tasas_cambio mes 'global' vs mesActivo (DIFERIDO)
-**Estado:** DIFERIDO — verificar si es bug real  
-**Causa posible:** Hooks que leen tasa BCV pueden usar `mes = 'global'` en lugar del mes activo del store → tasa incorrecta en conversiones USD↔VES.  
-**Fix pendiente:** Auditar `useTasa.ts` y verificar el valor de `mes` en las queries a `tasas_cambio`.
+## ✅ BUG-R22 — tasas_cambio mes 'global' — verificado, por diseño
+**Estado:** VERIFICADO — no es bug  
+**Verificación:** `useTasas.ts` usa `.eq('mes', 'global')` para leer la tasa activa. `saveTasas()` también graba con `mes: 'global'` y además persiste en `tasas_historicas` para historial. Diseño correcto.
+
+---
+
+## ✅ BUG-R23 — useAccounts usaba userId en lugar de householdId
+**Commit:** `0153570`  
+**Causa:** `useAccounts.ts` filtraba `cuentas` con `.eq('user_id', userId)` (auth.uid()), pero `cuentas.user_id = householdId`. Isabel (auth.uid() ≠ householdId) veía 0 cuentas.  
+**Fix:** Cambiar a `householdId = useAuthStore(s => s.householdId)` y `[householdId]` en dependency array. Confirmado por PASO 0 (SUPABASE COUNT: 0 cuentas con Isabel's auth.uid()).

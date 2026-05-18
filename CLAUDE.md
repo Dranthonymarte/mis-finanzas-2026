@@ -32,10 +32,26 @@ Branch: develop → push también a react-preview (CF Pages auto-build)
 Ruta local: version_actual/react-app/
 31 rutas — todas conectadas a Supabase real
 ```
-REGLA CRÍTICA datos: TODO está keyed por `user_id` (= fa3f7b3b para
-Anthony). `householdId === userId` SIEMPRE (useAuth ya no consulta
-household_members ni provisiona — eso corrompía). NUNCA reintroducir
-`provisionHousehold` ni filtrar por `household_id` en queries de datos.
+REGLA CRÍTICA datos (CORREGIDA 2026-05-18 con evidencia Supabase live —
+reemplaza la regla previa `householdId===userId` que era INCORRECTA):
+Los datos (`movimientos`, `cuentas`, `dinero_fuera`) son **HOUSEHOLD-scoped**.
+- Anthony auth uid `fa3f7b3b…` == su household_id `fa3f7b3b` (owner).
+- Isabel auth uid `455c23cd…` = `partner/accepted` del household `fa3f7b3b`
+  en `household_members` (tiene además un household propio legacy
+  `d806a2b6` SIN uso — ignorar).
+- `householdId` se resuelve de `household_members` (WHERE user_id=auth.uid()
+  → household_id): Anthony→fa3f7b3b, Isabel→fa3f7b3b. Resolución
+  **cache-first** (persist store), **no bloqueante** (authReady desde
+  getSession; household en background), fallback householdId=auth.uid()
+  solo si no hay membership. NUNCA `provisionHousehold` / nunca auto-crear
+  household / nunca bloquear auth (eso causó el loop pre-9b9c0a8).
+- READS: filtrar por `household_id = householdId` (NO por user_id).
+- INSERT: `user_id = auth.uid()` (creador, para análisis por miembro =
+  "created_by") + `household_id = householdId`.
+- ⚠️ Estado data: `household_id` parcialmente NULL (240 mov + 4 cuentas,
+  user_id=fa3f7b3b) → requiere migración backfill a fa3f7b3b. Hasta
+  aplicarla, filtro transitorio debe incluir filas household_id IS NULL
+  del owner. (Migración quirúrgica: ver SESSION.md / confirmada por Anthony.)
 Auth es cache-first (persist store) + timeout 3.5s. PWA: `registerSW`
 en main.tsx + `usePwaInstall` (no customizar `storageKey` de Supabase).
 Pendiente: ver `PENDIENTES.md` §1-5 (Fondo emergencia, Dashboard
@@ -46,12 +62,14 @@ reorder/info, auditoría 28 bugs, Groq env CF, verif. móvil).
 ## REACT APP — REGLAS CRÍTICAS (vinculantes)
 
 ```
-user_id en INSERT movimientos = householdId (NUNCA auth.uid())
+INSERT movimientos: user_id = auth.uid() (creador) + household_id = householdId
+READS movimientos/cuentas/dinero_fuera: filtrar por household_id (NO user_id)
 subcat / method: NUNCA null → siempre ''
 Edición movimientos: soft-delete (deleted_at=now()) + INSERT nuevo UUID
 Transferencias: par TRANSFER_DEBIT+CREDIT con pair_id compartido
 mes DB: "Mayo" | prefs store: "may-26" → convertir con mesIdToDbKey()
-household_id: fa3f7b3b-148b-4dea-8e2a-37f740c08b3d
+household_id (Anthony y Isabel): fa3f7b3b-148b-4dea-8e2a-37f740c08b3d
+config_usuario: per-user (sin household_id) — Isabel 455c23cd, Anthony fa3f7b3b
 ```
 
 ### TypeScript strict

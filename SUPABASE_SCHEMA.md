@@ -41,8 +41,8 @@ Cache local del schema de producción. Evita re-querys cada sesión.
 
 ```
 id            text  PK            (no UUID — generado client-side)
-user_id       uuid  NOT NULL      ← DEBE SER householdId (RLS usa active_household_id())
-household_id  uuid                (RLS scope)
+user_id       uuid  NOT NULL      ← uid del CREADOR (Anthony fa3f7b3b | Isabel 455c23cd)
+household_id  uuid  NOT NULL*     ← SCOPE real de queries (=fa3f7b3b). *Backfilled 2026-05-18 (0 NULL)
 mes           text  NOT NULL      formato "Mayo", "Diciembre" (nombre español completo)
                                   ⚠️ NO "YYYY-MM". Convertir con mesIdToDbKey("may-26") → "Mayo"
 fecha         date  NOT NULL
@@ -67,12 +67,13 @@ created_at    timestamptz
 updated_at    timestamptz
 ```
 
-**Reglas críticas:**
+**Reglas críticas (CORREGIDO 2026-05-18 con evidencia Supabase live):**
 - Transacciones **INMUTABLES**: para "editar" → `deleted_at = now()` en original + INSERT con nuevo UUID.
-- `user_id` en INSERT = `householdId` (UUID del household), NO `auth.uid()`. RLS valida `active_household_id()`.
+- `user_id` en INSERT = `auth.uid()` del CREADOR (Anthony fa3f7b3b | Isabel 455c23cd) — habilita análisis por miembro.
+- `household_id` en INSERT = householdId resuelto (= fa3f7b3b para Anthony Y Isabel). Backfill 2026-05-18: 0 filas NULL.
 - `subcat` y `method` son NOT NULL en DB — SIEMPRE enviar `''` no `null`.
 - Queries siempre con `WHERE deleted_at IS NULL`.
-- Scope: `user_id = householdId`. **NUNCA** `user_id = auth.uid()`.
+- **Scope de READS: `household_id = householdId`. NUNCA filtrar por `user_id`** (perdería las 96 filas de Isabel, o las de Anthony si entra Isabel).
 
 ---
 
@@ -253,3 +254,4 @@ created_at, updated_at
 |---|---|
 | 2026-04-25 | Doc inicial — captura de schema vivo via MCP |
 | 2026-05-17 | Actualización: row counts, mes format ("Mayo"), tipo valores en español, user_id=householdId, fire_config shape real, listas_compras schema, project_files RLS fix (BUG-25/26) |
+| 2026-05-18 | **Modelo CORREGIDO con evidencia live**: regla previa `user_id=householdId` era falsa (perdía 96 filas de Isabel). Verdad: Isabel uid `455c23cd` = partner/accepted del household `fa3f7b3b`. READS scope por `household_id`, NUNCA `user_id`. Migración backfill: 240 mov + 4 cuentas owner NULL→fa3f7b3b (0 NULL restante). `config_usuario` es per-user (sin household_id, Isabel tiene row propia). `profiles` no existe. |

@@ -93,57 +93,71 @@ export function useAuth() {
     // logged in (which then bounces back → perceived "autologin"). We mark the
     // session authenticated from the token alone and resolve the household in
     // the background using the persisted cache as the immediate value.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return
-      clearTimeout(readyTimer)
-      const store = getStore()
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!mounted) return
+        clearTimeout(readyTimer)
+        const store = getStore()
 
-      if (!session?.user) {
-        clearSession()
-        store.setAuthReady()
-        return
-      }
-
-      const uid   = session.user.id
-      const email = session.user.email ?? null
-      // Use cached household if it belongs to this same user; else null for now
-      const cachedHid = store.userId === uid ? store.householdId : null
-
-      setSession({
-        userId:      uid,
-        householdId: cachedHid,
-        email,
-        userName:    store.userName ?? null,
-      })
-      store.setAuthReady()           // ← ready NOW, no DB wait, no race
-
-      // Resolve / verify household in the background (won't block routing)
-      resolveHousehold(uid).then(hid => {
-        if (mounted && hid && hid !== cachedHid) {
-          setSession({ userId: uid, householdId: hid, email })
+        if (!session?.user) {
+          clearSession()
+          store.setAuthReady()
+          return
         }
+
+        const uid   = session.user.id
+        const email = session.user.email ?? null
+        // Use cached household if it belongs to this same user; else null for now
+        const cachedHid = store.userId === uid ? store.householdId : null
+
+        setSession({
+          userId:      uid,
+          householdId: cachedHid,
+          email,
+          userName:    store.userName ?? null,
+        })
+        store.setAuthReady()           // ← ready NOW, no DB wait, no race
+
+        // Resolve / verify household in the background (won't block routing)
+        resolveHousehold(uid).then(hid => {
+          if (mounted && hid && hid !== cachedHid) {
+            setSession({ userId: uid, householdId: hid, email })
+          }
+        }).catch(() => { /* keep cached household */ })
       })
-    })
+      .catch(() => {
+        // getSession() must never hang the spinner, even on storage errors
+        if (!mounted) return
+        clearTimeout(readyTimer)
+        getStore().setAuthReady()
+      })
 
     // ── Reactive — login, logout, token refresh ──
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return
-        // INITIAL_SESSION is already handled by getSession() above — skip to
-        // avoid a duplicate buildSession round-trip on every page load.
+        // INITIAL_SESSION is handled by getSession() above — skip to avoid a
+        // duplicate buildSession round-trip on every page load.
         if (event === 'INITIAL_SESSION') return
+
+        // ONLY an explicit sign-out clears the session. Transient null
+        // sessions on TOKEN_REFRESHED/USER_UPDATED must NOT bounce the user
+        // to /login (that caused the redirect ping-pong / loop).
+        if (event === 'SIGNED_OUT') {
+          clearSession()
+          getStore().setAuthReady()
+          return
+        }
 
         if (session?.user) {
           const payload = await buildSession(
             session.user.id,
             session.user.email ?? null,
             session.user.user_metadata,
-          )
-          if (mounted) { setSession(payload); getStore().setAuthReady() }
-        } else {
-          clearSession()
-          getStore().setAuthReady()
+          ).catch(() => null)
+          if (mounted && payload) { setSession(payload); getStore().setAuthReady() }
         }
+        // null session on a non-SIGNED_OUT event → ignore (transient)
       }
     )
 

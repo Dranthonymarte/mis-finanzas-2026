@@ -6,6 +6,7 @@
 
 import { useState, useEffect } from 'react'
 import AppHeader from '../components/shell/AppHeader'
+import Sheet        from '../components/ui/Sheet'
 import { supabase }    from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
 import { useFormat }    from '../hooks/useFormat'
@@ -23,6 +24,7 @@ interface DineroFueraRow {
   fecha_inicio:     string | null
   fecha_vencimiento: string | null
   pagado:           boolean
+  derived?:         boolean   // from movimientos (Prestamo recibido/pagado) — read-only
 }
 
 export default function DineroFuera() {
@@ -43,6 +45,8 @@ export default function DineroFuera() {
   const [confirmId,   setConfirmId]   = useState<string | null>(null)
   const [confirmMode, setConfirmMode] = useState<'pagado' | 'delete'>('pagado')
 
+  const [derivedRows, setDerivedRows] = useState<DineroFueraRow[]>([])
+
   useEffect(() => {
     if (!householdId) { setLoading(false); return }
     let q = supabase
@@ -56,6 +60,47 @@ export default function DineroFuera() {
       setLoading(false)
     })
   }, [householdId, showPaid])
+
+  // ── Derive loan/debt entries from movimientos (Prestamo recibido/pagado) ──
+  // Historical data lives here, NOT in dinero_fuera. Grouped by descripcion
+  // (the person's name, e.g. "Luis Eduardo", "Prima Isa"). Read-only.
+  useEffect(() => {
+    if (!householdId) return
+    supabase
+      .from('movimientos')
+      .select('descripcion,tipo,amount,fecha')
+      .eq('user_id', householdId)
+      .in('tipo', ['Prestamo recibido', 'Prestamo pagado'])
+      .is('deleted_at', null)
+      .then(({ data }) => {
+        const byName = new Map<string, { neto: number; first: string | null }>()
+        for (const m of data ?? []) {
+          const name = (m.descripcion as string | null)?.trim() || 'Sin nombre'
+          const amt  = Math.abs(parseFloat(String(m.amount)) || 0)
+          // 'Prestamo recibido' = me deben (loan) per usuario; 'pagado' lo reduce
+          const signed = m.tipo === 'Prestamo recibido' ? amt : -amt
+          const cur = byName.get(name) ?? { neto: 0, first: (m.fecha as string | null) }
+          cur.neto += signed
+          byName.set(name, cur)
+        }
+        const derived: DineroFueraRow[] = [...byName.entries()]
+          .filter(([, v]) => Math.abs(v.neto) > 0.009)
+          .map(([name, v], i) => ({
+            id:               `mov-${i}-${name}`,
+            tipo:             'loan',
+            nombre:           name,
+            concepto:         'Desde movimientos',
+            monto_original:   Math.abs(v.neto),
+            monto_abonado:    0,
+            abonos:           [],
+            fecha_inicio:     v.first,
+            fecha_vencimiento: null,
+            pagado:           false,
+            derived:          true,
+          }))
+        setDerivedRows(derived)
+      })
+  }, [householdId])
 
   async function handleAbono(id: string) {
     const monto = parseFloat(abonoVal)
@@ -100,9 +145,10 @@ export default function DineroFuera() {
     }
   }
 
-  const filtered   = (tab === 'all' ? rows : rows.filter(r => r.tipo === tab))
-  const totalDebt  = rows.filter(r => r.tipo === 'debt').reduce((s, r) => s + (r.monto_original - r.monto_abonado), 0)
-  const totalLoan  = rows.filter(r => r.tipo === 'loan').reduce((s, r) => s + (r.monto_original - r.monto_abonado), 0)
+  const allRows    = [...rows, ...derivedRows]
+  const filtered   = tab === 'all' ? allRows : allRows.filter(r => r.tipo === tab)
+  const totalDebt  = allRows.filter(r => r.tipo === 'debt').reduce((s, r) => s + (r.monto_original - r.monto_abonado), 0)
+  const totalLoan  = allRows.filter(r => r.tipo === 'loan').reduce((s, r) => s + (r.monto_original - r.monto_abonado), 0)
 
   const TABS: { id: 'all' | 'debt' | 'loan'; label: string }[] = [
     { id: 'all',  label: 'Todos'    },
@@ -207,8 +253,15 @@ export default function DineroFuera() {
                 )}
               </div>
 
-              {/* ── Inline abono form ── */}
-              {showAbono ? (
+              {/* ── Actions (read-only for derived movimientos) ── */}
+              {r.derived ? (
+                <div style={{
+                  fontSize: 11, color: 'var(--fg-mute)', textAlign: 'center',
+                  background: 'var(--ink-3)', borderRadius: 8, padding: '7px 10px',
+                }}>
+                  Derivado de movimientos · solo lectura
+                </div>
+              ) : showAbono ? (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <span style={{ fontSize: 12, color: 'var(--fg-mute)' }}>$</span>
                   <input
@@ -278,64 +331,43 @@ export default function DineroFuera() {
       <div style={{ height: 32 }} />
 
       {/* ── Confirmation sheet ── */}
-      {confirmId && (
-        <>
-          <div
+      <Sheet open={confirmId !== null} onClose={() => setConfirmId(null)}>
+        <div style={{ textAlign: 'center', marginBottom: 16 }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>
+            {confirmMode === 'delete' ? '🗑' : '✓'}
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>
+            {confirmMode === 'delete' ? '¿Eliminar registro?' : '¿Marcar como pagado?'}
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--fg-mute)' }}>
+            {allRows.find(r => r.id === confirmId)?.nombre} — {fmt(allRows.find(r => r.id === confirmId)?.monto_original ?? 0)}
+          </div>
+          <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginTop: 6 }}>
+            {confirmMode === 'delete'
+              ? 'Esta acción eliminará el registro permanentemente.'
+              : 'Esta acción ocultará el registro de la lista activa.'}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
             onClick={() => setConfirmId(null)}
             style={{
-              position: 'fixed', inset: 0,
-              background: 'rgba(0,0,0,.6)',
-              zIndex: 500,
+              flex: 1, padding: '12px', borderRadius: 12,
+              background: 'var(--ink-3)', border: '1px solid var(--line)',
+              fontSize: 14, fontWeight: 600, color: 'var(--fg-dim)', cursor: 'pointer',
             }}
-          />
-          <div style={{
-            position: 'fixed', bottom: 0, left: '50%',
-            transform: 'translateX(-50%)',
-            width: '100%', maxWidth: 430,
-            background: 'var(--ink-1)',
-            borderRadius: '20px 20px 0 0',
-            border: '1px solid var(--line)',
-            padding: '20px 20px calc(env(safe-area-inset-bottom, 20px) + 40px)',
-            zIndex: 501,
-          }}>
-            <div style={{ textAlign: 'center', marginBottom: 16 }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>
-                {confirmMode === 'delete' ? '🗑' : '✓'}
-              </div>
-              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>
-                {confirmMode === 'delete' ? '¿Eliminar registro?' : '¿Marcar como pagado?'}
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--fg-mute)' }}>
-                {rows.find(r => r.id === confirmId)?.nombre} — {fmt(rows.find(r => r.id === confirmId)?.monto_original ?? 0)}
-              </div>
-              <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginTop: 6 }}>
-                {confirmMode === 'delete'
-                  ? 'Esta acción eliminará el registro permanentemente.'
-                  : 'Esta acción ocultará el registro de la lista activa.'}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => setConfirmId(null)}
-                style={{
-                  flex: 1, padding: '12px', borderRadius: 12,
-                  background: 'var(--ink-3)', border: '1px solid var(--line)',
-                  fontSize: 14, fontWeight: 600, color: 'var(--fg-dim)', cursor: 'pointer',
-                }}
-              >Cancelar</button>
-              <button
-                onClick={() => confirmMode === 'delete' ? handleDelete(confirmId) : handlePagado(confirmId)}
-                style={{
-                  flex: 1, padding: '12px', borderRadius: 12,
-                  background: confirmMode === 'delete' ? 'var(--neg)' : 'var(--pos)',
-                  border: 'none',
-                  fontSize: 14, fontWeight: 700, color: '#0a0b0d', cursor: 'pointer',
-                }}
-              >Confirmar</button>
-            </div>
-          </div>
-        </>
-      )}
+          >Cancelar</button>
+          <button
+            onClick={() => confirmId && (confirmMode === 'delete' ? handleDelete(confirmId) : handlePagado(confirmId))}
+            style={{
+              flex: 1, padding: '12px', borderRadius: 12,
+              background: confirmMode === 'delete' ? 'var(--neg)' : 'var(--pos)',
+              border: 'none',
+              fontSize: 14, fontWeight: 700, color: '#0a0b0d', cursor: 'pointer',
+            }}
+          >Confirmar</button>
+        </div>
+      </Sheet>
     </div>
   )
 }

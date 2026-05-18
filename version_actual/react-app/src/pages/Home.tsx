@@ -238,18 +238,15 @@ export default function Home() {
       })
   }, [householdId, mesActivo])
 
-  // ── Patrimonio total (cuentas USD) ──
-  const patrimony = liveAccounts
-    ? liveAccounts.filter(a => a.currency === 'USD').reduce((s, a) => s + a.balance, 0)
-    : 0
+  // ── Patrimonio neto = TODAS las cuentas, normalizadas a USD ──
+  // (fmt() luego convierte USD → moneda activa: USD/BS/EUR)
+  const patrimony = (liveAccounts ?? [])
+    .reduce((s, a) => s + (a.balanceUSD ?? a.balance), 0)
 
-  // ── Saldo disponible (cuentas líquidas: CHECKING + CASH) ──
+  // ── Saldo disponible = patrimonio menos cuentas de AHORRO (líquido) ──
   const saldoDisponible = (liveAccounts ?? [])
-    .filter(a =>
-      a.currency === 'USD' &&
-      ['CHECKING', 'CASH', 'CORRIENTE', 'EFECTIVO'].some(t => a.type.toUpperCase().includes(t))
-    )
-    .reduce((s, a) => s + a.balance, 0)
+    .filter(a => !a.type.toUpperCase().includes('AHORRO'))
+    .reduce((s, a) => s + (a.balanceUSD ?? a.balance), 0)
 
   // ── Tasa ahorro ──
   const savingsRate = kpiData.ingresos > 0
@@ -421,16 +418,8 @@ export default function Home() {
         <div className="font-display" style={{ fontSize: 44, lineHeight: 1, letterSpacing: '-.02em', marginTop: 6 }}>
           {fmt(patrimony)}
         </div>
-        <div style={{ display: 'flex', gap: 6, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Pill tone="pos" size="xs">↑ +$342.18</Pill>
-          <Pill tone="pos" size="xs">+2.4%</Pill>
-          <span style={{ fontSize: 10.5, color: 'var(--fg-mute)' }}>vs. mes anterior</span>
-        </div>
-        <div style={{ marginTop: 14 }}>
+        <div style={{ marginTop: 16 }}>
           <Sparkline data={MOCK_BALANCE_SERIES} color="var(--amber)" w={350} h={36} fill stroke={1.8} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 9, color: 'var(--fg-mute)' }}>
-            <span>Nov</span><span>Dic</span><span>Ene</span><span>Feb</span><span>Mar</span><span>Abr</span>
-          </div>
         </div>
       </div>
 

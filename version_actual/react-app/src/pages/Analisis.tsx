@@ -159,20 +159,29 @@ export default function Analisis() {
     )
   }, [txns])
 
-  // ── Ingresos por descripción (más útil que por tipo) ──────
+  // ── Ingresos: total + desglose por persona (Anthony / Isabel) ──────
+  // Fijos mensuales agrupados por autor; el resto como "Otros ingresos".
+  const ingresosTotal = useMemo(
+    () => txns.reduce((s, t) => txnGroup(t.tipo) === 'ingreso' ? s + Math.abs(t.amount) : s, 0),
+    [txns],
+  )
   const ingresosPorTipo = useMemo<BarEntry[]>(() => {
-    const byDesc: Record<string, number> = {}
-    const byTipo: Record<string, number> = {}
+    let anthonyFijo = 0, isabelFijo = 0, otros = 0
     for (const t of txns) {
       if (txnGroup(t.tipo) !== 'ingreso') continue
-      const desc = t.desc?.trim() || t.tipo
-      byDesc[desc] = (byDesc[desc] ?? 0) + Math.abs(t.amount)
-      byTipo[t.tipo] = (byTipo[t.tipo] ?? 0) + Math.abs(t.amount)
+      const amt = Math.abs(t.amount)
+      if (t.tipo === 'Ingreso Fijo') {
+        if (t.author === 'isabel') isabelFijo += amt
+        else                       anthonyFijo += amt
+      } else {
+        otros += amt
+      }
     }
-    // If there are meaningful descriptions, show those; else fall back to tipos
-    const hasDesc = Object.keys(byDesc).some(k => !Object.keys(byTipo).includes(k))
-    const src = hasDesc ? byDesc : byTipo
-    return Object.entries(src).sort(([, a], [, b]) => b - a).slice(0, 8).map(([label, value]) => ({ label, value }))
+    return [
+      { label: 'Fijo mensual · Anthony', value: anthonyFijo },
+      { label: 'Fijo mensual · Isabel',  value: isabelFijo  },
+      { label: 'Otros ingresos',         value: otros        },
+    ].filter(e => e.value > 0)
   }, [txns])
 
   // ── Desglose semanal (gastos) ────────────────────
@@ -330,9 +339,13 @@ export default function Analisis() {
             )}
           </Card>
 
-          {/* ── Ingresos por tipo ── */}
+          {/* ── Ingresos: total + desglose por persona ── */}
           <Card>
             <SLabel>Ingresos — {mesLabel(mesActivo)}</SLabel>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+              <span style={{ fontSize: 12, color: 'var(--fg-mute)' }}>Total ingresos</span>
+              <span className="num" style={{ fontSize: 20, fontWeight: 700, color: 'var(--pos)' }}>{fmt(ingresosTotal)}</span>
+            </div>
             <HBar data={ingresosPorTipo} color="var(--pos)" />
           </Card>
 

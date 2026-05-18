@@ -1,10 +1,16 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+import { registerSW } from 'virtual:pwa-register'
 import './styles/tokens.css'
 import './styles/mobile-uix.css'
 import './index.css'
 import App from './App'
+
+// ── Register service worker → makes the app installable (PWA) ──
+// vite-plugin-pwa generates the SW; without this call no SW is registered
+// and Android Chrome will NOT offer "Add to home screen".
+registerSW({ immediate: true })
 
 // ── Apply saved theme/accent before React renders (prevents flash) ──
 const _savedTheme  = localStorage.getItem('mis_finanzas_theme') ?? 'dark'

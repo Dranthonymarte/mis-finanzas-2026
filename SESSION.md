@@ -3,6 +3,51 @@
 
 ---
 
+## SESIÓN — 18 May 2026 (FASE 3 — críticos: PWA, auth refresh, patrimonio, sheets)
+
+📊 **Modelo: Opus** (debugging causa-raíz multi-archivo)
+
+### Causas raíz encontradas y corregidas
+1. **PWA no instalable** — `vite-plugin-pwa` estaba configurado pero `main.tsx`
+   NUNCA llamaba `registerSW()` → cero service worker en runtime → Android
+   Chrome no ofrece "Instalar". Fix: `registerSW({immediate:true})` + `src/vite-env.d.ts`
+   + manifest enriquecido (id, scope, maskable). Build genera `dist/sw.js` ✓
+2. **Refresh → /login + "autologin" + "conexión tardó"** — el timer de 5s en
+   `useAuth` disparaba `setAuthReady()` antes de resolver `getSession()`/household
+   → RequireAuth flash-redirect a /login → al resolver sesión, RequireNoAuth
+   rebota a / (percibido como autologin). Fix: `authReady`+`isAuthenticated` se
+   fijan YA desde `getSession()` (lectura local, sin esperar DB); household
+   resuelve en background; timer solo catastrófico 8s; `INITIAL_SESSION` skip
+   para no duplicar buildSession. `supabase.ts`: auth config explícita.
+3. **Candado/sheets "capa transparente sin diálogo"** — `.page-slide-*` aplica
+   `transform` → se vuelve containing-block de `position:fixed` → la hoja se
+   renderiza al fondo del scroll, no del viewport. Fix: `<Sheet>` con
+   `createPortal` a `document.body` (Txn candado, More logout, DineroFuera).
+4. **Patrimonio/Saldo incongruentes** — `useAccounts` sumaba montos sin
+   normalizar moneda; Home filtraba solo `currency==='USD'`. Fix: `balanceUSD`
+   (VES÷BCV) en useAccounts; Home patrimonio = Σ todas; saldo = Σ sin AHORRO;
+   `fmt()` convierte USD→moneda activa. Quitados pills mock "+$342.18".
+5. **Tasa manual imposible de escribir** — `parseFloat(e.target.value)||tasas.bcv`
+   en cada tecla → input vacío/parcial resnapeaba a tasa DB. Fix: input
+   string-backed (`rateStr`), parse solo si válido, normaliza en blur.
+6. **DineroFuera vacío** — datos reales están en `movimientos`
+   (tipo Prestamo recibido/pagado), no en tabla `dinero_fuera`. Fix: merge
+   derivado read-only agrupado por descripción (Luis Eduardo/Prima Isa).
+7. **Analisis ingresos** — revertido group-by-desc (generaba entradas basura);
+   ahora Total + desglose Fijo·Anthony / Fijo·Isabel / Otros (por `author`).
+
+### Pendientes reportados NO resueltos esta sesión
+- Groq en producción: `VITE_GROQ_API_KEY` está en `.env.local` (gitignored) →
+  **NO existe en build de Cloudflare Pages**. Requiere setear la env var en el
+  dashboard de CF Pages (acción de Anthony, no código).
+- Iconos info por card + reordenar dashboard cards (no integrado aún)
+- Subcategorías/Categorías: filtro por categoría + CRUD igual que Tipos
+- Lista de compras: rediseño + lógica + tablas Supabase (no integrado)
+- Fondo emergencia: lógica completa + integración dinero-fuera/ahorros
+- Presupuestos: validar en runtime tras fix de updateConfig optimista
+
+---
+
 ## SESIÓN — 18 May 2026 (fix build CF Pages + CLAUDE.md React App)
 
 📊 **Modelo próxima sesión: Sonnet 4.6**

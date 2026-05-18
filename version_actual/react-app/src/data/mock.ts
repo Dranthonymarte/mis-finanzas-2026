@@ -26,7 +26,8 @@ export interface Account {
   type: string            // 'CORRIENTE' | 'AHORRO' | 'CASH'
   name: string
   currency: string
-  balance: number         // balance_override ?? saldo_inicial (static from DB row)
+  balance: number         // native-currency balance (balance_override ?? saldo_inicial + Σ mov)
+  balanceUSD?: number     // balance normalized to USD via BCV (for patrimonio/saldo aggregates)
   saldoInicial?: number   // raw saldo_inicial — needed for running balance calculation
   balanceOverride?: number | null  // if set → use directly, skip movimientos sum
   trend: number           // % change this month

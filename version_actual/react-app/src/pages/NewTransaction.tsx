@@ -89,13 +89,14 @@ export default function NewTransaction() {
   const [recDia,     setRecDia]     = useState(1)
   const [notes,      setNotes]      = useState('')
   const [rateBCV,       setRateBCV]       = useState(tasas.bcv)
+  const [rateStr,       setRateStr]       = useState(String(tasas.bcv))  // raw text — lets user type freely
   const [userEditedRate, setUserEditedRate] = useState(false)
   const [saved,         setSaved]         = useState(false)
   const [confirm,       setConfirm]       = useState(false)  // confirmation sheet
 
   // Sync BCV rate when tasas loads FROM DB — but not if user already edited it manually
   useEffect(() => {
-    if (!userEditedRate) setRateBCV(tasas.bcv)
+    if (!userEditedRate) { setRateBCV(tasas.bcv); setRateStr(String(tasas.bcv)) }
   }, [tasas.bcv, userEditedRate])
 
   // Read voice prefill from VozTxn (/voz page)
@@ -532,12 +533,21 @@ export default function NewTransaction() {
         <div style={{ padding: '0 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
-              type="number" value={rateBCV}
+              type="number" inputMode="decimal" value={rateStr}
               onChange={e => {
-                const v = parseFloat(e.target.value) || tasas.bcv
-                setRateBCV(v)
+                const raw = e.target.value
+                setRateStr(raw)               // keep raw text so partial/empty input is allowed
                 setUserEditedRate(true)
-                if (amountUSD) setAmountBs((parseFloat(amountUSD) * v).toFixed(2))
+                const v = parseFloat(raw)
+                if (!isNaN(v) && v > 0) {
+                  setRateBCV(v)
+                  if (amountUSD) setAmountBs((parseFloat(amountUSD) * v).toFixed(2))
+                }
+              }}
+              onBlur={() => {
+                // Normalize on blur: empty/invalid → fall back to current rate
+                const v = parseFloat(rateStr)
+                if (isNaN(v) || v <= 0) { setRateStr(String(rateBCV)) }
               }}
               style={{ ...inputSt, flex: 1, fontFamily: 'var(--f-num)', fontWeight: 600 }}
             />

@@ -78,66 +78,75 @@ export function useAuth() {
   const clearSession = useAuthStore(s => s.clearSession)
 
   useEffect(() => {
-    // Safety net: if getSession() hangs (offline, slow network), unblock RequireAuth after 5s
-    const readyTimer = setTimeout(() => {
-      if (!getStore().authReady) getStore().setAuthReady()
-    }, 5000)
+    let mounted = true
 
-    // 1. Fast path — getSession() returns from Supabase's in-memory cache (no network).
-    //    If the persisted store already has the matching userId+householdId,
-    //    we can set isAuthenticated immediately without a DB round-trip.
-    //    setAuthReady() is called in BOTH branches so RequireAuth never flashes /login.
+    // Catastrophic-only fallback: getSession() is a LOCAL read (no network) and
+    // resolves in milliseconds. This 8s timer only fires if the SDK never resolves
+    // (corrupted storage) so RequireAuth is never stuck on the spinner forever.
+    const readyTimer = setTimeout(() => {
+      if (mounted && !getStore().authReady) getStore().setAuthReady()
+    }, 8000)
+
+    // ── Initial session — set isAuthenticated + authReady IMMEDIATELY ──
+    // Critical: authReady must NOT wait on the household DB round-trip, otherwise
+    // a slow query lets RequireAuth flash-redirect to /login while the user IS
+    // logged in (which then bounces back → perceived "autologin"). We mark the
+    // session authenticated from the token alone and resolve the household in
+    // the background using the persisted cache as the immediate value.
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return
       clearTimeout(readyTimer)
-      const setAuthReady = getStore().setAuthReady
+      const store = getStore()
 
       if (!session?.user) {
-        // No active session → mark ready so RequireAuth can safely redirect to /login
-        setAuthReady()
+        clearSession()
+        store.setAuthReady()
         return
       }
 
       const uid   = session.user.id
-      const store = getStore()
+      const email = session.user.email ?? null
+      // Use cached household if it belongs to this same user; else null for now
+      const cachedHid = store.userId === uid ? store.householdId : null
 
-      if (store.userId === uid && store.householdId) {
-        // ✅ Cache-hit: set isAuthenticated instantly, verify household in background
-        setSession({
-          userId:      uid,
-          householdId: store.householdId,
-          email:       session.user.email ?? null,
-          userName:    store.userName ?? null,
-        })
-        setAuthReady()
-        // Background verify — updates store if household ever changed (rare)
-        resolveHousehold(uid).then(hid => {
-          if (hid && hid !== store.householdId) {
-            setSession({ userId: uid, householdId: hid, email: session.user.email ?? null })
-          }
-        })
-      } else {
-        // ❄️ Cold start or different user — need DB round-trip
-        buildSession(uid, session.user.email ?? null, session.user.user_metadata)
-          .then(payload => { setSession(payload); setAuthReady() })
-      }
+      setSession({
+        userId:      uid,
+        householdId: cachedHid,
+        email,
+        userName:    store.userName ?? null,
+      })
+      store.setAuthReady()           // ← ready NOW, no DB wait, no race
+
+      // Resolve / verify household in the background (won't block routing)
+      resolveHousehold(uid).then(hid => {
+        if (mounted && hid && hid !== cachedHid) {
+          setSession({ userId: uid, householdId: hid, email })
+        }
+      })
     })
 
-    // 2. Reactive — handles login, logout, token refresh events
+    // ── Reactive — login, logout, token refresh ──
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        if (!mounted) return
+        // INITIAL_SESSION is already handled by getSession() above — skip to
+        // avoid a duplicate buildSession round-trip on every page load.
+        if (event === 'INITIAL_SESSION') return
+
         if (session?.user) {
           const payload = await buildSession(
             session.user.id,
             session.user.email ?? null,
             session.user.user_metadata,
           )
-          setSession(payload)
+          if (mounted) { setSession(payload); getStore().setAuthReady() }
         } else {
           clearSession()
+          getStore().setAuthReady()
         }
       }
     )
 
-    return () => { clearTimeout(readyTimer); subscription.unsubscribe() }
+    return () => { mounted = false; clearTimeout(readyTimer); subscription.unsubscribe() }
   }, [setSession, clearSession])
 }

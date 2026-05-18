@@ -3,6 +3,7 @@ import { supabase }      from '../lib/supabase'
 import { useAuthStore }  from '../store/auth'
 import { type Account }  from '../data/mock'
 import { handleError }   from '../lib/handleError'
+import { useTasas }      from './useTasas'
 
 interface SupaCuenta {
   id:                   string
@@ -26,11 +27,15 @@ function inferType(nombre: string | null, moneda: string): string {
   return 'CORRIENTE'
 }
 
-function mapCuenta(r: SupaCuenta, movSums: Map<string, number>): Account {
+function mapCuenta(r: SupaCuenta, movSums: Map<string, number>, bcv: number): Account {
   const movTotal = movSums.get(r.id) ?? 0
   const balance  = r.balance_override != null
     ? r.balance_override
     : (r.saldo_inicial ?? 0) + movTotal
+
+  // Normalize to USD so patrimonio/saldo aggregates are currency-coherent.
+  // VES balances are divided by the BCV rate; USD stays as-is.
+  const balanceUSD = r.moneda === 'VES' && bcv > 0 ? balance / bcv : balance
 
   return {
     id:              r.id,
@@ -38,6 +43,7 @@ function mapCuenta(r: SupaCuenta, movSums: Map<string, number>): Account {
     name:            r.nombre,
     currency:        r.moneda,
     balance,
+    balanceUSD,
     saldoInicial:    r.saldo_inicial ?? 0,
     balanceOverride: r.balance_override ?? null,
     trend:           0,
@@ -48,6 +54,7 @@ function mapCuenta(r: SupaCuenta, movSums: Map<string, number>): Account {
 
 export function useAccounts() {
   const householdId = useAuthStore(s => s.householdId)
+  const { tasas }   = useTasas()
   const [accounts, setAccounts] = useState<Account[] | null>(null)
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState<string | null>(null)
@@ -86,7 +93,7 @@ export function useAccounts() {
         }
 
         const cuentas = (cuentasRes.data as SupaCuenta[] ?? [])
-        setAccounts(cuentas.map(r => mapCuenta(r, movSums)))
+        setAccounts(cuentas.map(r => mapCuenta(r, movSums, tasas.bcv)))
         setLoading(false)
       })
     }
@@ -99,7 +106,7 @@ export function useAccounts() {
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
-  }, [householdId])
+  }, [householdId, tasas.bcv])
 
   return { accounts, loading, error }
 }

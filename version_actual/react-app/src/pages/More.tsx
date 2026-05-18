@@ -14,6 +14,7 @@ import {
 } from '../components/icons/Icons'
 import { useAuthStore } from '../store/auth'
 import { supabase }     from '../lib/supabase'
+import Sheet            from '../components/ui/Sheet'
 
 // ── Quick-access grid item ──────────────────────────
 interface GridItem {
@@ -330,56 +331,43 @@ export default function More() {
       </div>
 
       {/* ── Logout confirmation sheet ── */}
-      {confirmLogout && (
-        <>
-          <div
-            onClick={() => setConfirmLogout(false)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 500 }}
-          />
+      <Sheet open={confirmLogout} onClose={() => setConfirmLogout(false)}>
+        <div style={{ textAlign: 'center' }}>
           <div style={{
-            position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
-            width: '100%', maxWidth: 430,
-            background: 'var(--ink-1)', borderRadius: '20px 20px 0 0',
-            border: '1px solid var(--line)',
-            padding: '20px 20px calc(env(safe-area-inset-bottom, 20px) + 40px)',
-            zIndex: 501, textAlign: 'center',
+            width: 52, height: 52, borderRadius: 16, margin: '0 auto 14px',
+            background: 'rgba(214,106,90,.12)', border: '1px solid rgba(214,106,90,.25)',
+            display: 'grid', placeItems: 'center', fontSize: 24,
           }}>
-            <div style={{
-              width: 52, height: 52, borderRadius: 16, margin: '0 auto 14px',
-              background: 'rgba(214,106,90,.12)', border: '1px solid rgba(214,106,90,.25)',
-              display: 'grid', placeItems: 'center', fontSize: 24,
-            }}>
-              👋
-            </div>
-            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>¿Cerrar sesión?</div>
-            <div style={{ fontSize: 13, color: 'var(--fg-mute)', marginBottom: 20, lineHeight: 1.5 }}>
-              Tendrás que volver a ingresar con tu email y contraseña.
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => setConfirmLogout(false)}
-                style={{
-                  flex: 1, padding: '13px', borderRadius: 13,
-                  background: 'var(--ink-3)', border: '1px solid var(--line)',
-                  fontSize: 14, fontWeight: 600, color: 'var(--fg-dim)', cursor: 'pointer',
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => { setConfirmLogout(false); handleLogout() }}
-                style={{
-                  flex: 1, padding: '13px', borderRadius: 13,
-                  background: 'var(--neg)', border: 'none',
-                  fontSize: 14, fontWeight: 700, color: '#fff', cursor: 'pointer',
-                }}
-              >
-                Cerrar sesión
-              </button>
-            </div>
+            👋
           </div>
-        </>
-      )}
+          <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>¿Cerrar sesión?</div>
+          <div style={{ fontSize: 13, color: 'var(--fg-mute)', marginBottom: 20, lineHeight: 1.5 }}>
+            Tendrás que volver a ingresar con tu email y contraseña.
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              onClick={() => setConfirmLogout(false)}
+              style={{
+                flex: 1, padding: '13px', borderRadius: 13,
+                background: 'var(--ink-3)', border: '1px solid var(--line)',
+                fontSize: 14, fontWeight: 600, color: 'var(--fg-dim)', cursor: 'pointer',
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => { setConfirmLogout(false); handleLogout() }}
+              style={{
+                flex: 1, padding: '13px', borderRadius: 13,
+                background: 'var(--neg)', border: 'none',
+                fontSize: 14, fontWeight: 700, color: '#fff', cursor: 'pointer',
+              }}
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      </Sheet>
 
     </div>
   )

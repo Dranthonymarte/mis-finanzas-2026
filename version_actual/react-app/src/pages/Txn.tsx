@@ -8,6 +8,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import CatIcon, { catColor } from '../components/ui/CatIcon'
+import Sheet from '../components/ui/Sheet'
 import { txnGroup, type Transaction } from '../data/mock'
 import { useFormat } from '../hooks/useFormat'
 import { useTransactions } from '../hooks/useTransactions'
@@ -507,58 +508,45 @@ export default function Txn() {
       <div style={{ height: 24 }} />
 
       {/* ── Close month confirmation sheet ── */}
-      {confirmClose && (
-        <>
-          <div
-            onClick={() => setConfirmClose(false)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 500 }}
-          />
+      <Sheet open={confirmClose} onClose={() => setConfirmClose(false)}>
+        <div style={{ textAlign: 'center' }}>
           <div style={{
-            position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
-            width: '100%', maxWidth: 430,
-            background: 'var(--ink-1)', borderRadius: '20px 20px 0 0',
-            border: '1px solid var(--line)',
-            padding: '20px 20px calc(env(safe-area-inset-bottom, 20px) + 40px)',
-            zIndex: 501, textAlign: 'center',
+            width: 48, height: 48, borderRadius: 14, margin: '0 auto 12px',
+            background: 'rgba(224,168,74,.12)', border: '1px solid rgba(224,168,74,.3)',
+            display: 'grid', placeItems: 'center', fontSize: 22,
           }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: 14, margin: '0 auto 12px',
-              background: 'rgba(224,168,74,.12)', border: '1px solid rgba(224,168,74,.3)',
-              display: 'grid', placeItems: 'center', fontSize: 22,
-            }}>
-              🔒
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>
-              ¿Cerrar {monthLabel}?
-            </div>
-            <div style={{ fontSize: 12.5, color: 'var(--fg-mute)', marginBottom: 20, lineHeight: 1.5 }}>
-              El mes quedará marcado como cerrado. Aún podrás verlo y reabrirlo después.
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => setConfirmClose(false)}
-                style={{
-                  flex: 1, padding: '13px', borderRadius: 13,
-                  background: 'var(--ink-3)', border: '1px solid var(--line)',
-                  fontSize: 14, fontWeight: 600, color: 'var(--fg-dim)', cursor: 'pointer',
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmCloseMonth}
-                style={{
-                  flex: 1, padding: '13px', borderRadius: 13,
-                  background: 'var(--amber)', border: 'none',
-                  fontSize: 14, fontWeight: 700, color: 'var(--ink-0)', cursor: 'pointer',
-                }}
-              >
-                Cerrar mes
-              </button>
-            </div>
+            🔒
           </div>
-        </>
-      )}
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>
+            ¿Cerrar {monthLabel}?
+          </div>
+          <div style={{ fontSize: 12.5, color: 'var(--fg-mute)', marginBottom: 20, lineHeight: 1.5 }}>
+            El mes quedará marcado como cerrado. Aún podrás verlo y reabrirlo después.
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              onClick={() => setConfirmClose(false)}
+              style={{
+                flex: 1, padding: '13px', borderRadius: 13,
+                background: 'var(--ink-3)', border: '1px solid var(--line)',
+                fontSize: 14, fontWeight: 600, color: 'var(--fg-dim)', cursor: 'pointer',
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmCloseMonth}
+              style={{
+                flex: 1, padding: '13px', borderRadius: 13,
+                background: 'var(--amber)', border: 'none',
+                fontSize: 14, fontWeight: 700, color: 'var(--ink-0)', cursor: 'pointer',
+              }}
+            >
+              Cerrar mes
+            </button>
+          </div>
+        </div>
+      </Sheet>
     </div>
   )
 }

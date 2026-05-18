@@ -90,6 +90,36 @@ export const DEFAULTS: Config = {
   fireConfig:    { goal: { meta: 200000, extra: 500, plazo: 20, actual: 0 } },
 }
 
+// ── Normalize tipos: DB stores string[] (Vanilla legacy) OR TipoConfig[]
+function normalizeTipos(raw: unknown): TipoConfig[] {
+  if (!Array.isArray(raw) || raw.length === 0) return DEFAULTS.tipos
+  // Already objects with esIngreso
+  if (typeof raw[0] === 'object' && raw[0] !== null && 'esIngreso' in raw[0]) {
+    return raw as TipoConfig[]
+  }
+  // Legacy string array → map using DEFAULTS lookup, fallback esIngreso=false
+  return (raw as string[]).map(nombre => {
+    const def = DEFAULTS.tipos.find(d => d.nombre === nombre)
+    return def ?? { nombre, esIngreso: false }
+  })
+}
+
+// ── Normalize recurrentes: Vanilla shape {dia,desc,amount} → {recDia,descripcion,monto}
+function normalizeRecurrentes(raw: unknown): RecurrenteConfig[] {
+  if (!Array.isArray(raw)) return []
+  return (raw as Record<string, unknown>[]).map(r => ({
+    id:               String(r.id ?? Date.now()),
+    descripcion:      String(r.descripcion ?? r.desc ?? ''),
+    monto:            parseFloat(String(r.monto ?? r.amount ?? 0)) || 0,
+    tipo:             String(r.tipo ?? 'Gasto'),
+    cat:              String(r.cat ?? ''),
+    recurrencia_dias: parseInt(String(r.recurrencia_dias ?? 30)) || 30,
+    recDia:           r.recDia != null
+                        ? Number(r.recDia)
+                        : r.dia != null ? Number(r.dia) : undefined,
+  }))
+}
+
 export function useConfig() {
   const userId = useAuthStore(s => s.userId)
   const [config,  setConfig]  = useState<Config>(DEFAULTS)
@@ -105,21 +135,18 @@ export function useConfig() {
       .single()
       .then(({ data, error }) => {
         if (error || !data) { setLoading(false); return }
-        // ── Guard: empty array/object falls back to DEFAULTS ──
-        // DB can return [] / {} if config was never saved → ?? won't catch it
-        const tipos = (data.tipos as TipoConfig[] | null)
-        const cats  = (data.categorias  as Record<string,string[]> | null)
-        const subs  = (data.subcategorias as Record<string,string[]> | null)
+        const cats = (data.categorias  as Record<string,string[]> | null)
+        const subs = (data.subcategorias as Record<string,string[]> | null)
 
         setConfig({
-          tipos:         (tipos?.length)                    ? tipos  : DEFAULTS.tipos,
+          tipos:         normalizeTipos(data.tipos),
           categorias:    (cats  && Object.keys(cats).length)  ? cats   : DEFAULTS.categorias,
           subcategorias: (subs  && Object.keys(subs).length)  ? subs   : DEFAULTS.subcategorias,
-          presupuestos:  (data.presupuestos   as Record<string,number> ) ?? DEFAULTS.presupuestos,
-          recurrentes:   (data.recurrentes    as RecurrenteConfig[]    ) ?? [],
-          closedMonths:  (data.closed_months  as string[]              ) ?? [],
-          metasAhorro:   (data.metas_ahorro   as MetaAhorro[]          ) ?? [],
-          fireConfig:    (data.fire_config    as FireConfig            ) ?? DEFAULTS.fireConfig,
+          presupuestos:  (data.presupuestos  as Record<string,number>) ?? DEFAULTS.presupuestos,
+          recurrentes:   normalizeRecurrentes(data.recurrentes),
+          closedMonths:  (data.closed_months as string[])             ?? [],
+          metasAhorro:   (data.metas_ahorro  as MetaAhorro[])         ?? [],
+          fireConfig:    (data.fire_config   as FireConfig)            ?? DEFAULTS.fireConfig,
         })
         setLoading(false)
       })

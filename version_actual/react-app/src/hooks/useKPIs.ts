@@ -28,10 +28,11 @@ export function useKPIs(transactions: Transaction[] | null, config: Config): KPI
     let ingresos = 0, gastos = 0, ahorro = 0
 
     for (const m of transactions) {
-      const amt = Math.abs(m.amount)
-      if (tiposIngreso.has(m.tipo))     ingresos += amt
-      else if (tiposAhorro.has(m.tipo)) ahorro   += amt
-      else                              gastos   += amt
+      if (!m?.tipo) continue
+      const amt = parseFloat(String(m.amount)) || 0
+      if (tiposIngreso.has(m.tipo))     ingresos += Math.abs(amt)
+      else if (tiposAhorro.has(m.tipo)) ahorro   += Math.abs(amt)
+      else                              gastos   += Math.abs(amt)
     }
 
     return { ingresos, gastos, balance: ingresos - gastos, ahorro }

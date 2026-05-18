@@ -16,6 +16,8 @@ import { useAccounts }     from '../hooks/useAccounts'
 import { useTransactions } from '../hooks/useTransactions'
 import { useFormat }       from '../hooks/useFormat'
 import { usePrefsStore }   from '../store/prefs'
+import { useAuthStore }    from '../store/auth'
+import { supabase }        from '../lib/supabase'
 
 type TxnFilter = 'all' | 'ingresos' | 'gastos'
 
@@ -78,14 +80,16 @@ function TxnRow({ t, last }: { t: Transaction; last: boolean }) {
 }
 
 export default function AccountDetail() {
-  const { id }   = useParams<{ id: string }>()
-  const navigate = useNavigate()
-  const { fmt }  = useFormat()
+  const { id }        = useParams<{ id: string }>()
+  const navigate      = useNavigate()
+  const { fmt }       = useFormat()
+  const householdId   = useAuthStore(s => s.householdId)
 
   const mesActivo = usePrefsStore(s => s.mesActivo)
 
   const [filter,        setFilter]        = useState<TxnFilter>('all')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [movSum,        setMovSum]        = useState<number | null>(null)
 
   const { accounts } = useAccounts()
   const { transactions: liveTxns } = useTransactions(mesActivo)
@@ -96,6 +100,27 @@ export default function AccountDetail() {
     // Redirect only after accounts loaded and account not found
     if (accounts !== null && !acc) navigate(-1)
   }, [accounts, acc, navigate])
+
+  // ── Balance real: saldo_inicial + sum(all movimientos for this account) ──
+  // Skip if balance_override is set (manually reconciled value takes precedence)
+  useEffect(() => {
+    if (!id || !householdId || !acc || acc.balanceOverride != null) return
+    supabase
+      .from('movimientos')
+      .select('amount')
+      .eq('cuenta_id', id)
+      .eq('household_id', householdId)
+      .is('deleted_at', null)
+      .then(({ data }) => {
+        const sum = (data ?? []).reduce((s: number, r: { amount: number }) => s + r.amount, 0)
+        setMovSum(sum)
+      })
+  }, [id, householdId, acc?.id])   // eslint-disable-line react-hooks/exhaustive-deps
+
+  // If balance_override is set → use it. Otherwise saldo_inicial + sum(all movs)
+  const realBalance = acc
+    ? (acc.balanceOverride != null ? acc.balanceOverride : (acc.saldoInicial ?? 0) + (movSum ?? 0))
+    : 0
 
   if (!acc) {
     return (
@@ -200,7 +225,9 @@ export default function AccountDetail() {
             </div>
 
             <div className="num" style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-.02em', color: acc.color }}>
-              {fmt(acc.balance)}
+              {movSum === null && acc.balanceOverride == null
+                ? <span style={{ opacity: .5 }}>{fmt(acc.balance)}</span>
+                : fmt(realBalance)}
             </div>
 
             <div style={{ marginTop: 14, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>

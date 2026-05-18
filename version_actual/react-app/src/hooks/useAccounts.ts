@@ -23,14 +23,16 @@ function inferType(nombre: string | null, moneda: string): string {
 
 function mapCuenta(r: SupaCuenta): Account {
   return {
-    id:       r.id,
-    type:     inferType(r.nombre, r.moneda),
-    name:     r.nombre,
-    currency: r.moneda,
-    balance:  r.balance_override ?? r.saldo_inicial ?? 0,
-    trend:    0,
-    color:    r.color ?? '#58b26a',
-    spark:    [],
+    id:              r.id,
+    type:            inferType(r.nombre, r.moneda),
+    name:            r.nombre,
+    currency:        r.moneda,
+    balance:         r.balance_override ?? r.saldo_inicial ?? 0,
+    saldoInicial:    r.saldo_inicial ?? 0,
+    balanceOverride: r.balance_override ?? null,
+    trend:           0,
+    color:           r.color ?? '#58b26a',
+    spark:           [],
   }
 }
 

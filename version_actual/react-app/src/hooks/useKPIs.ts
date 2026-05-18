@@ -21,7 +21,7 @@ export function useKPIs(transactions: Transaction[] | null, config: Config): KPI
     )
     const tiposAhorro = new Set(
       tipos
-        .filter(t => !t.esIngreso && t.nombre.toLowerCase().includes('ahorro'))
+        .filter(t => !t.esIngreso && (t.nombre ?? '').toLowerCase().includes('ahorro'))
         .map(t => t.nombre)
     )
 

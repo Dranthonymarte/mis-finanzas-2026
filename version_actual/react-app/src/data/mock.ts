@@ -23,11 +23,13 @@ export interface Transaction {
 
 export interface Account {
   id: string
-  type: string       // 'CORRIENTE' | 'AHORRO' | 'CASH'
+  type: string            // 'CORRIENTE' | 'AHORRO' | 'CASH'
   name: string
   currency: string
-  balance: number
-  trend: number      // % change this month
+  balance: number         // balance_override ?? saldo_inicial (static from DB row)
+  saldoInicial?: number   // raw saldo_inicial — needed for running balance calculation
+  balanceOverride?: number | null  // if set → use directly, skip movimientos sum
+  trend: number           // % change this month
   color: string
   spark: number[]
 }

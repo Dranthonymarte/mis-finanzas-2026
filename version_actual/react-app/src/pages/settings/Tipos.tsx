@@ -52,7 +52,7 @@ export default function Tipos() {
   async function addTipo() {
     const trimmed = newNombre.trim()
     if (!trimmed) return
-    const already = rows.some(r => r.nombre.toLowerCase() === trimmed.toLowerCase())
+    const already = rows.some(r => (r.nombre ?? '').toLowerCase() === trimmed.toLowerCase())
     if (already) return
     setSaving(true)
     const nuevo: TipoRow = {

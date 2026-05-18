@@ -37,18 +37,18 @@ function mapCuenta(r: SupaCuenta): Account {
 }
 
 export function useAccounts() {
-  const userId = useAuthStore(s => s.userId)
+  const householdId = useAuthStore(s => s.householdId)
   const [accounts, setAccounts] = useState<Account[] | null>(null)
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState<string | null>(null)
 
   useEffect(() => {
-    if (!userId) { setLoading(false); return }
+    if (!householdId) { setLoading(false); return }
 
     supabase
       .from('cuentas')
       .select('id,nombre,color,moneda,saldo_inicial,balance_override,activa,owner')
-      .eq('user_id', userId)
+      .eq('user_id', householdId)
       .eq('activa', true)
       .order('created_at')
       .then(({ data, error: err }) => {
@@ -56,7 +56,7 @@ export function useAccounts() {
         setAccounts((data as SupaCuenta[] ?? []).map(mapCuenta))
         setLoading(false)
       })
-  }, [userId])
+  }, [householdId])
 
   return { accounts, loading, error }
 }

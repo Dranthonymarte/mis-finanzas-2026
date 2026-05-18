@@ -1,0 +1,44 @@
+# ╔══════════════════════════════════════════════════════════════════════╗
+# ║  _headers · Mis Finanzas 2026 — React App · Cloudflare Pages         ║
+# ║  Replica la disciplina SW/manifest/caché de la versión vanilla que   ║
+# ║  sí era instalable. CSP estricta = tarea de hardening aparte (no P0). ║
+# ╚══════════════════════════════════════════════════════════════════════╝
+
+# ── Service Worker: NUNCA cachear (nombre fijo, sin hash) ─────────────
+/sw.js
+  Cache-Control: no-store, no-cache, must-revalidate
+  Content-Type: application/javascript
+
+# ── Runtime de Workbox (cargado solo por el SW): sin caché ────────────
+/workbox-*.js
+  Cache-Control: no-store, no-cache, must-revalidate
+  Content-Type: application/javascript
+
+# ── Manifest PWA: MIME correcto + sin caché ───────────────────────────
+/manifest.webmanifest
+  Cache-Control: no-cache, must-revalidate
+  Content-Type: application/manifest+json
+
+# ── App shell: siempre revalidar ──────────────────────────────────────
+/
+  Cache-Control: no-store, no-cache, must-revalidate
+/index.html
+  Cache-Control: no-store, no-cache, must-revalidate
+
+# ── Assets con hash de contenido (Vite): inmutables 1 año ─────────────
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# ── Iconos / estáticos: inmutables 1 año ──────────────────────────────
+/*.png
+  Cache-Control: public, max-age=31536000, immutable
+/*.svg
+  Cache-Control: public, max-age=31536000, immutable
+
+# ── Seguridad base (sin CSP estricta para no romper Supabase/fuentes) ─
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Vary: Accept-Encoding

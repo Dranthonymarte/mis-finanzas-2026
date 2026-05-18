@@ -3,6 +3,47 @@
 
 ---
 
+## SESIÓN — 18 May 2026 (fix build CF Pages + CLAUDE.md React App)
+
+📊 **Modelo próxima sesión: Sonnet 4.6**
+
+### Qué se hizo
+1. **fix(build) BUG-R27** — `MovSum.total → MovSum.amount` en `useAccounts.ts`
+   - Error TS bloqueaba TODOS los deploys desde commit `9fe7992`
+   - 1 línea cambiada. Build: ✅ 0 errores, 694 módulos, 28s
+2. **docs(claude)** — CLAUDE.md actualizado con contexto React App completo
+   - Stack React, reglas críticas (householdId, subcat, soft-delete, mes)
+   - Arquitectura de carpetas, TypeScript strict, git push PowerShell
+   - Versión: 25 Abr → 18 May 2026
+
+### Commits esta sesión
+```
+8faba93 docs(claude): añadir contexto React App v1.0.3 a CLAUDE.md
+f6e7262 fix(build): MovSum.total → MovSum.amount — resuelve error TS en CF Pages
+```
+
+### Estado post-sesión
+| Item | Estado |
+|------|--------|
+| Build React App | ✅ 0 errores |
+| CF Pages deploy | ✅ auto-build disparado (react-preview) |
+| CLAUDE.md | ✅ Actualizado con contexto React App |
+| BUG-R27 (MovSum) | ✅ Resuelto |
+
+### PRÓXIMO PASO
+```
+Leer: CLAUDE.md + MORNING_BRIEF.md
+
+PENDIENTES prioritarios:
+1. Verificar deploy en CF Pages (react-preview)
+2. Worker Cloudflare para Groq OCR (sacar fin_groq_api_key del localStorage)
+3. Fonts offline PWA — /public/fonts/ woff2
+4. Settings/Categories — color picker por categoría
+5. Analisis — comparativa mes anterior real
+```
+
+---
+
 ## SESIÓN — 17 May 2026 sesión 2 (sprint 27 bugs React App + auth fast-path)
 
 📊 **Modelo próxima sesión: Sonnet 4.6** — Charts recharts (implementación con referencia visual)

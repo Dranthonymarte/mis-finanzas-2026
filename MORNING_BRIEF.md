@@ -1,6 +1,6 @@
 # MORNING_BRIEF — Mis Finanzas 2026
 
-**Última actualización:** 2026-05-17 sesión 2 (v1.0.3-bugfix)
+**Última actualización:** 2026-05-18 (v1.0.3 — build fix CF Pages + CLAUDE.md)
 
 ---
 
@@ -10,22 +10,21 @@
 | App | Versión | Estado | Deploy |
 |-----|---------|--------|--------|
 | **Vanilla JS** `version_actual/` | batch54 | Productivo. 1300+ movimientos reales. Sin cambios en sprint React. | https://finanzasprueba.pages.dev |
-| **React App** `version_actual/react-app/` | **v1.0.3-bugfix** | 31 rutas ✅. Supabase real. 26 bugs resueltos. | react-preview → CF Pages auto-build |
+| **React App** `version_actual/react-app/` | **v1.0.3** | 31 rutas ✅. Supabase real. Build ✅ 0 errores. | react-preview → CF Pages auto-build |
 
 ### Git React App
 - **Branch activo:** `develop` → push también a `react-preview`
-- **Último commit:** `fce3797` docs: marcar BUG-R24/R25/R26
+- **Último commit:** `8faba93` docs(claude): añadir contexto React App v1.0.3
 
-### Commits sesión 2 (más recientes)
+### Commits recientes
 ```
+8faba93 docs(claude): añadir contexto React App v1.0.3 a CLAUDE.md
+f6e7262 fix(build): MovSum.total → MovSum.amount — resuelve error TS en CF Pages
+76157b0 docs: SESSION + MORNING_BRIEF + PENDIENTES + FLUJO_APP v1.0.3
 fce3797 docs: BUG-R24/R25/R26 resueltos, historial v1.0.3
 9fe7992 fix(data): balance real cuentas + tasas por mes activo
 6ab2a97 fix(crash): null guard CatIcon.cat + txnGroup.tipo
 5e672eb perf(auth): login instantaneo F5 cache householdId
-c9163d2 docs: BUG-R21/R22/R23 resueltos
-0153570 fix(data): useAccounts householdId en query cuentas
-c52da61 fix(crash): null guards + AccountDetail balance real
-fabc1c8 fix(new-txn): eliminar userId no usada (TS6133)
 ```
 
 ---

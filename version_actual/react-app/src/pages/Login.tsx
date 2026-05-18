@@ -4,10 +4,16 @@
 // vía RequireNoAuth redirect cuando isAuthenticated = true
 // ═══════════════════════════════════════════════════
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { type CSSProperties } from 'react'
 import { Logo } from '../components/brand/Logo'
 import { supabase } from '../lib/supabase'
+
+// BeforeInstallPromptEvent is not in lib.dom — declare minimally
+interface BeforeInstallPromptEvent extends Event {
+  prompt():                         Promise<void>
+  readonly userChoice:              Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
 
 const inputSt: CSSProperties = {
   width: '100%', background: 'rgba(255,255,255,.06)',
@@ -29,14 +35,32 @@ const btnSt: CSSProperties = {
 type Mode = 'login' | 'register'
 
 export default function Login() {
-  const [mode,    setMode]    = useState<Mode>('login')
-  const [email,   setEmail]   = useState('')
-  const [pass,    setPass]    = useState('')
-  const [confirm, setConfirm] = useState('')
-  const [name,    setName]    = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
+  const [mode,          setMode]          = useState<Mode>('login')
+  const [email,         setEmail]         = useState('')
+  const [pass,          setPass]          = useState('')
+  const [confirm,       setConfirm]       = useState('')
+  const [name,          setName]          = useState('')
+  const [loading,       setLoading]       = useState(false)
+  const [error,         setError]         = useState<string | null>(null)
+  const [success,       setSuccess]       = useState<string | null>(null)
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+
+  // Capture the PWA install prompt — only fires once per session on Android Chrome
+  useEffect(() => {
+    function onBeforeInstall(e: Event) {
+      e.preventDefault()
+      setInstallPrompt(e as BeforeInstallPromptEvent)
+    }
+    window.addEventListener('beforeinstallprompt', onBeforeInstall)
+    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall)
+  }, [])
+
+  async function handleInstall() {
+    if (!installPrompt) return
+    await installPrompt.prompt()
+    await installPrompt.userChoice
+    setInstallPrompt(null)
+  }
 
   function switchMode(m: Mode) {
     setMode(m)
@@ -261,6 +285,49 @@ export default function Login() {
               {loading ? 'Creando cuenta…' : 'Crear cuenta'}
             </button>
           </form>
+        )}
+
+        {/* PWA install banner — only visible when Android Chrome fires beforeinstallprompt */}
+        {installPrompt && (
+          <div style={{
+            marginTop: 20,
+            background: 'rgba(224,168,74,.1)',
+            border: '1px solid rgba(224,168,74,.3)',
+            borderRadius: 14, padding: '12px 14px',
+            display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <span style={{ fontSize: 22, flexShrink: 0 }}>📲</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.9)' }}>
+                Instalar app
+              </div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,.45)', marginTop: 2 }}>
+                Acceso rápido desde tu pantalla de inicio
+              </div>
+            </div>
+            <button
+              onClick={handleInstall}
+              style={{
+                padding: '7px 14px', borderRadius: 10,
+                background: 'var(--amber)', border: 'none',
+                fontSize: 12, fontWeight: 700, color: '#0a0b0d',
+                cursor: 'pointer', flexShrink: 0,
+              }}
+            >
+              Instalar
+            </button>
+            <button
+              onClick={() => setInstallPrompt(null)}
+              style={{
+                background: 'none', border: 'none',
+                color: 'rgba(255,255,255,.3)', fontSize: 16,
+                cursor: 'pointer', flexShrink: 0, padding: 0,
+              }}
+              aria-label="Cerrar"
+            >
+              ✕
+            </button>
+          </div>
         )}
 
         <div style={{ textAlign: 'center', marginTop: 24, fontSize: 11, color: 'rgba(255,255,255,.2)' }}>

@@ -25,6 +25,8 @@ export interface AuthState {
 
   // Session-only (NOT persisted)
   isAuthenticated: boolean
+  /** true after getSession() resolves — prevents RequireAuth flash-redirect on reload */
+  authReady:       boolean
 
   // Actions
   completeOnboarding: () => void
@@ -33,6 +35,7 @@ export interface AuthState {
   setPin:             (pin: string) => void
   setSession:         (payload: SessionPayload) => void
   clearSession:       () => void
+  setAuthReady:       () => void
   setUserName:        (name: string) => void
 }
 
@@ -48,6 +51,7 @@ export const useAuthStore = create<AuthState>()(
       userId:            null,
       householdId:       null,
       isAuthenticated:   false,
+      authReady:         false,
 
       // ── Actions ───────────────────────────────────
       completeOnboarding: () => set({ hasSeenOnboarding: true }),
@@ -59,6 +63,8 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => set({ isAuthenticated: false, userId: null, householdId: null }),
+
+      setAuthReady: () => set({ authReady: true }),
 
       setPin: (pin: string) => set({ pin }),
 

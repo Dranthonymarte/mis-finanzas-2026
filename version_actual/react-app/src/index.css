@@ -98,3 +98,8 @@ input[type='number'] { -moz-appearance: textfield; }
 .pin-shake {
   animation: pin-shake 0.54s cubic-bezier(.36,.07,.19,.97) both;
 }
+
+/* ── Auth-ready spinner ───────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

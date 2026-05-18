@@ -81,10 +81,17 @@ export function useAuth() {
     // 1. Fast path — getSession() returns from Supabase's in-memory cache (no network).
     //    If the persisted store already has the matching userId+householdId,
     //    we can set isAuthenticated immediately without a DB round-trip.
+    //    setAuthReady() is called in BOTH branches so RequireAuth never flashes /login.
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session?.user) return
+      const setAuthReady = getStore().setAuthReady
 
-      const uid  = session.user.id
+      if (!session?.user) {
+        // No active session → mark ready so RequireAuth can safely redirect to /login
+        setAuthReady()
+        return
+      }
+
+      const uid   = session.user.id
       const store = getStore()
 
       if (store.userId === uid && store.householdId) {
@@ -95,6 +102,7 @@ export function useAuth() {
           email:       session.user.email ?? null,
           userName:    store.userName ?? null,
         })
+        setAuthReady()
         // Background verify — updates store if household ever changed (rare)
         resolveHousehold(uid).then(hid => {
           if (hid && hid !== store.householdId) {
@@ -104,7 +112,7 @@ export function useAuth() {
       } else {
         // ❄️ Cold start or different user — need DB round-trip
         buildSession(uid, session.user.email ?? null, session.user.user_metadata)
-          .then(setSession)
+          .then(payload => { setSession(payload); setAuthReady() })
       }
     })
 

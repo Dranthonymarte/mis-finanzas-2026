@@ -10,14 +10,34 @@ import { useAuthStore } from '../../store/auth'
 
 /**
  * Protects the main app routes.
- * Priority: onboarding not seen → /onboarding
- *           not authenticated  → /login
- *           else               → render children
+ * Priority: authReady=false  → loading splash (prevents flash-redirect on F5)
+ *           onboarding unseen → /onboarding
+ *           not authenticated → /login
+ *           else              → render children
  */
 export function RequireAuth() {
+  const authReady         = useAuthStore((s) => s.authReady)
   const hasSeenOnboarding = useAuthStore((s) => s.hasSeenOnboarding)
   const isAuthenticated   = useAuthStore((s) => s.isAuthenticated)
   const location          = useLocation()
+
+  // Block until getSession() resolves — prevents /login flash on reload when user IS logged in
+  if (!authReady) {
+    return (
+      <div style={{
+        minHeight: '100dvh',
+        background: 'var(--ink-1)',
+        display: 'grid', placeItems: 'center',
+      }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: '50%',
+          border: '3px solid var(--ink-4)',
+          borderTopColor: 'var(--amber)',
+          animation: 'spin 0.7s linear infinite',
+        }} />
+      </div>
+    )
+  }
 
   if (!hasSeenOnboarding) {
     return <Navigate to="/onboarding" state={{ from: location }} replace />

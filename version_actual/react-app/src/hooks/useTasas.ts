@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase }     from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
+import { usePrefsStore } from '../store/prefs'
+import { mesIdToDbKey } from '../lib/mes'
 import { handleError }  from '../lib/handleError'
 
 export interface Tasas {
@@ -14,41 +16,70 @@ const HOUSEHOLD_KEY = 'anthony-isabel-2026'
 
 export function useTasas() {
   const householdId = useAuthStore(s => s.householdId)
+  const mesActivo   = usePrefsStore(s => s.mesActivo)
   const [tasas,   setTasas]   = useState<Tasas>(TASAS_DEFAULTS)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!householdId) { setLoading(false); return }
 
+    // Try month-specific row first ("Mayo"), fallback to legacy 'global'
+    const mesKey = mesIdToDbKey(mesActivo)
     setLoading(true)
+
     supabase
       .from('tasas_cambio')
       .select('rate_bcv,rate_eur')
       .eq('user_id', householdId)
-      .eq('mes', 'global')
-      .maybeSingle()
+      .in('mes', [mesKey, 'global'])
+      .order('mes', { ascending: false })   // month-specific sorts after 'global' alphabetically
+      .limit(2)
       .then(({ data, error: err }) => {
         if (err) handleError(err)
-        if (data) setTasas({ bcv: data.rate_bcv ?? TASAS_DEFAULTS.bcv, eur: data.rate_eur ?? TASAS_DEFAULTS.eur })
+        if (data && data.length > 0) {
+          // Prefer month-specific row if present, otherwise global
+          const monthRow = data.find(r => (r as { mes?: string }).mes === mesKey) ?? data[0]
+          setTasas({
+            bcv: (monthRow as { rate_bcv: number }).rate_bcv ?? TASAS_DEFAULTS.bcv,
+            eur: (monthRow as { rate_eur: number | null }).rate_eur ?? TASAS_DEFAULTS.eur,
+          })
+        }
         setLoading(false)
       })
-  }, [householdId])
+  }, [householdId, mesActivo])
 
   return { tasas, loading }
 }
 
-export async function saveTasas(householdId: string, bcv: number, eur: number) {
-  const now = new Date().toISOString()
-  const today = now.slice(0, 10)
+/** Save current exchange rate for the given month + update global fallback. */
+export async function saveTasas(
+  householdId: string,
+  bcv: number,
+  eur: number,
+  mesId?: string,          // "may-26" format — defaults to 'global' if omitted
+) {
+  const now    = new Date().toISOString()
+  const today  = now.slice(0, 10)
+  const mesKey = mesId ? mesIdToDbKey(mesId) : 'global'
 
+  // Upsert the month-specific (or global) row
   await supabase.from('tasas_cambio').upsert(
-    { user_id: householdId, mes: 'global', rate_bcv: bcv, rate_eur: eur, updated_at: now },
-    { onConflict: 'user_id,mes' }
+    { user_id: householdId, mes: mesKey, rate_bcv: bcv, rate_eur: eur, updated_at: now },
+    { onConflict: 'user_id,mes' },
   )
 
+  // Also keep 'global' row updated for backward compatibility
+  if (mesKey !== 'global') {
+    await supabase.from('tasas_cambio').upsert(
+      { user_id: householdId, mes: 'global', rate_bcv: bcv, rate_eur: eur, updated_at: now },
+      { onConflict: 'user_id,mes' },
+    )
+  }
+
+  // Historical record
   await supabase.from('tasas_historicas').upsert(
     { fecha: today, household_key: HOUSEHOLD_KEY, rate_bcv: bcv, rate_eur: eur },
-    { onConflict: 'fecha,household_key' }
+    { onConflict: 'fecha,household_key' },
   ).then(() => {/* fire-and-forget */})
 }
 

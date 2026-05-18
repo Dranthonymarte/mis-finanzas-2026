@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import AppHeader from '../components/shell/AppHeader'
-import { useAuthStore } from '../store/auth'
+import { useAuthStore }  from '../store/auth'
+import { usePrefsStore } from '../store/prefs'
 import { useTasas, saveTasas, fetchTasasHistory } from '../hooks/useTasas'
 
 const inp: React.CSSProperties = {
@@ -14,6 +15,7 @@ interface HistRow { fecha: string; rate_bcv: number; rate_eur: number | null }
 
 export default function Monedas() {
   const householdId = useAuthStore(s => s.householdId)
+  const mesActivo   = usePrefsStore(s => s.mesActivo)
   const { tasas }   = useTasas()
 
   const [bcvInput,   setBcvInput]   = useState('')
@@ -64,7 +66,7 @@ export default function Monedas() {
     const eur = parseFloat(eurInput)
     if (!bcv || !eur) return
     setSaving(true)
-    await saveTasas(householdId, bcv, eur)
+    await saveTasas(householdId, bcv, eur, mesActivo)
     setSaving(false)
     setSaved(true)
     fetchTasasHistory().then(setHistory)

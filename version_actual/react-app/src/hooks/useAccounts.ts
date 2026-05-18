@@ -55,39 +55,50 @@ export function useAccounts() {
   useEffect(() => {
     if (!householdId) { setLoading(false); return }
 
-    // Run both queries in parallel — cuentas + movimientos SUM per account
-    Promise.all([
-      supabase
-        .from('cuentas')
-        .select('id,nombre,color,moneda,saldo_inicial,balance_override,activa,owner')
-        .eq('user_id', householdId)
-        .eq('activa', true)
-        .order('created_at'),
+    function fetchData() {
+      // Run both queries in parallel — cuentas + movimientos SUM per account
+      Promise.all([
+        supabase
+          .from('cuentas')
+          .select('id,nombre,color,moneda,saldo_inicial,balance_override,activa,owner')
+          .eq('user_id', householdId!)
+          .eq('activa', true)
+          .order('created_at'),
 
-      supabase
-        .from('movimientos')
-        .select('cuenta_id,amount')
-        .eq('user_id', householdId)   // Vanilla data uses user_id for household UUID
-        .is('deleted_at', null),
-    ]).then(([cuentasRes, movRes]) => {
-      if (cuentasRes.error) {
-        handleError(cuentasRes.error)
-        setError(cuentasRes.error.message)
+        supabase
+          .from('movimientos')
+          .select('cuenta_id,amount')
+          .eq('user_id', householdId!)   // Vanilla data uses user_id for household UUID
+          .is('deleted_at', null),
+      ]).then(([cuentasRes, movRes]) => {
+        if (cuentasRes.error) {
+          handleError(cuentasRes.error)
+          setError(cuentasRes.error.message)
+          setLoading(false)
+          return
+        }
+
+        // Build cuenta_id → SUM(amount) map from movimientos
+        const movSums = new Map<string, number>()
+        for (const m of (movRes.data ?? []) as MovSum[]) {
+          if (!m.cuenta_id) continue
+          movSums.set(m.cuenta_id, (movSums.get(m.cuenta_id) ?? 0) + (parseFloat(String(m.amount)) || 0))
+        }
+
+        const cuentas = (cuentasRes.data as SupaCuenta[] ?? [])
+        setAccounts(cuentas.map(r => mapCuenta(r, movSums)))
         setLoading(false)
-        return
-      }
+      })
+    }
 
-      // Build cuenta_id → SUM(amount) map from movimientos
-      const movSums = new Map<string, number>()
-      for (const m of (movRes.data ?? []) as MovSum[]) {
-        if (!m.cuenta_id) continue
-        movSums.set(m.cuenta_id, (movSums.get(m.cuenta_id) ?? 0) + m.amount)
-      }
+    fetchData()
 
-      const cuentas = (cuentasRes.data as SupaCuenta[] ?? [])
-      setAccounts(cuentas.map(r => mapCuenta(r, movSums)))
-      setLoading(false)
-    })
+    // Refetch when user returns to tab (app switching on mobile)
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') fetchData()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
   }, [householdId])
 
   return { accounts, loading, error }

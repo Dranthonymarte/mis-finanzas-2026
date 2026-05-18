@@ -52,19 +52,31 @@ export default function Login() {
     setLoading(true)
     setError(null)
 
-    const { error: err } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password: pass,
-    })
-    setLoading(false)
+    // Safety net: never hang forever if network stalls
+    const timer = setTimeout(() => {
+      setLoading(false)
+      setError('La conexión tardó demasiado. Intenta de nuevo.')
+    }, 10000)
 
-    if (err) {
-      setError(err.message === 'Invalid login credentials'
-        ? 'Email o contraseña incorrectos.'
-        : err.message)
+    try {
+      const { error: err } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: pass,
+      })
+      clearTimeout(timer)
+      setLoading(false)
+      if (err) {
+        setError(err.message === 'Invalid login credentials'
+          ? 'Email o contraseña incorrectos.'
+          : err.message)
+      }
+      // Si success → onAuthStateChange en useAuth.ts dispara setSession
+      // → isAuthenticated = true → RequireNoAuth redirige a "/"
+    } catch {
+      clearTimeout(timer)
+      setLoading(false)
+      setError('Error de conexión. Intenta de nuevo.')
     }
-    // Si success → onAuthStateChange en useAuth.ts dispara setSession
-    // → isAuthenticated = true → RequireNoAuth redirige a "/"
   }
 
   async function handleRegister(e: React.FormEvent) {
@@ -75,18 +87,29 @@ export default function Login() {
     setLoading(true)
     setError(null)
 
-    const { error: err } = await supabase.auth.signUp({
-      email:    email.trim(),
-      password: pass,
-      options:  { data: { full_name: name.trim() || email.split('@')[0] } },
-    })
-    setLoading(false)
+    const timer = setTimeout(() => {
+      setLoading(false)
+      setError('La conexión tardó demasiado. Intenta de nuevo.')
+    }, 10000)
 
-    if (err) {
-      setError(err.message)
-    } else {
-      setSuccess('¡Cuenta creada! Revisa tu email para confirmar y luego inicia sesión.')
-      switchMode('login')
+    try {
+      const { error: err } = await supabase.auth.signUp({
+        email:    email.trim(),
+        password: pass,
+        options:  { data: { full_name: name.trim() || email.split('@')[0] } },
+      })
+      clearTimeout(timer)
+      setLoading(false)
+      if (err) {
+        setError(err.message)
+      } else {
+        setSuccess('¡Cuenta creada! Revisa tu email para confirmar y luego inicia sesión.')
+        switchMode('login')
+      }
+    } catch {
+      clearTimeout(timer)
+      setLoading(false)
+      setError('Error de conexión. Intenta de nuevo.')
     }
   }
 

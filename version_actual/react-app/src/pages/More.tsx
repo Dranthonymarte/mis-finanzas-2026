@@ -3,7 +3,7 @@
 // Avatar · Grid 4×4 accesos rápidos · Config groups · Logout
 // ═══════════════════════════════════════════════════
 
-import { type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import RowGroup from '../components/shell/RowGroup'
 import RowLink  from '../components/shell/RowLink'
@@ -13,6 +13,7 @@ import {
   UserIcon, TagIcon, MicIcon, UploadIcon,
 } from '../components/icons/Icons'
 import { useAuthStore } from '../store/auth'
+import { supabase }     from '../lib/supabase'
 
 // ── Quick-access grid item ──────────────────────────
 interface GridItem {
@@ -24,7 +25,7 @@ interface GridItem {
 
 const GRID_ITEMS: GridItem[] = [
   // Row 1
-  { emoji: '🧮', label: 'Calculadora',  path: '/ia',            color: '#2a1f0a' },
+  { emoji: '🧮', label: 'Calculadora',  path: '/monedas',       color: '#2a1f0a' },
   { emoji: '💳', label: 'Cuentas',      path: '/accounts',      color: '#1a2a1a' },
   { emoji: '🔍', label: 'Buscar',       path: '/buscar',        color: '#1a1a3a' },
   { emoji: '✦',  label: 'IA',           path: '/ia',            color: '#2a1f0a' },
@@ -58,15 +59,21 @@ function IcoBg({ children, color }: { children: ReactNode; color: string }) {
 }
 
 export default function More() {
-  const navigate  = useNavigate()
-  const logout    = useAuthStore(s => s.logout)
-  const userName  = useAuthStore(s => s.userName)
-  const userEmail = useAuthStore(s => s.userEmail)
+  const navigate        = useNavigate()
+  const logout          = useAuthStore(s => s.logout)
+  const userName        = useAuthStore(s => s.userName)
+  const userEmail       = useAuthStore(s => s.userEmail)
+  const [confirmLogout, setConfirmLogout] = useState(false)
 
   // Initial for avatar
   const initial = (userName ?? 'A')[0].toUpperCase()
 
-  function handleLogout() {
+  async function handleLogout() {
+    // Invalidate Supabase session server-side → onAuthStateChange fires SIGNED_OUT
+    await supabase.auth.signOut()
+    // Clear persisted credentials from localStorage
+    localStorage.removeItem('mis-finanzas-auth')
+    // Reset Zustand store (isAuthenticated=false, userId=null, householdId=null)
     logout()
     navigate('/login')
   }
@@ -314,7 +321,7 @@ export default function More() {
             label="Cerrar sesión"
             danger
             last
-            onClick={handleLogout}
+            onClick={() => setConfirmLogout(true)}
           />
         </RowGroup>
 
@@ -322,6 +329,58 @@ export default function More() {
           Mis Finanzas 2026 · v1.0.0-rc
         </div>
       </div>
+
+      {/* ── Logout confirmation sheet ── */}
+      {confirmLogout && (
+        <>
+          <div
+            onClick={() => setConfirmLogout(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 500 }}
+          />
+          <div style={{
+            position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+            width: '100%', maxWidth: 430,
+            background: 'var(--ink-1)', borderRadius: '20px 20px 0 0',
+            border: '1px solid var(--line)',
+            padding: '20px 20px max(24px, calc(24px + env(safe-area-inset-bottom, 0px)))',
+            zIndex: 501, textAlign: 'center',
+          }}>
+            <div style={{
+              width: 52, height: 52, borderRadius: 16, margin: '0 auto 14px',
+              background: 'rgba(214,106,90,.12)', border: '1px solid rgba(214,106,90,.25)',
+              display: 'grid', placeItems: 'center', fontSize: 24,
+            }}>
+              👋
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>¿Cerrar sesión?</div>
+            <div style={{ fontSize: 13, color: 'var(--fg-mute)', marginBottom: 20, lineHeight: 1.5 }}>
+              Tendrás que volver a ingresar con tu email y contraseña.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setConfirmLogout(false)}
+                style={{
+                  flex: 1, padding: '13px', borderRadius: 13,
+                  background: 'var(--ink-3)', border: '1px solid var(--line)',
+                  fontSize: 14, fontWeight: 600, color: 'var(--fg-dim)', cursor: 'pointer',
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { setConfirmLogout(false); handleLogout() }}
+                style={{
+                  flex: 1, padding: '13px', borderRadius: 13,
+                  background: 'var(--neg)', border: 'none',
+                  fontSize: 14, fontWeight: 700, color: '#fff', cursor: 'pointer',
+                }}
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
     </div>
   )

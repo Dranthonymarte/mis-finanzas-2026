@@ -52,36 +52,46 @@ export function useTransactions(mesId: string) {
   useEffect(() => {
     if (!userId || !householdId) { setLoading(false); return }
 
-    setLoading(true)
-    setTransactions(null)
+    function fetchData() {
+      setLoading(true)
+      setTransactions(null)
+      supabase
+        .from('movimientos')
+        .select('id,descripcion,tipo,cat,subcat,amount,fecha,author,mes,cuenta_id')
+        .eq('user_id', householdId!)   // Vanilla data uses user_id for household UUID
+        .eq('mes', dbKey)
+        .is('deleted_at', null)
+        .order('fecha', { ascending: false })
+        .then(({ data, error: err }) => {
+          if (err) { handleError(err); setError(err.message); setLoading(false); return }
+          setTransactions(
+            (data as SupaMov[] ?? []).map(r => ({
+              id:        r.id,
+              desc:      r.descripcion,
+              cat:       r.cat,
+              subcat:    r.subcat,
+              tipo:      r.tipo,
+              amount:    r.amount,
+              date:      relativeDate(r.fecha),
+              isoDate:   r.fecha,
+              time:      '—',
+              author:    mapAuthor(r.author),
+              accountId: r.cuenta_id ?? '',
+              mes:       r.mes,
+            }))
+          )
+          setLoading(false)
+        })
+    }
 
-    supabase
-      .from('movimientos')
-      .select('id,descripcion,tipo,cat,subcat,amount,fecha,author,mes,cuenta_id')
-      .eq('user_id', householdId)   // Vanilla data uses user_id for household UUID
-      .eq('mes', dbKey)
-      .is('deleted_at', null)
-      .order('fecha', { ascending: false })
-      .then(({ data, error: err }) => {
-        if (err) { handleError(err); setError(err.message); setLoading(false); return }
-        setTransactions(
-          (data as SupaMov[] ?? []).map(r => ({
-            id:        r.id,
-            desc:      r.descripcion,
-            cat:       r.cat,
-            subcat:    r.subcat,
-            tipo:      r.tipo,
-            amount:    r.amount,
-            date:      relativeDate(r.fecha),
-            isoDate:   r.fecha,
-            time:      '—',
-            author:    mapAuthor(r.author),
-            accountId: r.cuenta_id ?? '',
-            mes:       r.mes,
-          }))
-        )
-        setLoading(false)
-      })
+    fetchData()
+
+    // Refetch when user returns to tab (app switching on mobile)
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') fetchData()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
   }, [userId, householdId, dbKey])
 
   return { transactions, loading, error }

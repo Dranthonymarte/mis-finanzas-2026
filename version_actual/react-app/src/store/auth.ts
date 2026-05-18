@@ -37,6 +37,7 @@ export interface AuthState {
   clearSession:       () => void
   setAuthReady:       () => void
   setUserName:        (name: string) => void
+  setHouseholdId:     (id: string) => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -80,6 +81,8 @@ export const useAuthStore = create<AuthState>()(
       clearSession: () => set({ isAuthenticated: false, userId: null, householdId: null }),
 
       setUserName: (name: string) => set({ userName: name, userInitial: name[0]?.toUpperCase() ?? 'U' }),
+
+      setHouseholdId: (id: string) => set({ householdId: id }),
     }),
     {
       name: 'mis-finanzas-auth',

@@ -52,7 +52,7 @@ export default function DineroFuera() {
     let q = supabase
       .from('dinero_fuera')
       .select('id,tipo,nombre,concepto,monto_original,monto_abonado,abonos,fecha_inicio,fecha_vencimiento,pagado')
-      .eq('user_id', householdId)
+      .eq('household_id', householdId)
       .order('fecha_inicio', { ascending: false })
     if (!showPaid) q = q.eq('pagado', false)
     q.then(({ data }) => {
@@ -69,7 +69,7 @@ export default function DineroFuera() {
     supabase
       .from('movimientos')
       .select('descripcion,tipo,amount,fecha')
-      .eq('user_id', householdId)
+      .eq('household_id', householdId)
       .in('tipo', ['Prestamo recibido', 'Prestamo pagado'])
       .is('deleted_at', null)
       .then(({ data }) => {

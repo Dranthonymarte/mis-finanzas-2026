@@ -49,7 +49,7 @@ export default function Buscar() {
       const { data } = await supabase
         .from('movimientos')
         .select('id,descripcion,tipo,cat,amount,fecha,mes')
-        .eq('user_id', householdId)   // Vanilla data: user_id = household UUID
+        .eq('household_id', householdId)
         .is('deleted_at', null)
         .or(`descripcion.ilike.%${q}%,cat.ilike.%${q}%`)
         .order('fecha', { ascending: false })

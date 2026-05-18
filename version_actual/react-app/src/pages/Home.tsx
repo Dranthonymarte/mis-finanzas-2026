@@ -189,7 +189,7 @@ export default function Home() {
         supabase
           .from('movimientos')
           .select('tipo,amount')
-          .eq('user_id', householdId)
+          .eq('household_id', householdId)
           .eq('mes', m.dbKey)
           .is('deleted_at', null)
           .then(({ data }) => {
@@ -212,7 +212,7 @@ export default function Home() {
     supabase
       .from('movimientos')
       .select('amount')
-      .eq('user_id', householdId)
+      .eq('household_id', householdId)
       .eq('tipo', 'Ahorro en efectivo')
       .is('deleted_at', null)
       .then(({ data }) => {

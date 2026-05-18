@@ -6,19 +6,21 @@ import { useAuthStore, type SessionPayload } from '../store/auth'
 const getStore = () => useAuthStore.getState()
 
 /**
- * householdId === userId, ALWAYS.
+ * householdId is RESOLVED from `household_members`, NOT assumed === userId.
  *
- * Every table in this app is keyed by `user_id` (movimientos, cuentas,
- * config_usuario, listas_compras, dinero_fuera, fondo_emergencia ...).
- * The previous `household_members` lookup used `.single()`, which THROWS
- * when the user has duplicate membership rows → the code then thought it
- * was a "new user" and `provisionHousehold()` created a fresh household
- * with a random UUID. That made `householdId` drift away from the real
- * data key (fa3f7b3b…) → cuentas/movimientos/patrimonio came back empty
- * ("datos desconfigurados") and `buildSession` hung ("queda cargando").
+ * Verified against live DB (2026-05-18): data tables (movimientos, cuentas,
+ * dinero_fuera) are scoped by `household_id`. Anthony (uid fa3f7b3b) owns
+ * household fa3f7b3b; Isabel (uid 455c23cd) is an accepted *partner* of the
+ * SAME household fa3f7b3b. Assuming householdId===userId made Isabel query
+ * her own uid → empty household, and made Anthony miss her rows.
  *
- * Using `userId` directly removes the fragile query, the data corruption
- * and the network round-trip — auth resolves instantly.
+ * SAFETY (this file caused the 9b9c0a8 prod loop — do not regress):
+ * - isAuthenticated/authReady are set IMMEDIATELY from cache/getSession
+ *   with a provisional householdId = userId. NEVER blocked on the query.
+ * - resolveHouseholdId() runs in the BACKGROUND: never throws, never
+ *   clears the session, never provisions/creates a household. On any error
+ *   or no membership → falls back to userId.
+ * - the resolved householdId is persisted → F5 is instant AND correct.
  */
 function buildSession(
   userId: string,
@@ -32,7 +34,28 @@ function buildSession(
     email?.split('@')[0] ??
     null
   )
+  // Provisional householdId = userId until resolveHouseholdId() confirms.
   return { userId, householdId: userId, email: email ?? null, userName }
+}
+
+/**
+ * Resolve the user's active household from `household_members`. Prefers a
+ * `partner` membership (the shared family household) over an `owner` one
+ * (a user's legacy solo household). Pure read — never throws, never writes.
+ */
+async function resolveHouseholdId(userId: string): Promise<string> {
+  try {
+    const { data, error } = await supabase
+      .from('household_members')
+      .select('household_id, role')
+      .eq('user_id', userId)
+      .eq('invite_status', 'accepted')
+    if (error || !data || data.length === 0) return userId
+    const partner = data.find(r => r.role === 'partner')
+    return (partner?.household_id ?? data[0].household_id ?? userId) as string
+  } catch {
+    return userId
+  }
 }
 
 export function useAuth() {
@@ -42,6 +65,17 @@ export function useAuth() {
   useEffect(() => {
     let mounted = true
 
+    // Resolve real household in the BACKGROUND and update the store when
+    // it differs. Never blocks auth, never throws (resolveHouseholdId is
+    // already guarded). Persisted → next F5 is instant via cached.householdId.
+    const resolveAndSet = (uid: string) => {
+      resolveHouseholdId(uid).then(hid => {
+        if (mounted && hid && getStore().householdId !== hid) {
+          getStore().setHouseholdId(hid)
+        }
+      })
+    }
+
     // ── Cache-first: render the app INSTANTLY from the persisted store ──
     // userId/householdId are persisted in localStorage. If we have them,
     // mark the session ready immediately (<50ms) so the spinner never
@@ -50,11 +84,12 @@ export function useAuth() {
     if (cached.userId) {
       setSession({
         userId:      cached.userId,
-        householdId: cached.userId,        // householdId === userId
+        householdId: cached.householdId ?? cached.userId,
         email:       cached.userEmail ?? null,
         userName:    cached.userName ?? null,
       })
       cached.setAuthReady()
+      resolveAndSet(cached.userId)
     }
 
     // Catastrophic-only fallback (3.5s). getSession() is a LOCAL read and
@@ -80,6 +115,7 @@ export function useAuth() {
         const { id: uid, email } = session.user
         setSession(buildSession(uid, email ?? null, session.user.user_metadata))
         getStore().setAuthReady()
+        resolveAndSet(uid)
       })
       .catch(() => {
         // Never hang the spinner, even on storage errors
@@ -110,6 +146,7 @@ export function useAuth() {
             session.user.user_metadata,
           ))
           getStore().setAuthReady()
+          resolveAndSet(session.user.id)
         }
         // null session on a non-SIGNED_OUT event → ignore (transient)
       }

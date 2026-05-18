@@ -166,6 +166,23 @@ export default function Home() {
   const kpiData                     = useKPIs(liveTxns, config)
   const { fmt, fmtShort }           = useFormat()
 
+  // ── Ahorro acumulado all-time (tipo "Ahorro en efectivo") ──
+  const [ahorroAcumulado, setAhorroAcumulado] = useState<number>(0)
+  useEffect(() => {
+    if (!householdId) return
+    supabase
+      .from('movimientos')
+      .select('amount')
+      .eq('user_id', householdId)
+      .eq('tipo', 'Ahorro en efectivo')
+      .is('deleted_at', null)
+      .then(({ data }) => {
+        const total = (data ?? []).reduce((s: number, r: { amount: number | string }) =>
+          s + (parseFloat(String(r.amount)) || 0), 0)
+        setAhorroAcumulado(total)
+      })
+  }, [householdId])
+
   // ── Fondo emergencia desde tabla fondo_emergencia ──
   const [efDbBalance, setEfDbBalance] = useState<number | null>(null)
   useEffect(() => {
@@ -438,6 +455,37 @@ export default function Home() {
           )
         })}
       </div>
+
+      {/* ─── 5b. AHORRO ACUMULADO ─── */}
+      {ahorroAcumulado > 0 && (
+        <div style={{ padding: '4px 16px' }}>
+          <div style={{
+            background: 'var(--ink-2)', border: '1px solid var(--line)',
+            borderRadius: 14, padding: '12px 14px',
+            display: 'grid', gridTemplateColumns: '1fr 1px 1fr',
+          }}>
+            <div style={{ padding: '0 8px 0 0' }}>
+              <div style={{ fontSize: 9.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 4 }}>
+                💰 Ahorro acumulado
+              </div>
+              <div className="num" style={{ fontSize: 18, fontWeight: 700, color: 'var(--pos)' }}>
+                {fmt(ahorroAcumulado)}
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 2 }}>Todos los meses</div>
+            </div>
+            <div style={{ background: 'var(--line)', margin: '4px 0' }} />
+            <div style={{ padding: '0 0 0 14px' }}>
+              <div style={{ fontSize: 9.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 4 }}>
+                Este mes
+              </div>
+              <div className="num" style={{ fontSize: 18, fontWeight: 700, color: kpiData.ahorro > 0 ? 'var(--pos)' : 'var(--fg-mute)' }}>
+                {fmt(kpiData.ahorro)}
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 2 }}>Cochinito</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─── 6. INGRESOS VS GASTOS 6M ─── */}
       <div style={{ padding: '12px 16px 4px' }}>

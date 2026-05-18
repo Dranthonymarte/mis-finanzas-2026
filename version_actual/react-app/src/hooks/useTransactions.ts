@@ -58,7 +58,7 @@ export function useTransactions(mesId: string) {
     supabase
       .from('movimientos')
       .select('id,descripcion,tipo,cat,subcat,amount,fecha,author,mes,cuenta_id')
-      .eq('household_id', householdId)
+      .eq('user_id', householdId)   // Vanilla data uses user_id for household UUID
       .eq('mes', dbKey)
       .is('deleted_at', null)
       .order('fecha', { ascending: false })

@@ -67,7 +67,7 @@ export function useAccounts() {
       supabase
         .from('movimientos')
         .select('cuenta_id,amount')
-        .eq('household_id', householdId)
+        .eq('user_id', householdId)   // Vanilla data uses user_id for household UUID
         .is('deleted_at', null),
     ]).then(([cuentasRes, movRes]) => {
       if (cuentasRes.error) {

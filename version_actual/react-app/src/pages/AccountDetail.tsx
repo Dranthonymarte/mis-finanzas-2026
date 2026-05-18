@@ -109,7 +109,7 @@ export default function AccountDetail() {
       .from('movimientos')
       .select('amount')
       .eq('cuenta_id', id)
-      .eq('household_id', householdId)
+      .eq('user_id', householdId)   // Vanilla data: user_id = household UUID
       .is('deleted_at', null)
       .then(({ data }) => {
         const sum = (data ?? []).reduce((s: number, r: { amount: number }) => s + r.amount, 0)

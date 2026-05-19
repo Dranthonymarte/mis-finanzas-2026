@@ -99,10 +99,17 @@ interface CatIconProps {
   size?: number
 }
 
+function getStoredEmoji(cat: string): string | undefined {
+  try {
+    const map = JSON.parse(localStorage.getItem('mf-cat-emojis') || '{}') as Record<string, string>
+    return map[cat] || undefined
+  } catch { return undefined }
+}
+
 export default function CatIcon({ cat, size = 36 }: CatIconProps) {
   const safe  = cat ?? ''
   const c     = catColor(safe)
-  const emoji = CAT_EMOJI[safe] ?? findEmojiByKeyword(safe)
+  const emoji = getStoredEmoji(safe) ?? CAT_EMOJI[safe] ?? findEmojiByKeyword(safe) ?? '💸'
   return (
     <div
       style={{
@@ -114,13 +121,13 @@ export default function CatIcon({ cat, size = 36 }: CatIconProps) {
         display:      'grid',
         placeItems:   'center',
         color:         c,
-        fontSize:      emoji ? size * 0.45 : size * 0.3,
+        fontSize:      size * 0.45,
         fontWeight:    600,
         flexShrink:    0,
         lineHeight:    1,
       }}
     >
-      {emoji ?? (catInitials(safe) || '??')}
+      {emoji}
     </div>
   )
 }

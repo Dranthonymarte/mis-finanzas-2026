@@ -10,6 +10,14 @@ const inputSt: CSSProperties = {
   color: 'var(--fg)', outline: 'none',
 }
 
+/** Read/write emoji overrides from localStorage */
+function readEmojiMap(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem('mf-cat-emojis') || '{}') } catch { return {} }
+}
+function writeEmojiMap(map: Record<string, string>) {
+  try { localStorage.setItem('mf-cat-emojis', JSON.stringify(map)) } catch { /* noop */ }
+}
+
 export default function Categories() {
   const { config, updateConfig } = useConfig()
   const [activeTipo, setActiveTipo] = useState(config.tipos[0]?.nombre ?? 'Gasto')
@@ -18,6 +26,8 @@ export default function Categories() {
   const [saving,    setSaving]     = useState(false)
   const [editCat,   setEditCat]    = useState<string | null>(null)
   const [editVal,   setEditVal]    = useState('')
+  const [editEmoji, setEditEmoji]  = useState('')
+  const [emojiMap,  setEmojiMap]   = useState<Record<string, string>>(readEmojiMap)
 
   const tipos = config.tipos.map(t => t.nombre)
   const cats  = config.categorias[activeTipo] ?? []
@@ -41,6 +51,13 @@ export default function Categories() {
   async function renameCategory() {
     if (!editCat) return
     const trimmed = editVal.trim()
+    // Save emoji override even if name didn't change
+    const emojiTrimmed = editEmoji.trim()
+    if (emojiTrimmed) {
+      const nextMap = { ...emojiMap, [trimmed || editCat]: emojiTrimmed }
+      writeEmojiMap(nextMap)
+      setEmojiMap(nextMap)
+    }
     if (!trimmed || trimmed === editCat || cats.includes(trimmed)) { setEditCat(null); return }
     // Rename inside categorias[tipo]
     const nextCats = {
@@ -96,18 +113,29 @@ export default function Categories() {
           >
             <CatIcon cat={cat} size={36} />
             {editCat === cat ? (
-              <input
-                type="text" value={editVal} autoFocus
-                onChange={e => setEditVal(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') renameCategory(); if (e.key === 'Escape') setEditCat(null) }}
-                onBlur={renameCategory}
-                style={{ ...inputSt, flex: 1, padding: '6px 10px' }}
-              />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <input
+                  type="text" value={editVal} autoFocus
+                  onChange={e => setEditVal(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') renameCategory(); if (e.key === 'Escape') setEditCat(null) }}
+                  placeholder="Nombre"
+                  style={{ ...inputSt, flex: 'unset', padding: '6px 10px' }}
+                />
+                <input
+                  type="text" value={editEmoji}
+                  onChange={e => setEditEmoji(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') renameCategory(); if (e.key === 'Escape') setEditCat(null) }}
+                  onBlur={renameCategory}
+                  placeholder="Emoji (ej: 🍕)"
+                  maxLength={4}
+                  style={{ ...inputSt, flex: 'unset', padding: '5px 10px', fontSize: 16, textAlign: 'center', width: 80 }}
+                />
+              </div>
             ) : (
               <span
                 style={{ flex: 1, fontSize: 14, fontWeight: 500, cursor: 'text' }}
-                onClick={() => { setEditCat(cat); setEditVal(cat) }}
-                title="Toca para renombrar"
+                onClick={() => { setEditCat(cat); setEditVal(cat); setEditEmoji(emojiMap[cat] ?? '') }}
+                title="Toca para renombrar o cambiar emoji"
               >
                 {cat}
               </span>
@@ -115,7 +143,7 @@ export default function Categories() {
             {editCat !== cat && (
               <>
                 <button
-                  onClick={() => { setEditCat(cat); setEditVal(cat) }}
+                  onClick={() => { setEditCat(cat); setEditVal(cat); setEditEmoji(emojiMap[cat] ?? '') }}
                   style={{
                     width: 28, height: 28, borderRadius: 8,
                     background: 'var(--ink-3)', border: '1px solid var(--line)',

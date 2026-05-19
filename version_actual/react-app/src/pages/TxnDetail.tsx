@@ -91,6 +91,7 @@ const labelSt: CSSProperties = {
 export default function TxnDetail() {
   const { id }    = useParams<{ id: string }>()
   const navigate  = useNavigate()
+
   const { fmt }      = useFormat()
   const { accounts } = useAccounts()
   const { config }   = useConfig()
@@ -130,6 +131,8 @@ export default function TxnDetail() {
         setLoadingTxn(false)
       })
   }, [id, navigate])
+
+  if (!id) { navigate(-1); return null }
 
   if (loadingTxn) {
     return (

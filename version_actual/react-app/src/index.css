@@ -22,7 +22,8 @@ body {
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 #root {
@@ -33,6 +34,14 @@ body {
   margin: 0 auto;
   position: relative;
   overflow: hidden;
+}
+
+/* ── Overflow guard — apply to scrollable page wrappers ── */
+.page-content {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 /* ── Page slide transitions ───────────────── */

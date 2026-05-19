@@ -115,11 +115,11 @@ export default function TxnDetail() {
     if (!id) return
     supabase
       .from('movimientos')
-      .select('id,descripcion,tipo,cat,subcat,amount,amount_bs,fecha,author,mes,cuenta_id,created_at,rate_bcv,notas,method')
+      .select('id,descripcion,tipo,cat,subcat,amount,amount_bs,fecha,author,mes,cuenta_id,created_at')
       .eq('id', id)
       .single()
       .then(({ data, error }) => {
-        if (error || !data) { navigate(-1); return }
+        if (error || !data) { setLoadingTxn(false); return }
         const row = data as SupaMovimiento
         setTxn(row)
         setEditDesc(row.descripcion)

@@ -87,9 +87,12 @@ export default function AccountDetail() {
 
   const mesActivo = usePrefsStore(s => s.mesActivo)
 
-  const [filter,        setFilter]        = useState<TxnFilter>('all')
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const [movSum,        setMovSum]        = useState<number | null>(null)
+  const [filter,         setFilter]         = useState<TxnFilter>('all')
+  const [confirmDelete,  setConfirmDelete]  = useState(false)
+  const [movSum,         setMovSum]         = useState<number | null>(null)
+  const [editingBalance, setEditingBalance] = useState(false)
+  const [newBalance,     setNewBalance]     = useState('')
+  const [savingBalance,  setSavingBalance]  = useState(false)
 
   const { accounts } = useAccounts()
   const { transactions: liveTxns } = useTransactions(mesActivo)
@@ -149,6 +152,27 @@ export default function AccountDetail() {
   const monthExpense = allAccTxns.filter(t => txnGroup(t.tipo) === 'gasto').reduce((s, t) => s + Math.abs(t.amount), 0)
   const monthNet     = monthIncome - monthExpense
 
+  async function saveBalance() {
+    if (!id) return
+    const val = parseFloat(newBalance)
+    if (isNaN(val)) return
+    setSavingBalance(true)
+    await supabase
+      .from('cuentas')
+      .update({ balance_override: val, saldo_inicial: val })
+      .eq('id', id)
+    setSavingBalance(false)
+    setEditingBalance(false)
+    setMovSum(null)  // force recalc
+    window.location.reload()
+  }
+
+  async function handleDeleteAccount() {
+    if (!id) return
+    await supabase.from('cuentas').update({ activa: false }).eq('id', id)
+    navigate(-1)
+  }
+
   /* ── Styles ── */
   const chipSt = (active: boolean): CSSProperties => ({
     padding: '5px 13px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
@@ -194,12 +218,14 @@ export default function AccountDetail() {
         </div>
 
         <button
-          onClick={() => {/* edit account — future */}}
-          aria-label="Editar cuenta"
+          onClick={() => { setEditingBalance(v => !v); setNewBalance(String(realBalance)) }}
+          aria-label="Editar balance"
           style={{
             width: 36, height: 36, borderRadius: 10,
-            background: 'var(--ink-2)', border: '1px solid var(--line)',
-            display: 'grid', placeItems: 'center', color: 'var(--fg-dim)', cursor: 'pointer',
+            background: editingBalance ? 'rgba(224,168,74,.12)' : 'var(--ink-2)',
+            border: editingBalance ? '1px solid rgba(224,168,74,.35)' : '1px solid var(--line)',
+            display: 'grid', placeItems: 'center',
+            color: editingBalance ? 'var(--amber)' : 'var(--fg-dim)', cursor: 'pointer',
           }}
         >
           <EditIcon />
@@ -229,6 +255,34 @@ export default function AccountDetail() {
                 ? <span style={{ opacity: .5 }}>{fmt(acc.balance)}</span>
                 : fmt(realBalance)}
             </div>
+
+            {editingBalance && (
+              <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="number" inputMode="decimal"
+                  value={newBalance}
+                  onChange={e => setNewBalance(e.target.value)}
+                  placeholder="Nuevo saldo…"
+                  style={{
+                    flex: 1, background: 'var(--ink-3)', border: '1px solid var(--line)',
+                    borderRadius: 10, padding: '8px 12px', fontSize: 14,
+                    color: 'var(--fg)', outline: 'none', fontFamily: 'var(--f-num)',
+                  }}
+                />
+                <button
+                  onClick={() => void saveBalance()}
+                  disabled={savingBalance}
+                  style={{
+                    padding: '8px 14px', borderRadius: 10,
+                    background: 'var(--amber)', border: 'none',
+                    color: 'var(--ink-0)', fontWeight: 700, fontSize: 13,
+                    cursor: savingBalance ? 'default' : 'pointer', opacity: savingBalance ? 0.6 : 1,
+                  }}
+                >
+                  Guardar
+                </button>
+              </div>
+            )}
 
             <div style={{ marginTop: 14, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
               <Sparkline data={acc.spark} color={acc.color} w={160} h={26} fill stroke={1.6} />
@@ -356,7 +410,7 @@ export default function AccountDetail() {
                   Cancelar
                 </button>
                 <button
-                  onClick={() => navigate('/accounts')}
+                  onClick={() => void handleDeleteAccount()}
                   style={{
                     padding: '11px', borderRadius: 12, fontSize: 13.5, fontWeight: 700,
                     background: 'var(--neg)', border: 'none', color: '#fff', cursor: 'pointer',

@@ -23,7 +23,7 @@ import { useAuthStore }    from '../store/auth'
 import { supabase }        from '../lib/supabase'
 import { generateMeses, mesLabel, mesIdToDbKey, dateToMesId } from '../lib/mes'
 import { DEFAULTS } from '../hooks/useConfig'
-import { SearchIcon, BellIcon } from '../components/icons/Icons'
+import { BellIcon } from '../components/icons/Icons'
 
 const MONTHS_6 = generateMeses(6)
 
@@ -338,7 +338,6 @@ export default function Home() {
         <button onClick={toggleOcultar} style={iBtn} aria-label="Ocultar montos">
           <span style={{ fontSize: 16 }}>{ocultarMontos ? '🙈' : '👁'}</span>
         </button>
-        <button onClick={() => navigate('/buscar')} style={iBtn} aria-label="Buscar"><SearchIcon /></button>
         <button
           onClick={() => navigate('/notificaciones')}
           style={{ ...iBtn, position: 'relative' }} aria-label="Notificaciones"
@@ -440,7 +439,7 @@ export default function Home() {
             <div className="num" style={{ fontSize: 18, fontWeight: 700 }}>
               {fmt(saldoDisponible)}
             </div>
-            <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 3 }}>Cuentas líquidas</div>
+            <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 3 }}>Activos disponibles</div>
           </div>
           <div style={{ background: 'var(--line)', margin: '4px 0' }} />
           <div style={{ padding: '0 14px' }}>

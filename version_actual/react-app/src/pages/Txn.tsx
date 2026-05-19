@@ -14,7 +14,8 @@ import { useFormat } from '../hooks/useFormat'
 import { useTransactions } from '../hooks/useTransactions'
 import { useConfig }       from '../hooks/useConfig'
 import { usePrefsStore }   from '../store/prefs'
-import { FilterIcon, LockIcon } from '../components/icons/Icons'
+import { FilterIcon, LockIcon, SearchIcon } from '../components/icons/Icons'
+import { calcKPIs } from '../lib/finance'
 import { generateMeses, mesLabel } from '../lib/mes'
 
 const MONTHS = generateMeses(12)
@@ -227,8 +228,9 @@ export default function Txn() {
       .map(([cat, value]) => ({ cat, value, fill: catColor(cat) }))
   })()
 
-  const income   = txnsForMonth.filter(t => txnGroup(t.tipo) === 'ingreso').reduce((s, t) => s + t.amount, 0)
-  const expenses = txnsForMonth.filter(t => txnGroup(t.tipo) === 'gasto').reduce((s, t) => s + Math.abs(t.amount), 0)
+  const kpis     = calcKPIs(txnsForMonth, config.tipos)
+  const income   = kpis.ingresos
+  const expenses = kpis.gastos
 
   // ── Presupuesto vs real ──
   const spentByCat: Record<string, number> = {}
@@ -267,6 +269,19 @@ export default function Txn() {
             Movimientos
           </h1>
         </div>
+        {/* Buscar */}
+        <button
+          onClick={() => navigate('/buscar')}
+          style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: 'var(--ink-2)', border: '1px solid var(--line)',
+            display: 'grid', placeItems: 'center',
+            color: 'var(--fg-dim)', cursor: 'pointer',
+          }}
+          aria-label="Buscar"
+        >
+          <SearchIcon />
+        </button>
         {/* Cierre de mes */}
         <button
           onClick={toggleClosed}

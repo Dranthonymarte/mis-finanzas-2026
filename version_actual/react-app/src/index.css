@@ -22,8 +22,7 @@ body {
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  height: 100dvh;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 #root {
@@ -33,7 +32,7 @@ body {
   max-width: 430px;       /* phone viewport cap */
   margin: 0 auto;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* ── Overflow guard — apply to scrollable page wrappers ── */

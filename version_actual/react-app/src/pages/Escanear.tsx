@@ -22,8 +22,7 @@ interface ParsedRecibo {
   cat:         string
 }
 
-const GROQ_KEY_LS   = 'fin_groq_api_key'
-const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
+const GROQ_ENDPOINT = '/api/groq'
 const GROQ_MODEL    = 'llama-3.2-11b-vision-preview'
 
 const PROMPT =
@@ -84,11 +83,6 @@ export default function Escanear() {
   }
 
   async function handleAnalyze() {
-    const groqKey = import.meta.env.VITE_GROQ_API_KEY || localStorage.getItem(GROQ_KEY_LS) || ''
-    if (!groqKey) {
-      alert('Configura tu API key de Groq en Ajustes → Seguridad para usar esta función.')
-      return
-    }
     if (!preview) return
     setStatus('processing')
     setErrMsg(null)
@@ -99,10 +93,7 @@ export default function Escanear() {
     try {
       const res = await fetch(GROQ_ENDPOINT, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${groqKey}`,
-          'Content-Type':  'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: GROQ_MODEL,
           messages: [{

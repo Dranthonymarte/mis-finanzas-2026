@@ -11,13 +11,10 @@ import { currentMes, mesLabel } from '../lib/mes'
 import { useTransactions } from '../hooks/useTransactions'
 import { useAccounts } from '../hooks/useAccounts'
 
-// ── Groq config — key from .env.local (VITE_GROQ_API_KEY) ──
-const GROQ_URL      = 'https://api.groq.com/openai/v1/chat/completions'
+// ── Groq config — routed via CF Pages Function /api/groq ──
+const GROQ_URL      = '/api/groq'
 const GROQ_MODEL    = 'llama-3.3-70b-versatile'
 const GROQ_FALLBACK = 'llama-3.1-8b-instant'
-function getGroqKey(): string {
-  return import.meta.env.VITE_GROQ_API_KEY ?? ''
-}
 
 // ── Build financial context string from live data ──
 function buildContext(
@@ -56,7 +53,7 @@ async function groqCall(
   const model = retry > 0 ? GROQ_FALLBACK : GROQ_MODEL
   const res = await fetch(GROQ_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getGroqKey() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, messages, max_tokens: 800, temperature: 0.7 }),
   })
   if (!res.ok) {

@@ -8,6 +8,7 @@ import { useFormat }   from '../hooks/useFormat'
 import { useConfig } from '../hooks/useConfig'
 import { supabase }     from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
+import ConfirmSheet from '../components/ui/ConfirmSheet'
 
 interface SupaMovimiento {
   id:          string
@@ -366,46 +367,18 @@ export default function TxnDetail() {
           </>
         )}
 
-        {/* ── Delete confirmation ── */}
-        {confirmDelete && !editMode && (
-          <div style={{ margin: '20px 16px 0' }}>
-            <div style={{
-              background: 'rgba(214,106,90,.08)', border: '1px solid rgba(214,106,90,.3)',
-              borderRadius: 14, padding: '16px',
-            }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--neg)', textAlign: 'center', marginBottom: 6 }}>
-                ¿Eliminar este movimiento?
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--fg-mute)', textAlign: 'center', marginBottom: 14, lineHeight: 1.5 }}>
-                Se archivará. No afecta el historial contable.
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  style={{
-                    padding: '11px', borderRadius: 12, fontSize: 13.5, fontWeight: 600,
-                    background: 'var(--ink-2)', border: '1px solid var(--line)',
-                    color: 'var(--fg-dim)', cursor: 'pointer',
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleDelete}
-                  style={{
-                    padding: '11px', borderRadius: 12, fontSize: 13.5, fontWeight: 700,
-                    background: 'var(--neg)', border: 'none', color: '#fff', cursor: 'pointer',
-                  }}
-                >
-                  Eliminar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         <div style={{ height: 'calc(32px + env(safe-area-inset-bottom, 0px))' }} />
       </div>
+
+      <ConfirmSheet
+        open={confirmDelete && !editMode}
+        title="¿Eliminar este movimiento?"
+        message="Se archivará. No afecta el historial contable."
+        confirmLabel="Eliminar"
+        danger
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   )
 }

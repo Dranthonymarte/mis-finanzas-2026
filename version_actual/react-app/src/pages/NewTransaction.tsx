@@ -161,6 +161,32 @@ export default function NewTransaction() {
     setAmountUSD(isNaN(n) ? '' : (n / rateBCV).toFixed(2))
   }
 
+  // ── Fetch historical rate when date changes ──
+  async function fetchHistoricalRate(fechaSel: string) {
+    const { data } = await supabase
+      .from('tasas_historicas')
+      .select('rate_bcv')
+      .eq('household_key', 'anthony-isabel-2026')
+      .lte('fecha', fechaSel)
+      .order('fecha', { ascending: false })
+      .limit(1)
+    if (data?.[0]?.rate_bcv) {
+      setRateBCV(data[0].rate_bcv)
+      setRateStr(String(data[0].rate_bcv))
+      setUserEditedRate(true)
+    }
+  }
+
+  async function fetchBCVRate() {
+    try {
+      const res = await fetch('https://ve.dolarapi.com/v1/dolares/oficial')
+      if (!res.ok) return
+      const json = await res.json() as { promedio?: number; precio?: number }
+      const rate = json.promedio ?? json.precio
+      if (rate && rate > 0) { setRateBCV(rate); setRateStr(String(rate)); setUserEditedRate(true) }
+    } catch { /* network error — silent */ }
+  }
+
   const usdNum     = parseFloat(amountUSD) || 0
   const isTransfer = tipo === 'Transferencia Interna'
   const tipoObj    = tipos.find(t => t.nombre === tipo) ?? { nombre: tipo, esIngreso: false }
@@ -523,7 +549,8 @@ export default function NewTransaction() {
         <SLabel>Fecha</SLabel>
         <div style={{ padding: '0 16px' }}>
           <input
-            type="date" value={fecha} onChange={e => setFecha(e.target.value)}
+            type="date" value={fecha}
+            onChange={e => { setFecha(e.target.value); void fetchHistoricalRate(e.target.value) }}
             style={{ ...inputSt, colorScheme: 'dark' }}
           />
         </div>
@@ -552,6 +579,17 @@ export default function NewTransaction() {
               style={{ ...inputSt, flex: 1, fontFamily: 'var(--f-num)', fontWeight: 600 }}
             />
             <span style={{ fontSize: 12, color: 'var(--fg-mute)', whiteSpace: 'nowrap' }}>Bs / USD</span>
+            <button
+              type="button"
+              onClick={() => void fetchBCVRate()}
+              style={{
+                padding: '4px 8px', borderRadius: 8, fontSize: 10.5, fontWeight: 600,
+                background: 'var(--ink-3)', border: '1px solid var(--line)',
+                color: 'var(--amber)', cursor: 'pointer', whiteSpace: 'nowrap',
+              }}
+            >
+              Obtener BCV
+            </button>
           </div>
         </div>
 

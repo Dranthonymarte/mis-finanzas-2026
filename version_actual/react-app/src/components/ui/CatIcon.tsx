@@ -1,6 +1,5 @@
 // ═══════════════════════════════════════════════════
-// CatIcon — category icon with colored background + initials
-// Matches m-main.jsx CatIcon() anatomy exactly.
+// CatIcon — category icon with colored background + emoji/initials
 // ═══════════════════════════════════════════════════
 
 const CAT_COLORS: Record<string, string> = {
@@ -22,6 +21,67 @@ const CAT_COLORS: Record<string, string> = {
   'Ocio':            '#b8a870',
 }
 
+/** Default emoji map for known categories */
+const CAT_EMOJI: Record<string, string> = {
+  'Alimentación':    '🍔',
+  'Mercado':         '🛒',
+  'Trabajo':         '💼',
+  'Salario':         '💵',
+  'Ingreso Fijo':    '💰',
+  'Ingreso Variable':'💸',
+  'Entretenimiento': '🎬',
+  'Suscripción':     '📺',
+  'Suscripciones':   '📺',
+  'Transporte':      '🚗',
+  'Inversión':       '📈',
+  'Ahorro':          '🐷',
+  'Ahorro en efectivo': '🐷',
+  'Interno':         '🔄',
+  'Salud':           '❤️',
+  'Farmacia':        '💊',
+  'Servicios':       '⚡',
+  'Restaurantes':    '🍽️',
+  'Ocio':            '🎮',
+  'Hogar':           '🏠',
+  'Ropa':            '👕',
+  'Educación':       '📚',
+  'Viajes':          '✈️',
+  'Mascotas':        '🐾',
+  'Tecnología':      '💻',
+  'Otro':            '📦',
+  'Gasto':           '💸',
+  'Ingreso':         '💰',
+  'Transferencia Interna': '🔄',
+  'Ajuste':          '⚙️',
+}
+
+/** Keyword-based emoji fallback */
+function findEmojiByKeyword(cat: string): string | undefined {
+  const lower = cat.toLowerCase()
+  if (lower.includes('ahorro'))     return '🐷'
+  if (lower.includes('ingreso'))    return '💰'
+  if (lower.includes('salario'))    return '💵'
+  if (lower.includes('comida') || lower.includes('aliment')) return '🍔'
+  if (lower.includes('transport'))  return '🚗'
+  if (lower.includes('salud') || lower.includes('medic'))    return '❤️'
+  if (lower.includes('hogar') || lower.includes('casa'))     return '🏠'
+  if (lower.includes('ropa') || lower.includes('vestid'))    return '👕'
+  if (lower.includes('edu') || lower.includes('escuela'))    return '📚'
+  if (lower.includes('viaje') || lower.includes('vuelo'))    return '✈️'
+  if (lower.includes('entret') || lower.includes('ocio'))    return '🎬'
+  if (lower.includes('serv'))       return '⚡'
+  if (lower.includes('tecno') || lower.includes('comput'))   return '💻'
+  if (lower.includes('ajuste'))     return '⚙️'
+  return undefined
+}
+
+/** First letter of each word, up to 2 letters (for fallback initials) */
+function catInitials(cat: string): string {
+  const words = cat.trim().split(/\s+/)
+  if (words.length === 1) return cat.slice(0, 2).toUpperCase()
+  return (words[0][0] + words[1][0]).toUpperCase()
+}
+
 /** Deterministic hue from string so unknown cats get consistent, non-gray colors. */
 function hashHue(str: string): number {
   let h = 0
@@ -40,8 +100,9 @@ interface CatIconProps {
 }
 
 export default function CatIcon({ cat, size = 36 }: CatIconProps) {
-  const safe = cat ?? ''
-  const c = catColor(safe)
+  const safe  = cat ?? ''
+  const c     = catColor(safe)
+  const emoji = CAT_EMOJI[safe] ?? findEmojiByKeyword(safe)
   return (
     <div
       style={{
@@ -53,13 +114,13 @@ export default function CatIcon({ cat, size = 36 }: CatIconProps) {
         display:      'grid',
         placeItems:   'center',
         color:         c,
-        fontSize:      size * 0.3,
+        fontSize:      emoji ? size * 0.45 : size * 0.3,
         fontWeight:    600,
         flexShrink:    0,
         lineHeight:    1,
       }}
     >
-      {safe.slice(0, 2).toUpperCase() || '??'}
+      {emoji ?? catInitials(safe) || '??'}
     </div>
   )
 }

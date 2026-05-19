@@ -84,7 +84,7 @@ export default function Escanear() {
   }
 
   async function handleAnalyze() {
-    const groqKey = localStorage.getItem(GROQ_KEY_LS)
+    const groqKey = import.meta.env.VITE_GROQ_API_KEY || localStorage.getItem(GROQ_KEY_LS) || ''
     if (!groqKey) {
       alert('Configura tu API key de Groq en Ajustes → Seguridad para usar esta función.')
       return

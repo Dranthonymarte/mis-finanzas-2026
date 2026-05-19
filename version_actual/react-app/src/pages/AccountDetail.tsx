@@ -16,6 +16,7 @@ import { useAccounts }     from '../hooks/useAccounts'
 import { useTransactions } from '../hooks/useTransactions'
 import { useFormat }       from '../hooks/useFormat'
 import { usePrefsStore }   from '../store/prefs'
+import { useTasas }        from '../hooks/useTasas'
 import { useAuthStore }    from '../store/auth'
 import { supabase }        from '../lib/supabase'
 
@@ -84,6 +85,7 @@ export default function AccountDetail() {
   const navigate      = useNavigate()
   const { fmt }       = useFormat()
   const householdId   = useAuthStore(s => s.householdId)
+  const { tasas }     = useTasas()
 
   const mesActivo = usePrefsStore(s => s.mesActivo)
 
@@ -257,30 +259,44 @@ export default function AccountDetail() {
             </div>
 
             {editingBalance && (
-              <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input
-                  type="number" inputMode="decimal"
-                  value={newBalance}
-                  onChange={e => setNewBalance(e.target.value)}
-                  placeholder="Nuevo saldo…"
-                  style={{
-                    flex: 1, background: 'var(--ink-3)', border: '1px solid var(--line)',
-                    borderRadius: 10, padding: '8px 12px', fontSize: 14,
-                    color: 'var(--fg)', outline: 'none', fontFamily: 'var(--f-num)',
-                  }}
-                />
-                <button
-                  onClick={() => void saveBalance()}
-                  disabled={savingBalance}
-                  style={{
-                    padding: '8px 14px', borderRadius: 10,
-                    background: 'var(--amber)', border: 'none',
-                    color: 'var(--ink-0)', fontWeight: 700, fontSize: 13,
-                    cursor: savingBalance ? 'default' : 'pointer', opacity: savingBalance ? 0.6 : 1,
-                  }}
-                >
-                  Guardar
-                </button>
+              <div style={{ marginTop: 10 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="number" inputMode="decimal"
+                    value={newBalance}
+                    onChange={e => setNewBalance(e.target.value)}
+                    placeholder="Nuevo saldo…"
+                    style={{
+                      flex: 1, background: 'var(--ink-3)', border: '1px solid var(--line)',
+                      borderRadius: 10, padding: '8px 12px', fontSize: 14,
+                      color: 'var(--fg)', outline: 'none', fontFamily: 'var(--f-num)',
+                    }}
+                  />
+                  <button
+                    onClick={() => void saveBalance()}
+                    disabled={savingBalance}
+                    style={{
+                      padding: '8px 14px', borderRadius: 10,
+                      background: 'var(--amber)', border: 'none',
+                      color: 'var(--ink-0)', fontWeight: 700, fontSize: 13,
+                      cursor: savingBalance ? 'default' : 'pointer', opacity: savingBalance ? 0.6 : 1,
+                    }}
+                  >
+                    Guardar
+                  </button>
+                </div>
+                {(() => {
+                  const val = parseFloat(newBalance)
+                  if (!isNaN(val) && val > 0) {
+                    const bs = (tasas.bcv * val).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    return (
+                      <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginTop: 5, paddingLeft: 2 }}>
+                        ≈ Bs {bs}
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
               </div>
             )}
 

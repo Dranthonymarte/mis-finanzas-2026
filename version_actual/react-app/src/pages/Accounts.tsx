@@ -2,8 +2,9 @@ import { useNavigate } from 'react-router-dom'
 import Sparkline from '../components/ui/Sparkline'
 import Pill     from '../components/ui/Pill'
 import { MOCK_ACCOUNTS, type Account } from '../data/mock'
-import { useAccounts } from '../hooks/useAccounts'
-import { useFormat }   from '../hooks/useFormat'
+import { useAccounts }   from '../hooks/useAccounts'
+import { useFormat }     from '../hooks/useFormat'
+import { usePrefsStore, type Moneda } from '../store/prefs'
 
 /* ── Account card ── */
 function AccountCard({ acc, onClick }: { acc: Account; onClick: () => void }) {
@@ -56,8 +57,10 @@ function AccountCard({ acc, onClick }: { acc: Account; onClick: () => void }) {
 }
 
 export default function Accounts() {
-  const navigate = useNavigate()
-  const { fmt }  = useFormat()
+  const navigate   = useNavigate()
+  const { fmt }    = useFormat()
+  const moneda     = usePrefsStore(s => s.moneda)
+  const setMoneda  = usePrefsStore(s => s.setMoneda)
   const { accounts: liveAccounts, loading } = useAccounts()
   const accounts = liveAccounts ?? (loading ? MOCK_ACCOUNTS : [])
 
@@ -77,15 +80,33 @@ export default function Accounts() {
             Cuentas
           </h1>
         </div>
-        <button
-          onClick={() => navigate('/settings')}
-          style={{
-            fontSize: 11.5, fontWeight: 600, color: 'var(--amber)',
-            background: 'none', border: 'none', cursor: 'pointer',
-          }}
-        >
-          Gestionar
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Pills moneda */}
+          <div style={{ display: 'flex', gap: 4 }}>
+            {(['USD', 'BS', 'EUR'] as Moneda[]).map(m => (
+              <button
+                key={m}
+                onClick={() => setMoneda(m)}
+                style={{
+                  padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+                  background: moneda === m ? 'var(--amber)' : 'var(--ink-2)',
+                  color:      moneda === m ? 'var(--ink-0)' : 'var(--fg-mute)',
+                  border:     moneda === m ? 'none' : '1px solid var(--line)',
+                  cursor: 'pointer',
+                }}
+              >{m}</button>
+            ))}
+          </div>
+          <button
+            onClick={() => navigate('/settings')}
+            style={{
+              fontSize: 11.5, fontWeight: 600, color: 'var(--amber)',
+              background: 'none', border: 'none', cursor: 'pointer',
+            }}
+          >
+            Gestionar
+          </button>
+        </div>
       </div>
 
       {/* ── Patrimony summary ── */}

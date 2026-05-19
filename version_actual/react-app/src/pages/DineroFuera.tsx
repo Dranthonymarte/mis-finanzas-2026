@@ -10,7 +10,7 @@
 // Subsección informativa solo-lectura derivada de `movimientos`.
 // ═══════════════════════════════════════════════════
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { type CSSProperties } from 'react'
 import AppHeader from '../components/shell/AppHeader'
 import Sheet     from '../components/ui/Sheet'
@@ -38,14 +38,6 @@ const inputSt: CSSProperties = {
   width: '100%', background: 'var(--ink-2)', border: '1px solid var(--line)',
   borderRadius: 12, padding: '11px 14px', fontSize: 14,
   color: 'var(--fg)', outline: 'none', fontFamily: 'var(--f-ui)',
-}
-
-// ── Derived (read-only) row from `movimientos` ─────
-interface DerivedRow {
-  id:             string
-  nombre:         string
-  monto_original: number
-  fecha_inicio:   string | null
 }
 
 // ── Form state ─────────────────────────────────────
@@ -89,39 +81,6 @@ export default function DineroFuera() {
   const [confirmId,   setConfirmId]   = useState<string | null>(null)
   const [confirmMode, setConfirmMode] = useState<'pagado' | 'reabrir' | 'delete'>('pagado')
 
-  // ── Derived-from-movimientos (read-only) collapsible ──
-  const [derivedRows, setDerivedRows] = useState<DerivedRow[]>([])
-  const [showDerived,  setShowDerived] = useState(false)
-
-  useEffect(() => {
-    if (!householdId) return
-    supabase
-      .from('movimientos')
-      .select('descripcion,tipo,amount,fecha')
-      .eq('household_id', householdId)
-      .in('tipo', ['Prestamo recibido', 'Prestamo pagado'])
-      .is('deleted_at', null)
-      .then(({ data }) => {
-        const byName = new Map<string, { neto: number; first: string | null }>()
-        for (const m of data ?? []) {
-          const name = (m.descripcion as string | null)?.trim() || 'Sin nombre'
-          const amt  = Math.abs(parseFloat(String(m.amount)) || 0)
-          const signed = m.tipo === 'Prestamo recibido' ? amt : -amt
-          const cur = byName.get(name) ?? { neto: 0, first: (m.fecha as string | null) }
-          cur.neto += signed
-          byName.set(name, cur)
-        }
-        const derived: DerivedRow[] = [...byName.entries()]
-          .filter(([, v]) => Math.abs(v.neto) > 0.009)
-          .map(([name, v], i) => ({
-            id:             `mov-${i}-${name}`,
-            nombre:         name,
-            monto_original: Math.abs(v.neto),
-            fecha_inicio:   v.first,
-          }))
-        setDerivedRows(derived)
-      })
-  }, [householdId])
 
   // ── Sections ──────────────────────────────────────
   const meDeben = useMemo(
@@ -524,49 +483,6 @@ export default function DineroFuera() {
           </>
         )}
 
-        {/* ── Derivado de transacciones (solo lectura) ── */}
-        {derivedRows.length > 0 && (
-          <>
-            <button
-              onClick={() => setShowDerived(s => !s)}
-              style={{
-                width: '100%', marginTop: 22, padding: '10px 12px', borderRadius: 10,
-                background: 'var(--ink-2)', border: '1px solid var(--line)',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                fontSize: 11.5, fontWeight: 600, color: 'var(--fg-mute)', cursor: 'pointer',
-              }}
-            >
-              <span>Derivado de transacciones (solo lectura) · {derivedRows.length}</span>
-              <span>{showDerived ? '▾' : '▸'}</span>
-            </button>
-            {showDerived && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-                <div style={{ fontSize: 11, color: 'var(--fg-mute)', lineHeight: 1.4, padding: '0 2px' }}>
-                  Agregado desde movimientos (Préstamo recibido / pagado). Informativo —
-                  no editable. La fuente editable es la lista de arriba.
-                </div>
-                {derivedRows.map(d => (
-                  <div key={d.id} style={{
-                    background: 'var(--ink-2)', border: '1px dashed var(--ink-4)',
-                    borderRadius: 12, padding: '11px 14px',
-                    display: 'flex', alignItems: 'center', gap: 10,
-                  }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 600 }}>{d.nombre}</div>
-                      <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginTop: 2 }}>
-                        Desde movimientos
-                        {d.fecha_inicio && ` · ${new Date(d.fecha_inicio + 'T12:00:00').toLocaleDateString('es-VE')}`}
-                      </div>
-                    </div>
-                    <div className="num" style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg-dim)' }}>
-                      {fmt(d.monto_original)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
       </div>
 
       <div style={{ height: 32 }} />

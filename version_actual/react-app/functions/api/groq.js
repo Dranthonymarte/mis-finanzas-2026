@@ -1,3 +1,13 @@
+export async function onRequestOptions() {
+  return new Response(null, {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    }
+  })
+}
+
 export async function onRequestPost(context) {
   const key = context.env.GROQ_API_KEY ?? context.env.VITE_GROQ_API_KEY
   if (!key) {

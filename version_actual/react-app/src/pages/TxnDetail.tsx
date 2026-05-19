@@ -22,6 +22,9 @@ interface SupaMovimiento {
   mes:         string
   cuenta_id:   string | null
   created_at:  string
+  rate_bcv?:   number
+  notas?:      string | null
+  method?:     string | null
 }
 
 function txnColor(tipo: string, esIngreso: boolean): string {
@@ -98,14 +101,19 @@ export default function TxnDetail() {
   const [editMode,      setEditMode]      = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const [editDesc, setEditDesc] = useState('')
-  const [editCat,  setEditCat]  = useState('')
+  const [editDesc,   setEditDesc]   = useState('')
+  const [editCat,    setEditCat]    = useState('')
+  const [editTipo,   setEditTipo]   = useState('')
+  const [editAmount, setEditAmount] = useState('')
+  const [editFecha,  setEditFecha]  = useState('')
+  const [editMethod, setEditMethod] = useState('')
+  const [editRate,   setEditRate]   = useState('')
 
   useEffect(() => {
     if (!id) return
     supabase
       .from('movimientos')
-      .select('id,descripcion,tipo,cat,subcat,amount,amount_bs,fecha,author,mes,cuenta_id,created_at')
+      .select('id,descripcion,tipo,cat,subcat,amount,amount_bs,fecha,author,mes,cuenta_id,created_at,rate_bcv,notas,method')
       .eq('id', id)
       .single()
       .then(({ data, error }) => {
@@ -114,6 +122,11 @@ export default function TxnDetail() {
         setTxn(row)
         setEditDesc(row.descripcion)
         setEditCat(row.cat)
+        setEditTipo(row.tipo)
+        setEditAmount(String(Math.abs(row.amount)))
+        setEditFecha(row.fecha)
+        setEditMethod(row.method ?? '')
+        setEditRate(String(row.rate_bcv ?? ''))
         setLoadingTxn(false)
       })
   }, [id, navigate])
@@ -134,7 +147,7 @@ export default function TxnDetail() {
   const sign      = txnSign(esIngreso)
   const catC      = catColor(editMode ? editCat : txn.cat)
   const acc       = accounts?.find(a => a.id === txn.cuenta_id)
-  const allCats   = config.categorias[txn.tipo] ?? [txn.cat]
+  const allCats   = config.categorias[editTipo || txn.tipo] ?? config.categorias[txn.tipo] ?? [txn.cat]
 
   async function saveEdit() {
     if (!txn || !householdId) return
@@ -146,7 +159,11 @@ export default function TxnDetail() {
     if (delErr) { console.error('[TxnDetail] soft-delete:', delErr.message); return }
 
     // Re-create with updated fields (new UUID = new row)
-    const newId = crypto.randomUUID()
+    const newId     = crypto.randomUUID()
+    const tipoObj   = config.tipos.find(t => t.nombre === editTipo) ?? { esIngreso: false }
+    const sign      = tipoObj.esIngreso ? 1 : -1
+    const parsedAmt = parseFloat(editAmount)
+    const parsedRate = parseFloat(editRate)
     const { error: insErr } = await supabase
       .from('movimientos')
       .insert({
@@ -155,21 +172,22 @@ export default function TxnDetail() {
         household_id: householdId,
         mes:          txn.mes,
         descripcion:  editDesc,
-        tipo:         txn.tipo,
+        tipo:         editTipo || txn.tipo,
         cat:          editCat,
         subcat:       txn.subcat ?? '',
-        amount:       txn.amount,
-        amount_bs:    txn.amount_bs ?? 0,
-        method:       '',
-        fecha:        txn.fecha,
+        amount:       !isNaN(parsedAmt) ? sign * parsedAmt : txn.amount,
+        amount_bs:    !isNaN(parsedAmt) ? (parsedAmt * (!isNaN(parsedRate) && parsedRate > 0 ? parsedRate : txn.rate_bcv ?? 1)) : txn.amount_bs ?? 0,
+        method:       editMethod || txn.method ?? '',
+        fecha:        editFecha || txn.fecha,
         author:       txn.author,
         rate_type:    'bcv',
+        rate_bcv:     !isNaN(parsedRate) && parsedRate > 0 ? parsedRate : txn.rate_bcv,
         cuenta_id:    txn.cuenta_id,
       })
     if (insErr) { console.error('[TxnDetail] recreate:', insErr.message); return }
 
     // Reflect changes locally
-    setTxn(prev => prev ? { ...prev, id: newId, descripcion: editDesc, cat: editCat } : prev)
+    setTxn(prev => prev ? { ...prev, id: newId, descripcion: editDesc, cat: editCat, tipo: editTipo || prev.tipo, fecha: editFecha || prev.fecha, method: editMethod || prev.method } : prev)
     setEditMode(false)
   }
 
@@ -287,7 +305,12 @@ export default function TxnDetail() {
                   style={inputSt}
                 />
               </EditRow>
-              <EditRow label="Categoría" last>
+              <EditRow label="Tipo">
+                <select value={editTipo} onChange={e => { setEditTipo(e.target.value); setEditCat('') }} style={{ ...inputSt, cursor: 'pointer' }}>
+                  {config.tipos.map(t => <option key={t.nombre} value={t.nombre}>{t.nombre}</option>)}
+                </select>
+              </EditRow>
+              <EditRow label="Categoría">
                 <select
                   value={editCat}
                   onChange={e => setEditCat(e.target.value)}
@@ -295,6 +318,18 @@ export default function TxnDetail() {
                 >
                   {allCats.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
+              </EditRow>
+              <EditRow label="Monto (USD)">
+                <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} style={inputSt} />
+              </EditRow>
+              <EditRow label="Fecha">
+                <input type="date" value={editFecha} onChange={e => setEditFecha(e.target.value)} style={{ ...inputSt, colorScheme: 'dark' }} />
+              </EditRow>
+              <EditRow label="Método">
+                <input type="text" value={editMethod} onChange={e => setEditMethod(e.target.value)} placeholder="Efectivo, Transferencia…" style={inputSt} />
+              </EditRow>
+              <EditRow label="Tasa BCV" last>
+                <input type="number" value={editRate} onChange={e => setEditRate(e.target.value)} style={inputSt} />
               </EditRow>
             </div>
             <div style={{ margin: '12px 16px' }}>
@@ -320,7 +355,10 @@ export default function TxnDetail() {
               <DetailRow label="Fecha"          value={txn.fecha} />
               <DetailRow label="Hora"           value={fmtTime(txn.created_at)} />
               <DetailRow label="Registrado por" value={fmtAuthor(txn.author)} />
-              <DetailRow label="Cuenta"         value={acc?.name ?? '—'} last />
+              <DetailRow label="Cuenta"         value={acc?.name ?? '—'} last={!txn.method && txn.rate_bcv == null && !txn.notas} />
+              {txn.method && <DetailRow label="Método" value={txn.method} last={txn.rate_bcv == null && !txn.notas} />}
+              {txn.rate_bcv != null && <DetailRow label="Tasa BCV" value={`${txn.rate_bcv.toFixed(2)} Bs/$`} last={!txn.notas} />}
+              {txn.notas && <DetailRow label="Notas" value={txn.notas} last />}
             </div>
           </>
         )}

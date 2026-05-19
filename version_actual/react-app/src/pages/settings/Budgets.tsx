@@ -17,8 +17,9 @@ export default function Budgets() {
   const { fmt }                  = useFormat()
   const { config, updateConfig } = useConfig()
   const { transactions }         = useTransactions(currentMes())
-  const [editCat, setEditCat]    = useState<string | null>(null)
-  const [editVal, setEditVal]    = useState('')
+  const [editCat,    setEditCat]    = useState<string | null>(null)
+  const [editVal,    setEditVal]    = useState('')
+  const [chipFilter, setChipFilter] = useState<'all' | 'con' | 'sin'>('all')
 
   // Sum gastos per cat this month
   const spentByCat: Record<string, number> = {}
@@ -52,15 +53,34 @@ export default function Budgets() {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       <AppHeader title="Presupuestos" back />
 
-      <div style={{ padding: '16px 16px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Filter chips */}
+      <div style={{ display: 'flex', gap: 6, padding: '8px 16px 4px', overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+        {([['all', 'Todos'], ['con', 'Con límite'], ['sin', 'Sin límite']] as const).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setChipFilter(key)}
+            style={{
+              flexShrink: 0, padding: '5px 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
+              background: chipFilter === key ? 'var(--amber)' : 'var(--ink-2)',
+              color:      chipFilter === key ? 'var(--ink-0)' : 'var(--fg-dim)',
+              border:     chipFilter === key ? 'none' : '1px solid var(--line)',
+              cursor: 'pointer',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
-        {budgetCats.length === 0 && (
+      <div style={{ padding: '8px 16px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+        {budgetCats.length === 0 && chipFilter !== 'sin' && (
           <div style={{ textAlign: 'center', color: 'var(--fg-mute)', padding: '32px 0', fontSize: 13 }}>
             Sin presupuestos configurados
           </div>
         )}
 
-        {budgetCats.map(cat => {
+        {budgetCats.filter(() => chipFilter !== 'sin').map(cat => {
           const limit  = config.presupuestos[cat]
           const spent  = spentByCat[cat] ?? 0
           const pct    = Math.min(100, (spent / limit) * 100)
@@ -124,7 +144,7 @@ export default function Budgets() {
         })}
 
         {/* Add budget for cats without one — inline edit within each row */}
-        {noBudgetCats.length > 0 && (
+        {noBudgetCats.length > 0 && chipFilter !== 'con' && (
           <>
             <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase', marginTop: 8 }}>
               Sin presupuesto

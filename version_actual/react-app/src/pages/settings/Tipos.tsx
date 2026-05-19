@@ -30,8 +30,14 @@ export default function Tipos() {
   const [newNombre,    setNewNombre]    = useState('')
   const [newEsIngreso, setNewEsIngreso] = useState(false)
   const [saving,       setSaving]       = useState(false)
+  const [chipFilter,   setChipFilter]   = useState<'all' | 'ingreso' | 'gasto'>('all')
 
   const rows: TipoRow[] = config.tipos.map(toRow)
+  const filteredRows = rows.filter(r => {
+    if (chipFilter === 'ingreso') return r.esIngreso
+    if (chipFilter === 'gasto')   return !r.esIngreso
+    return true
+  })
 
   // ── Toggle esIngreso ──────────────────────────────
   async function toggleEsIngreso(row: TipoRow) {
@@ -70,10 +76,29 @@ export default function Tipos() {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       <AppHeader title="Tipos de movimiento" back />
 
-      <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Filter chips */}
+      <div style={{ display: 'flex', gap: 6, padding: '8px 16px 4px', overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+        {([['all', 'Todos'], ['ingreso', 'Ingresos'], ['gasto', 'Gastos']] as const).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setChipFilter(key)}
+            style={{
+              flexShrink: 0, padding: '5px 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
+              background: chipFilter === key ? 'var(--amber)' : 'var(--ink-2)',
+              color:      chipFilter === key ? 'var(--ink-0)' : 'var(--fg-dim)',
+              border:     chipFilter === key ? 'none' : '1px solid var(--line)',
+              cursor: 'pointer',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
 
         {/* List */}
-        {rows.map(row => (
+        {filteredRows.map(row => (
           <div
             key={row.id}
             style={{

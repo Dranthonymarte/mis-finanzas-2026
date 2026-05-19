@@ -6,19 +6,21 @@ import { handleError }   from '../lib/handleError'
 import { useTasas }      from './useTasas'
 
 interface SupaCuenta {
-  id:                   string
-  nombre:               string
-  color:                string | null
-  moneda:               string
-  saldo_inicial:        number | null
-  balance_override:     number | null
-  activa:               boolean
-  owner:                string | null
+  id:                    string
+  nombre:                string
+  color:                 string | null
+  moneda:                string
+  saldo_inicial:         number | null
+  balance_override:      number | null
+  balance_override_date: string | null
+  activa:                boolean
+  owner:                 string | null
 }
 
 interface MovSum {
   cuenta_id: string
-  amount:    number
+  amount:    number | string
+  fecha:     string
 }
 
 function inferType(nombre: string | null, moneda: string): string {
@@ -27,11 +29,23 @@ function inferType(nombre: string | null, moneda: string): string {
   return 'CORRIENTE'
 }
 
-function mapCuenta(r: SupaCuenta, movSums: Map<string, number>, bcv: number): Account {
-  const movTotal = movSums.get(r.id) ?? 0
-  const balance  = r.balance_override != null
-    ? r.balance_override
-    : (r.saldo_inicial ?? 0) + movTotal
+function mapCuenta(r: SupaCuenta, allMovs: MovSum[], bcv: number): Account {
+  let balance: number
+
+  if (r.balance_override != null && r.balance_override_date != null) {
+    // Sum only movements on or after the override date
+    const movAfter = allMovs.filter(
+      m => m.cuenta_id === r.id && m.fecha >= r.balance_override_date!,
+    )
+    const delta = movAfter.reduce((s, m) => s + (parseFloat(String(m.amount)) || 0), 0)
+    balance = r.balance_override + delta
+  } else {
+    // Original logic: saldo_inicial + all movements (or plain override with no date)
+    const movTotal = allMovs
+      .filter(m => m.cuenta_id === r.id)
+      .reduce((s, m) => s + (parseFloat(String(m.amount)) || 0), 0)
+    balance = r.balance_override ?? ((r.saldo_inicial ?? 0) + movTotal)
+  }
 
   // Normalize to USD so patrimonio/saldo aggregates are currency-coherent.
   // VES balances are divided by the BCV rate; USD stays as-is.
@@ -67,14 +81,14 @@ export function useAccounts() {
       Promise.all([
         supabase
           .from('cuentas')
-          .select('id,nombre,color,moneda,saldo_inicial,balance_override,activa,owner')
+          .select('id,nombre,color,moneda,saldo_inicial,balance_override,balance_override_date,activa,owner')
           .eq('household_id', householdId!)
           .eq('activa', true)
           .order('created_at'),
 
         supabase
           .from('movimientos')
-          .select('cuenta_id,amount')
+          .select('cuenta_id,amount,fecha')
           .eq('household_id', householdId!)
           .is('deleted_at', null),
       ]).then(([cuentasRes, movRes]) => {
@@ -85,15 +99,9 @@ export function useAccounts() {
           return
         }
 
-        // Build cuenta_id → SUM(amount) map from movimientos
-        const movSums = new Map<string, number>()
-        for (const m of (movRes.data ?? []) as MovSum[]) {
-          if (!m.cuenta_id) continue
-          movSums.set(m.cuenta_id, (movSums.get(m.cuenta_id) ?? 0) + (parseFloat(String(m.amount)) || 0))
-        }
-
+        const movData = (movRes.data ?? []) as MovSum[]
         const cuentas = (cuentasRes.data as SupaCuenta[] ?? [])
-        setAccounts(cuentas.map(r => mapCuenta(r, movSums, tasas.bcv)))
+        setAccounts(cuentas.map(r => mapCuenta(r, movData, tasas.bcv)))
         setLoading(false)
       })
     }

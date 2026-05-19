@@ -390,35 +390,78 @@ export default function NewTransaction() {
         {!isTransfer && cats.length > 0 && (
           <>
             <SLabel>Categoría</SLabel>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, padding: '0 16px' }}>
-              {cats.map(c => {
-                const sel   = c === cat
-                const color = catColor(c)
-                return (
-                  <button
-                    key={c}
-                    onClick={() => changeCat(c)}
-                    style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-                      padding: '9px 4px', borderRadius: 12,
-                      background: sel ? `${color}16` : 'var(--ink-2)',
-                      border:     sel ? `1.5px solid ${color}55` : '1px solid var(--line)',
-                      transition: 'all .12s',
-                    }}
-                  >
-                    <CatIcon cat={c} size={34} />
-                    <span style={{
-                      fontSize: 9, fontWeight: 500, lineHeight: 1.2,
-                      color: sel ? color : 'var(--fg-mute)',
-                      textAlign: 'center', maxWidth: '100%',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>
-                      {c}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+            {/* Gastos: 2-row horizontal scroll. Ingresos/Ahorro: static 4-col grid */}
+            {(!tipoObj.esIngreso && !tipoObj.nombre.includes('Ahorro')) ? (
+              <div style={{
+                display: 'grid',
+                gridAutoFlow: 'column',
+                gridTemplateRows: 'repeat(2, auto)',
+                gap: 6,
+                overflowX: 'auto',
+                msOverflowStyle: 'none',
+                scrollbarWidth: 'none',
+                paddingBottom: 2,
+                padding: '0 16px 2px',
+              }}>
+                {cats.map(c => {
+                  const sel   = c === cat
+                  const color = catColor(c)
+                  return (
+                    <button
+                      key={c}
+                      onClick={() => changeCat(c)}
+                      style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                        padding: '9px 8px', borderRadius: 12, width: 76,
+                        background: sel ? `${color}16` : 'var(--ink-2)',
+                        border:     sel ? `1.5px solid ${color}55` : '1px solid var(--line)',
+                        transition: 'all .12s', whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <CatIcon cat={c} size={34} />
+                      <span style={{
+                        fontSize: 9, fontWeight: 500, lineHeight: 1.2,
+                        color: sel ? color : 'var(--fg-mute)',
+                        textAlign: 'center', maxWidth: 68,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {c}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, padding: '0 16px' }}>
+                {cats.map(c => {
+                  const sel   = c === cat
+                  const color = catColor(c)
+                  return (
+                    <button
+                      key={c}
+                      onClick={() => changeCat(c)}
+                      style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                        padding: '9px 4px', borderRadius: 12,
+                        background: sel ? `${color}16` : 'var(--ink-2)',
+                        border:     sel ? `1.5px solid ${color}55` : '1px solid var(--line)',
+                        transition: 'all .12s',
+                      }}
+                    >
+                      <CatIcon cat={c} size={34} />
+                      <span style={{
+                        fontSize: 9, fontWeight: 500, lineHeight: 1.2,
+                        color: sel ? color : 'var(--fg-mute)',
+                        textAlign: 'center', maxWidth: '100%',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {c}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </>
         )}
 

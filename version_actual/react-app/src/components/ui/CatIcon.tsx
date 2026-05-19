@@ -75,13 +75,6 @@ function findEmojiByKeyword(cat: string): string | undefined {
   return undefined
 }
 
-/** First letter of each word, up to 2 letters (for fallback initials) */
-function catInitials(cat: string): string {
-  const words = cat.trim().split(/\s+/)
-  if (words.length === 1) return cat.slice(0, 2).toUpperCase()
-  return (words[0][0] + words[1][0]).toUpperCase()
-}
-
 /** Deterministic hue from string so unknown cats get consistent, non-gray colors. */
 function hashHue(str: string): number {
   let h = 0

@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════════════
 
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Sparkline from '../components/ui/Sparkline'
 import { type ChatMsg, MOCK_CHAT, fmt, txnGroup } from '../data/mock'
 import { currentMes, mesLabel } from '../lib/mes'
@@ -125,6 +126,7 @@ function Bubble({ msg }: { msg: ChatMsg }) {
 }
 
 export default function AI() {
+  const navigate   = useNavigate()
   const [input,    setInput]    = useState('')
   const [messages, setMessages] = useState<ChatMsg[]>(MOCK_CHAT)
   const [typing,   setTyping]   = useState(false)
@@ -173,11 +175,19 @@ INSTRUCCIONES:
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
 
       {/* ── Header ── */}
-      <div style={{ padding: '10px 16px 8px', flexShrink: 0 }}>
+      <div style={{ padding: '10px 16px 8px', flexShrink: 0, borderBottom: '1px solid var(--line)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              width: 32, height: 32, borderRadius: 8, background: 'var(--ink-2)',
+              border: '1px solid var(--line)', display: 'grid', placeItems: 'center',
+              color: 'var(--fg-dim)', cursor: 'pointer', flexShrink: 0,
+            }}
+          >←</button>
           <div style={{
             width: 26, height: 26, borderRadius: 7,
             background: 'var(--amber)', color: 'var(--ink-0)',
@@ -195,7 +205,7 @@ INSTRUCCIONES:
       </div>
 
       {/* ── Chat area ── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 16px 4px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '8px 16px 4px' }}>
         {messages.map((msg, i) => <Bubble key={i} msg={msg} />)}
         {typing && (
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 14 }}>
@@ -246,7 +256,8 @@ INSTRUCCIONES:
 
       {/* ── Input bar ── */}
       <div style={{
-        padding: '8px 16px 16px', borderTop: '1px solid var(--line)',
+        padding: '8px 16px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+        borderTop: '1px solid var(--line)',
         background: 'var(--ink-1)', flexShrink: 0,
         display: 'flex', gap: 8, alignItems: 'center',
       }}>

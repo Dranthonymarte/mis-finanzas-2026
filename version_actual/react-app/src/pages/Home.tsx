@@ -16,6 +16,7 @@ import { useAccounts }     from '../hooks/useAccounts'
 import { useTransactions } from '../hooks/useTransactions'
 import { useConfig }       from '../hooks/useConfig'
 import { useKPIs }         from '../hooks/useKPIs'
+import { useDineroFuera }  from '../hooks/useDineroFuera'
 import { useFormat }       from '../hooks/useFormat'
 import { usePrefsStore, type Moneda } from '../store/prefs'
 import { useAuthStore }    from '../store/auth'
@@ -175,6 +176,7 @@ export default function Home() {
   const { config }                  = useConfig()
   const kpiData                     = useKPIs(liveTxns, config)
   const { fmt, fmtShort }           = useFormat()
+  const { meDebenActivo }           = useDineroFuera()
 
   // ── Bar chart 6M: real data for prior 5 months ──
   interface MonthKPI { month: string; ingresos: number; gastos: number }
@@ -238,27 +240,28 @@ export default function Home() {
       })
   }, [householdId, mesActivo])
 
-  // ── Patrimonio neto = TODAS las cuentas, normalizadas a USD ──
+  // ── Saldo disponible = cuentas líquidas (excluye AHORRO) ──
   // (fmt() luego convierte USD → moneda activa: USD/BS/EUR)
-  const patrimony = (liveAccounts ?? [])
-    .reduce((s, a) => s + (a.balanceUSD ?? a.balance), 0)
-
-  // ── Saldo disponible = patrimonio menos cuentas de AHORRO (líquido) ──
   const saldoDisponible = (liveAccounts ?? [])
     .filter(a => !a.type.toUpperCase().includes('AHORRO'))
     .reduce((s, a) => s + (a.balanceUSD ?? a.balance), 0)
 
-  // ── Tasa ahorro ──
+  // ── Patrimonio = activos líquidos + ahorro acumulado + me deben activo ──
+  const patrimony = saldoDisponible + ahorroAcumulado + meDebenActivo
+
+  // ── Tasa ahorro = ahorro del mes / ingresos ──
   const savingsRate = kpiData.ingresos > 0
-    ? (kpiData.balance / kpiData.ingresos) * 100
+    ? (kpiData.ahorro / kpiData.ingresos) * 100
     : 0
 
   // ── KPI cards ──
+  // [2] neto  = ingresos − gastos (signo explícito, rojo/verde en render)
+  // [3] ahorro = suma tipo 'Ahorro en efectivo' mes activo; tasa fusionada en subtexto
   const kpis = liveTxns ? [
     { ...MOCK_KPIS[0], value: kpiData.ingresos },
     { ...MOCK_KPIS[1], value: kpiData.gastos   },
-    { ...MOCK_KPIS[2], value: kpiData.balance  },
-    { ...MOCK_KPIS[3], value: parseFloat(savingsRate.toFixed(1)) },
+    { ...MOCK_KPIS[2], id: 'neto',   label: 'Neto',   value: kpiData.balance },
+    { ...MOCK_KPIS[3], id: 'ahorro', label: 'Ahorro', value: kpiData.ahorro, suffix: undefined },
   ] : MOCK_KPIS
 
   // ── Bar chart 6M: 5 meses reales + mes activo ──
@@ -485,6 +488,54 @@ export default function Home() {
       <div style={{ padding: '12px 16px 4px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         {kpis.map(k => {
           const good = k.neg ? k.delta < 0 : k.delta > 0
+          // ── NETO: signo explícito + color rojo/verde ──
+          if (k.id === 'neto') {
+            const isPos   = kpiData.balance >= 0
+            const netoStr = isPos ? '+' + fmt(kpiData.balance) : fmt(kpiData.balance)
+            return (
+              <div key="neto" style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <span style={{ fontSize: 9.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
+                    Neto
+                  </span>
+                  <Pill tone={isPos ? 'pos' : 'neg'} size="xs">
+                    {isPos ? '+' : ''}{k.delta}%
+                  </Pill>
+                </div>
+                <div className="num" style={{ fontSize: 17, fontWeight: 600, color: isPos ? 'var(--pos)' : 'var(--neg)' }}>
+                  {netoStr}
+                </div>
+                <div style={{ marginTop: 5 }}>
+                  <Sparkline data={k.spark} color={isPos ? 'var(--pos)' : 'var(--neg)'} w={140} h={18} fill stroke={1.4} />
+                </div>
+              </div>
+            )
+          }
+          // ── AHORRO: monto del mes + tasa fusionada en subtexto ──
+          if (k.id === 'ahorro') {
+            return (
+              <div key="ahorro" style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <span style={{ fontSize: 9.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
+                    Ahorro
+                  </span>
+                  <Pill tone={good ? 'pos' : 'neg'} size="xs">
+                    {k.delta > 0 ? '+' : ''}{k.delta}%
+                  </Pill>
+                </div>
+                <div className="num" style={{ fontSize: 17, fontWeight: 600 }}>
+                  {fmt(kpiData.ahorro)}
+                </div>
+                <div style={{ marginTop: 5 }}>
+                  <Sparkline data={k.spark} color="var(--amber)" w={140} h={18} fill stroke={1.4} />
+                </div>
+                <div style={{ fontSize: 9.5, color: 'var(--fg-mute)', marginTop: 4 }}>
+                  {savingsRate.toFixed(1)}% de ingresos
+                </div>
+              </div>
+            )
+          }
+          // ── Genérico: Ingresos / Gastos ──
           return (
             <div key={k.id} style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>

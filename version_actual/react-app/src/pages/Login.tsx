@@ -120,7 +120,7 @@ export default function Login() {
       const { error: err } = await supabase.auth.signUp({
         email:    email.trim(),
         password: pass,
-        options:  { data: { full_name: name.trim() || email.split('@')[0] } },
+        options:  { data: { full_name: name.trim() || email.split('@')[0] }, emailRedirectTo: window.location.origin + '/dashboard' },
       })
       clearTimeout(timer)
       setLoading(false)

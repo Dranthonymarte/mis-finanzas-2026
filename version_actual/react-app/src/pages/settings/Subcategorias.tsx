@@ -1,11 +1,12 @@
 // ═══════════════════════════════════════════════════
 // Subcategorias — /settings/subcategorias
-// CRUD subcategorías (config.subcategorias)
+// Chips UX: one chip per parent category, list below
 // ═══════════════════════════════════════════════════
 
 import { useState } from 'react'
 import { type CSSProperties } from 'react'
 import AppHeader from '../../components/shell/AppHeader'
+import ConfirmSheet from '../../components/ui/ConfirmSheet'
 import { useConfig } from '../../hooks/useConfig'
 
 const inputSt: CSSProperties = {
@@ -14,230 +15,197 @@ const inputSt: CSSProperties = {
   color: 'var(--fg)', outline: 'none',
 }
 
-interface EditSub { cat: string; oldVal: string; newVal: string }
+interface DeleteTarget { cat: string; subcat: string }
 
 export default function Subcategorias() {
   const { config, updateConfig } = useConfig()
 
-  // categoria name → open/closed
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-  // categoria name → current add-input value
-  const [draftMap, setDraftMap] = useState<Record<string, string>>({})
-  // inline rename state
-  const [editSub,  setEditSub]  = useState<EditSub | null>(null)
-  // category filter (search)
-  const [filter,   setFilter]   = useState('')
-
   const subcats = config.subcategorias   // Record<string, string[]>
 
-  // Show ALL categories (from categorias + any extra subcat keys)
+  // All category keys (from categorias + any extra subcat keys)
   const allCatKeys = Array.from(new Set([
     ...Object.keys(config.categorias),
     ...Object.keys(subcats),
-  ])).filter(cat => cat.toLowerCase().includes(filter.trim().toLowerCase()))
+  ]))
 
-  function toggleExpand(cat: string) {
-    setExpanded(prev => ({ ...prev, [cat]: !prev[cat] }))
-  }
+  // Active chip — default to first category
+  const [activeCat, setActiveCat] = useState<string>(allCatKeys[0] ?? '')
 
-  function setDraft(cat: string, val: string) {
-    setDraftMap(prev => ({ ...prev, [cat]: val }))
-  }
+  // inline rename: key is subcat string, value is current draft
+  const [editSub, setEditSub] = useState<{ oldVal: string; newVal: string } | null>(null)
 
-  // ── Remove subcat ─────────────────────────────────
-  async function removeSubcat(cat: string, subcat: string) {
+  // add-input draft for current active cat
+  const [addDraft, setAddDraft] = useState('')
+
+  // ConfirmSheet state
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
+
+  // ── Remove subcat (after confirm) ─────────────────
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    const { cat, subcat } = deleteTarget
     const updated: Record<string, string[]> = {
       ...subcats,
       [cat]: (subcats[cat] ?? []).filter(s => s !== subcat),
     }
+    setDeleteTarget(null)
     await updateConfig('subcategorias', updated)
   }
 
   // ── Add subcat ────────────────────────────────────
-  async function addSubcat(cat: string) {
-    const trimmed = (draftMap[cat] ?? '').trim()
+  async function addSubcat() {
+    const trimmed = addDraft.trim()
     if (!trimmed) return
-    const current = subcats[cat] ?? []
-    if (current.includes(trimmed)) { setDraft(cat, ''); return }
-    setDraft(cat, '')
-    await updateConfig('subcategorias', { ...subcats, [cat]: [...current, trimmed] })
+    const current = subcats[activeCat] ?? []
+    if (current.includes(trimmed)) { setAddDraft(''); return }
+    setAddDraft('')
+    await updateConfig('subcategorias', { ...subcats, [activeCat]: [...current, trimmed] })
   }
 
   // ── Rename subcat ─────────────────────────────────
   async function renameSubcat() {
     if (!editSub) return
-    const { cat, oldVal, newVal } = editSub
+    const { oldVal, newVal } = editSub
     const trimmed = newVal.trim()
     if (!trimmed || trimmed === oldVal) { setEditSub(null); return }
-    const list = subcats[cat] ?? []
+    const list = subcats[activeCat] ?? []
     if (list.includes(trimmed)) { setEditSub(null); return }
     const updated = list.map(s => s === oldVal ? trimmed : s)
     setEditSub(null)
-    await updateConfig('subcategorias', { ...subcats, [cat]: updated })
+    await updateConfig('subcategorias', { ...subcats, [activeCat]: updated })
   }
+
+  const list = subcats[activeCat] ?? []
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       <AppHeader title="Subcategorías" back />
 
-      <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* ── Chips row ── */}
+      <div style={{
+        display: 'flex', gap: 6, padding: '10px 16px 6px',
+        overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none',
+      }}>
+        {allCatKeys.map(cat => {
+          const isActive = cat === activeCat
+          return (
+            <button
+              key={cat}
+              onClick={() => { setActiveCat(cat); setEditSub(null); setAddDraft('') }}
+              style={{
+                flexShrink: 0, padding: '5px 13px', borderRadius: 999,
+                fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                background: isActive ? 'var(--amber)' : 'var(--ink-2)',
+                color:      isActive ? 'var(--ink-0)' : 'var(--fg-dim)',
+                border:     isActive ? 'none'         : '1px solid var(--line)',
+              }}
+            >
+              {cat}
+            </button>
+          )
+        })}
+      </div>
 
-        {/* Category filter */}
-        <input
-          type="text"
-          placeholder="Filtrar categoría…"
-          value={filter}
-          onChange={e => setFilter(e.target.value)}
-          style={{
-            background: 'var(--ink-2)', border: '1px solid var(--line)',
-            borderRadius: 10, padding: '9px 12px', fontSize: 13,
-            color: 'var(--fg)', outline: 'none', marginBottom: 4,
-          }}
-        />
+      {/* ── Subcat list for active category ── */}
+      <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
 
-        {allCatKeys.length === 0 && (
-          <div style={{ fontSize: 12.5, color: 'var(--fg-mute)', textAlign: 'center', padding: '16px 0' }}>
-            Ninguna categoría coincide con “{filter}”.
+        {list.length === 0 && (
+          <div style={{ fontSize: 12.5, color: 'var(--fg-mute)', textAlign: 'center', padding: '12px 0' }}>
+            Sin subcategorías todavía.
           </div>
         )}
 
-        {allCatKeys.map(cat => {
-          const isOpen = !!expanded[cat]
-          const list   = subcats[cat] ?? []
-          const draft  = draftMap[cat] ?? ''
-
+        {list.map(sub => {
+          const isRenaming = editSub?.oldVal === sub
           return (
             <div
-              key={cat}
+              key={sub}
               style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '9px 12px',
                 background: 'var(--ink-2)', border: '1px solid var(--line)',
-                borderRadius: 14, overflow: 'hidden',
+                borderRadius: 12,
               }}
             >
-              {/* Category header */}
-              <button
-                onClick={() => toggleExpand(cat)}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '13px 14px', background: 'none', border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg)' }}>
-                  {cat}
+              {isRenaming ? (
+                <input
+                  type="text"
+                  value={editSub.newVal}
+                  autoFocus
+                  onChange={e => setEditSub({ ...editSub, newVal: e.target.value })}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') renameSubcat()
+                    if (e.key === 'Escape') setEditSub(null)
+                  }}
+                  onBlur={renameSubcat}
+                  style={{ ...inputSt, padding: '4px 8px', fontSize: 13 }}
+                />
+              ) : (
+                <span
+                  style={{ flex: 1, fontSize: 13.5, color: 'var(--fg)', cursor: 'text' }}
+                  onClick={() => setEditSub({ oldVal: sub, newVal: sub })}
+                  title="Toca para renombrar"
+                >
+                  {sub}
                 </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{
-                    fontSize: 11.5, color: 'var(--fg-mute)',
-                    background: 'var(--ink-3)', borderRadius: 6, padding: '2px 7px',
-                  }}>
-                    {list.length}
-                  </span>
-                  <span style={{
-                    fontSize: 14, color: 'var(--fg-dim)',
-                    transform: isOpen ? 'rotate(180deg)' : 'none',
-                    display: 'inline-block', transition: 'transform .2s',
-                  }}>
-                    ▾
-                  </span>
-                </div>
-              </button>
-
-              {/* Expanded content */}
-              {isOpen && (
-                <div style={{
-                  borderTop: '1px solid var(--line)',
-                  padding: '8px 14px 12px',
-                  display: 'flex', flexDirection: 'column', gap: 4,
-                }}>
-
-                  {list.length === 0 && (
-                    <div style={{ fontSize: 12.5, color: 'var(--fg-mute)', padding: '6px 0' }}>
-                      Sin subcategorías todavía.
-                    </div>
-                  )}
-
-                  {list.map(sub => {
-                    const isRenaming = editSub?.cat === cat && editSub.oldVal === sub
-                    return (
-                      <div
-                        key={sub}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 8,
-                          padding: '7px 10px',
-                          background: 'var(--ink-3)', borderRadius: 10,
-                        }}
-                      >
-                        {isRenaming ? (
-                          <input
-                            type="text"
-                            value={editSub.newVal}
-                            autoFocus
-                            onChange={e => setEditSub({ ...editSub, newVal: e.target.value })}
-                            onKeyDown={e => { if (e.key === 'Enter') renameSubcat(); if (e.key === 'Escape') setEditSub(null) }}
-                            onBlur={renameSubcat}
-                            style={{ ...inputSt, flex: 1, padding: '4px 8px', fontSize: 13 }}
-                          />
-                        ) : (
-                          <span
-                            style={{ flex: 1, fontSize: 13.5, color: 'var(--fg)', cursor: 'text' }}
-                            onClick={() => setEditSub({ cat, oldVal: sub, newVal: sub })}
-                            title="Toca para renombrar"
-                          >
-                            {sub}
-                          </span>
-                        )}
-                        {!isRenaming && (
-                          <button
-                            onClick={() => removeSubcat(cat, sub)}
-                            style={{
-                              width: 24, height: 24, borderRadius: 6, flexShrink: 0,
-                              background: 'rgba(214,106,90,.1)', border: '1px solid rgba(214,106,90,.25)',
-                              color: 'var(--neg)', fontSize: 14, cursor: 'pointer',
-                              display: 'grid', placeItems: 'center',
-                            }}
-                            aria-label={`Eliminar ${sub}`}
-                          >
-                            ×
-                          </button>
-                        )}
-                      </div>
-                    )
-                  })}
-
-                  {/* Inline add form */}
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 6 }}>
-                    <input
-                      type="text"
-                      placeholder="Nueva subcategoría…"
-                      value={draft}
-                      onChange={e => setDraft(cat, e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') addSubcat(cat) }}
-                      style={inputSt}
-                    />
-                    <button
-                      onClick={() => addSubcat(cat)}
-                      disabled={!draft.trim()}
-                      style={{
-                        padding: '8px 12px', borderRadius: 10, fontSize: 12.5, fontWeight: 600,
-                        background: draft.trim() ? 'var(--amber)' : 'var(--ink-3)',
-                        color:      draft.trim() ? 'var(--ink-0)' : 'var(--fg-mute)',
-                        border: 'none', cursor: draft.trim() ? 'pointer' : 'default',
-                        flexShrink: 0,
-                      }}
-                    >
-                      Agregar
-                    </button>
-                  </div>
-                </div>
+              )}
+              {!isRenaming && (
+                <button
+                  onClick={() => setDeleteTarget({ cat: activeCat, subcat: sub })}
+                  style={{
+                    width: 26, height: 26, borderRadius: 7, flexShrink: 0,
+                    background: 'rgba(214,106,90,.1)', border: '1px solid rgba(214,106,90,.25)',
+                    color: 'var(--neg)', fontSize: 14, cursor: 'pointer',
+                    display: 'grid', placeItems: 'center',
+                  }}
+                  aria-label={`Eliminar ${sub}`}
+                >
+                  ×
+                </button>
               )}
             </div>
           )
         })}
 
+        {/* ── Add row ── */}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4 }}>
+          <input
+            type="text"
+            placeholder="Nueva subcategoría…"
+            value={addDraft}
+            onChange={e => setAddDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') addSubcat() }}
+            onBlur={addSubcat}
+            style={inputSt}
+          />
+          <button
+            onClick={addSubcat}
+            disabled={!addDraft.trim()}
+            style={{
+              padding: '8px 13px', borderRadius: 10, fontSize: 12.5, fontWeight: 600, flexShrink: 0,
+              background: addDraft.trim() ? 'var(--amber)' : 'var(--ink-3)',
+              color:      addDraft.trim() ? 'var(--ink-0)' : 'var(--fg-mute)',
+              border: 'none', cursor: addDraft.trim() ? 'pointer' : 'default',
+            }}
+          >
+            +
+          </button>
+        </div>
+
       </div>
+
       <div style={{ height: 32 }} />
+
+      {/* ── ConfirmSheet delete ── */}
+      <ConfirmSheet
+        open={!!deleteTarget}
+        title="¿Eliminar subcategoría?"
+        message={deleteTarget ? `"${deleteTarget.subcat}" se eliminará de ${deleteTarget.cat}.` : undefined}
+        confirmLabel="Eliminar"
+        danger
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   )
 }

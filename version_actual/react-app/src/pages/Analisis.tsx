@@ -166,22 +166,14 @@ export default function Analisis() {
     [txns],
   )
   const ingresosPorTipo = useMemo<BarEntry[]>(() => {
-    let anthonyFijo = 0, isabelFijo = 0, otros = 0
+    const map: Record<string, number> = {}
     for (const t of txns) {
       if (txnGroup(t.tipo) !== 'ingreso') continue
-      const amt = Math.abs(t.amount)
-      if (t.tipo === 'Ingreso Fijo') {
-        if (t.author === 'isabel') isabelFijo += amt
-        else                       anthonyFijo += amt
-      } else {
-        otros += amt
-      }
+      map[t.tipo] = (map[t.tipo] ?? 0) + Math.abs(t.amount)
     }
-    return [
-      { label: 'Fijo mensual · Anthony', value: anthonyFijo },
-      { label: 'Fijo mensual · Isabel',  value: isabelFijo  },
-      { label: 'Otros ingresos',         value: otros        },
-    ].filter(e => e.value > 0)
+    return Object.entries(map)
+      .sort(([, a], [, b]) => b - a)
+      .map(([label, value]) => ({ label, value }))
   }, [txns])
 
   // ── Desglose semanal (gastos) ────────────────────

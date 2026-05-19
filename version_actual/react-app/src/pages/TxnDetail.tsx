@@ -141,7 +141,7 @@ export default function TxnDetail() {
 
   if (!txn) return null
 
-  const tipoObj   = config.tipos.find(t => t.nombre === txn.tipo) ?? { nombre: txn.tipo, esIngreso: false }
+  const tipoObj   = (config.tipos ?? []).find(t => t.nombre === txn.tipo) ?? { nombre: txn.tipo, esIngreso: false }
   const esIngreso = tipoObj.esIngreso
   const color     = txnColor(txn.tipo, esIngreso)
   const sign      = txnSign(esIngreso)
@@ -160,7 +160,7 @@ export default function TxnDetail() {
 
     // Re-create with updated fields (new UUID = new row)
     const newId     = crypto.randomUUID()
-    const tipoObj   = config.tipos.find(t => t.nombre === editTipo) ?? { esIngreso: false }
+    const tipoObj   = (config.tipos ?? []).find(t => t.nombre === editTipo) ?? { esIngreso: false }
     const sign      = tipoObj.esIngreso ? 1 : -1
     const parsedAmt = parseFloat(editAmount)
     const parsedRate = parseFloat(editRate)
@@ -307,7 +307,7 @@ export default function TxnDetail() {
               </EditRow>
               <EditRow label="Tipo">
                 <select value={editTipo} onChange={e => { setEditTipo(e.target.value); setEditCat('') }} style={{ ...inputSt, cursor: 'pointer' }}>
-                  {config.tipos.map(t => <option key={t.nombre} value={t.nombre}>{t.nombre}</option>)}
+                  {(config.tipos ?? []).map(t => <option key={t.nombre} value={t.nombre}>{t.nombre}</option>)}
                 </select>
               </EditRow>
               <EditRow label="Categoría">

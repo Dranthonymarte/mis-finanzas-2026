@@ -161,7 +161,11 @@ export default function AccountDetail() {
     setSavingBalance(true)
     await supabase
       .from('cuentas')
-      .update({ balance_override: val, saldo_inicial: val })
+      .update({
+        balance_override:      val,
+        saldo_inicial:         val,
+        balance_override_date: new Date().toISOString().slice(0, 10),
+      })
       .eq('id', id)
     setSavingBalance(false)
     setEditingBalance(false)

@@ -100,16 +100,20 @@ function PillBtn({
 
 /* ── TxnRow preview ── */
 function TxnRowPreview({ t, last }: { t: Transaction; last: boolean }) {
-  const { fmt } = useFormat()
+  const { fmt }  = useFormat()
+  const navigate = useNavigate()
   const isInc = txnGroup(t.tipo) === 'ingreso'
   const isSav = txnGroup(t.tipo) === 'ahorro'
   const color = isInc ? 'var(--pos)' : isSav ? 'var(--info)' : 'var(--fg)'
   const sign  = isInc ? '+' : '−'
   return (
-    <div style={{
-      display: 'grid', gridTemplateColumns: '36px 1fr auto', gap: 10,
-      alignItems: 'center', padding: '11px 12px',
-      borderBottom: last ? 'none' : '1px solid var(--line)',
+    <div
+      onClick={() => navigate(`/txn/${t.id}`)}
+      style={{
+        display: 'grid', gridTemplateColumns: '36px 1fr auto', gap: 10,
+        alignItems: 'center', padding: '11px 12px',
+        borderBottom: last ? 'none' : '1px solid var(--line)',
+        cursor: 'pointer',
     }}>
       <CatIcon cat={t.cat} />
       <div style={{ minWidth: 0 }}>

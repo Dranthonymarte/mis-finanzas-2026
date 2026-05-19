@@ -1,6 +1,6 @@
 // finance.ts — funciones de cálculo financiero unificadas
 import { type Transaction } from '../data/mock'
-import { type Tipo } from '../hooks/useConfig'
+import { type TipoConfig } from '../hooks/useConfig'
 
 export interface KPIResult {
   ingresos: number
@@ -9,7 +9,7 @@ export interface KPIResult {
   neto:     number   // ingresos - gastos (excluye ahorro)
 }
 
-export function calcKPIs(txns: Transaction[], tipos: Tipo[]): KPIResult {
+export function calcKPIs(txns: Transaction[], tipos: TipoConfig[]): KPIResult {
   if (!txns.length) return { ingresos: 0, gastos: 0, ahorro: 0, neto: 0 }
   const ingSet = new Set(tipos.filter(t => t.esIngreso).map(t => t.nombre))
   const savSet = new Set(tipos.filter(t => !t.esIngreso && (t.nombre ?? '').toLowerCase().includes('ahorro')).map(t => t.nombre))

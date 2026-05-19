@@ -120,7 +120,7 @@ export default function CatIcon({ cat, size = 36 }: CatIconProps) {
         lineHeight:    1,
       }}
     >
-      {emoji ?? catInitials(safe) || '??'}
+      {emoji ?? (catInitials(safe) || '??')}
     </div>
   )
 }

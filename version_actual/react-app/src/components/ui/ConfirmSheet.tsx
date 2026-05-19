@@ -12,7 +12,10 @@ interface Props {
 
 export default function ConfirmSheet({ open, title, message, confirmLabel = 'Confirmar', danger = false, onConfirm, onCancel }: Props) {
   return (
-    <Sheet open={open} onClose={onCancel} title={title}>
+    <Sheet open={open} onClose={onCancel}>
+      <div style={{ fontSize: 16, fontWeight: 700, textAlign: 'center', marginBottom: message ? 10 : 20 }}>
+        {title}
+      </div>
       {message && (
         <div style={{ fontSize: 13.5, color: 'var(--fg-mute)', textAlign: 'center', marginBottom: 20, lineHeight: 1.5 }}>
           {message}

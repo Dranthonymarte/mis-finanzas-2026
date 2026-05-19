@@ -224,6 +224,24 @@ export default function Home() {
       })
   }, [householdId])
 
+  // ── Ingresos históricos acumulados all-time (para meta fondo emergencia) ──
+  const [ingresosHistoricos, setIngresosHistoricos] = useState<number>(0)
+  useEffect(() => {
+    if (!householdId) return
+    const incomeTipos = new Set(DEFAULTS.tipos.filter(t => t.esIngreso).map(t => t.nombre))
+    supabase
+      .from('movimientos')
+      .select('tipo,amount')
+      .eq('household_id', householdId)
+      .is('deleted_at', null)
+      .then(({ data }) => {
+        const total = (data ?? [])
+          .filter((r: { tipo: string }) => incomeTipos.has(r.tipo))
+          .reduce((s: number, r: { amount: number | string }) => s + Math.abs(parseFloat(String(r.amount)) || 0), 0)
+        setIngresosHistoricos(total)
+      })
+  }, [householdId])
+
   // ── Fondo emergencia desde tabla fondo_emergencia ──
   const [efDbBalance, setEfDbBalance] = useState<number | null>(null)
   useEffect(() => {
@@ -284,10 +302,11 @@ export default function Home() {
     .filter(a => a.type.toUpperCase().includes('AHORRO'))
     .reduce((s, a) => s + a.balance, 0)
   // Use cumulative ahorro transactions (same logic as savings) as primary fallback
-  const emergencyBalance = efDbBalance ?? (ahorroAcumulado || efAccountsBalance)
-  const emergencyTarget = kpiData.gastos * 3
-  const emergencyPct    = emergencyTarget > 0 ? Math.min(100, (emergencyBalance / emergencyTarget) * 100) : 0
-  const emergencyMonths = kpiData.gastos > 0 ? (emergencyBalance / kpiData.gastos).toFixed(1) : '0'
+  const emergencyBalance  = efDbBalance ?? (ahorroAcumulado || efAccountsBalance)
+  const emergencyTarget   = ingresosHistoricos > 0 ? ingresosHistoricos * 0.30 : kpiData.gastos * 3
+  const efContribMes      = kpiData.ingresos * 0.30
+  const emergencyPct      = emergencyTarget > 0 ? Math.min(100, (emergencyBalance / emergencyTarget) * 100) : 0
+  const emergencyMonths   = kpiData.gastos > 0 ? (emergencyBalance / kpiData.gastos).toFixed(1) : '0'
 
   // ── Top 4 categorías de gasto ──
   const topGastos = useMemo(() => {
@@ -647,6 +666,11 @@ export default function Home() {
             <span>0m</span><span>1m</span><span>2m</span>
             <span style={{ color: emergencyPct >= 100 ? 'var(--pos)' : 'inherit' }}>3m ✓</span>
           </div>
+          {efContribMes > 0 && (
+            <div style={{ fontSize: 9.5, color: 'var(--fg-mute)', marginTop: 6, textAlign: 'center' }}>
+              Aporte sugerido este mes: {fmt(efContribMes)}
+            </div>
+          )}
         </div>
       </div>
 

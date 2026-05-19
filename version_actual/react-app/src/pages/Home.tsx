@@ -305,7 +305,14 @@ export default function Home() {
   const emergencyBalance  = efDbBalance ?? (ahorroAcumulado || efAccountsBalance)
   const emergencyTarget   = ingresosHistoricos > 0 ? ingresosHistoricos * 0.30 : kpiData.gastos * 3
   const efContribMes      = kpiData.ingresos * 0.30
-  const emergencyPct      = emergencyTarget > 0 ? Math.min(100, (emergencyBalance / emergencyTarget) * 100) : 0
+  // ── Meta editable (persisted in localStorage) ──
+  const [efMeta, setEfMeta] = useState<number>(() => {
+    try { return parseFloat(localStorage.getItem('mf-ef-meta') || '') || 0 } catch { return 0 }
+  })
+  const [editingMeta, setEditingMeta] = useState(false)
+  const [metaInput,   setMetaInput]   = useState('')
+  const displayTarget = efMeta > 0 ? efMeta : emergencyTarget
+  const emergencyPct      = displayTarget > 0 ? Math.min(100, (emergencyBalance / displayTarget) * 100) : 0
   const emergencyMonths   = kpiData.gastos > 0 ? (emergencyBalance / kpiData.gastos).toFixed(1) : '0'
 
   // ── Top 4 categorías de gasto ──
@@ -646,13 +653,53 @@ export default function Home() {
               <div className="num" style={{ fontSize: 20, fontWeight: 700 }}>{fmt(emergencyBalance)}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginBottom: 2 }}>Meta: 3 meses</div>
-              <div className="num" style={{
-                fontSize: 18, fontWeight: 700,
-                color: emergencyPct >= 100 ? 'var(--pos)' : emergencyPct >= 50 ? 'var(--amber)' : 'var(--neg)',
-              }}>
-                {emergencyMonths}m
-              </div>
+              {editingMeta ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <input
+                    type="number"
+                    value={metaInput}
+                    autoFocus
+                    onChange={e => setMetaInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        const v = parseFloat(metaInput)
+                        if (!isNaN(v) && v > 0) { localStorage.setItem('mf-ef-meta', String(v)); setEfMeta(v) }
+                        setEditingMeta(false)
+                      }
+                      if (e.key === 'Escape') setEditingMeta(false)
+                    }}
+                    onBlur={() => {
+                      const v = parseFloat(metaInput)
+                      if (!isNaN(v) && v > 0) { localStorage.setItem('mf-ef-meta', String(v)); setEfMeta(v) }
+                      setEditingMeta(false)
+                    }}
+                    placeholder="Meta USD"
+                    style={{
+                      width: 80, background: 'var(--ink-3)', border: '1px solid var(--amber)',
+                      borderRadius: 7, padding: '4px 7px', fontSize: 12, color: 'var(--fg)',
+                      outline: 'none', textAlign: 'right',
+                    }}
+                  />
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setMetaInput(String(efMeta > 0 ? efMeta : Math.round(displayTarget))); setEditingMeta(true) }}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer', textAlign: 'right', padding: 0,
+                  }}
+                  title="Toca para editar meta"
+                >
+                  <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginBottom: 2 }}>
+                    Meta: {fmt(displayTarget)} ✎
+                  </div>
+                  <div className="num" style={{
+                    fontSize: 18, fontWeight: 700,
+                    color: emergencyPct >= 100 ? 'var(--pos)' : emergencyPct >= 50 ? 'var(--amber)' : 'var(--neg)',
+                  }}>
+                    {emergencyMonths}m
+                  </div>
+                </button>
+              )}
             </div>
           </div>
           <div style={{ height: 7, background: 'var(--ink-3)', borderRadius: 4, overflow: 'hidden' }}>

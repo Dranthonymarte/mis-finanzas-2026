@@ -8,6 +8,8 @@ import { useState } from 'react'
 import { type CSSProperties, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeftIcon, CheckIcon } from '../components/icons/Icons'
+import { supabase }     from '../lib/supabase'
+import { useAuthStore } from '../store/auth'
 
 /* ── Types ─────────────────────────────────────── */
 type AccountType = 'CORRIENTE' | 'AHORRO' | 'CASH'
@@ -41,6 +43,7 @@ function SLabel({ children }: { children: ReactNode }) {
 /* ════════════════════════════════════════════════ */
 export default function NewAccount() {
   const navigate = useNavigate()
+  const householdId = useAuthStore(s => s.householdId)
 
   const [name,     setName]     = useState('')
   const [type,     setType]     = useState<AccountType>('CORRIENTE')
@@ -49,16 +52,27 @@ export default function NewAccount() {
   const [color,    setColor]    = useState(COLORS[0].value)
   const [notes,    setNotes]    = useState('')
   const [saved,    setSaved]    = useState(false)
+  const [saving,   setSaving]   = useState(false)
 
   const trimmed = name.trim()
 
-  function handleSave() {
-    if (!trimmed) return
+  async function handleSave() {
+    if (!trimmed || !householdId) return
+    setSaving(true)
     const initialBalance = parseFloat(balance) || 0
-    // TODO Checkpoint C: supabase.from('cuentas').insert({ nombre, tipo, moneda, saldo_inicial, color, notas, household_id })
-    console.log('[NewAccount]', { name: trimmed, type, currency, balance: initialBalance, color, notes })
+    const { error } = await supabase.from('cuentas').insert({
+      nombre:       trimmed,
+      moneda:       currency,
+      saldo_inicial: initialBalance,
+      color,
+      activa:       true,
+      household_id: householdId,
+      owner:        householdId,
+    })
+    setSaving(false)
+    if (error) { console.error('[NewAccount]', error.message); return }
     setSaved(true)
-    setTimeout(() => navigate('/accounts'), 500)
+    setTimeout(() => navigate('/accounts'), 400)
   }
 
   /* ── Shared styles ──────────────────────────── */
@@ -106,7 +120,8 @@ export default function NewAccount() {
         </div>
 
         <button
-          onClick={handleSave}
+          onClick={() => void handleSave()}
+          disabled={saving}
           aria-label="Guardar"
           style={{
             width: 36, height: 36, borderRadius: 10,
@@ -275,8 +290,8 @@ export default function NewAccount() {
           paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
         }}>
           <button
-            onClick={handleSave}
-            disabled={!trimmed}
+            onClick={() => void handleSave()}
+            disabled={!trimmed || saving}
             style={{
               width: '100%', padding: '16px', borderRadius: 16,
               background: saved
@@ -295,7 +310,7 @@ export default function NewAccount() {
               transition: 'background .2s, box-shadow .2s',
             }}
           >
-            {saved ? '✓  Cuenta creada' : 'Crear cuenta'}
+            {saving ? 'Guardando…' : saved ? '✓  Cuenta creada' : 'Crear cuenta'}
           </button>
         </div>
 

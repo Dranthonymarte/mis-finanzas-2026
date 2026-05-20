@@ -95,6 +95,8 @@ export default function AccountDetail() {
   const [editingBalance, setEditingBalance] = useState(false)
   const [newBalance,     setNewBalance]     = useState('')
   const [savingBalance,  setSavingBalance]  = useState(false)
+  const [editingName,    setEditingName]    = useState(false)
+  const [newName,        setNewName]        = useState('')
 
   const { accounts } = useAccounts()
   const { transactions: liveTxns } = useTransactions(mesActivo)
@@ -173,6 +175,13 @@ export default function AccountDetail() {
     window.location.reload()
   }
 
+  async function saveName() {
+    if (!id || !newName.trim()) return
+    await supabase.from('cuentas').update({ nombre: newName.trim() }).eq('id', id)
+    setEditingName(false)
+    window.location.reload()
+  }
+
   async function handleDeleteAccount() {
     if (!id) return
     await supabase.from('cuentas').update({ activa: false }).eq('id', id)
@@ -217,7 +226,31 @@ export default function AccountDetail() {
         </button>
 
         <div style={{ textAlign: 'center' }}>
-          <div className="font-display" style={{ fontSize: 18, lineHeight: 1 }}>{acc.name}</div>
+          {editingName ? (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                autoFocus
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                style={{
+                  background: 'var(--ink-2)', border: '1px solid var(--amber)',
+                  borderRadius: 10, padding: '6px 10px', fontSize: 16,
+                  color: 'var(--fg)', outline: 'none', fontFamily: 'var(--f-ui)',
+                  width: 160,
+                }}
+              />
+              <button onClick={() => void saveName()} style={{ background: 'none', border: 'none', color: 'var(--pos)', fontSize: 18, cursor: 'pointer' }}>✓</button>
+              <button onClick={() => setEditingName(false)} style={{ background: 'none', border: 'none', color: 'var(--fg-dim)', fontSize: 16, cursor: 'pointer' }}>✕</button>
+            </div>
+          ) : (
+            <div
+              className="font-display"
+              style={{ fontSize: 18, lineHeight: 1, cursor: 'pointer' }}
+              onClick={() => { setNewName(acc.name); setEditingName(true) }}
+            >
+              {acc.name}
+            </div>
+          )}
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: acc.color, marginTop: 3 }}>
             {acc.type}
           </div>

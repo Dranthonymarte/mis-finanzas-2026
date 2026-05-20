@@ -93,6 +93,7 @@ export default function NewTransaction() {
   const [userEditedRate, setUserEditedRate] = useState(false)
   const [saved,         setSaved]         = useState(false)
   const [confirm,       setConfirm]       = useState(false)  // confirmation sheet
+  const [ahorroPositivo, setAhorroPositivo] = useState(true)
 
   // Sync BCV rate when tasas loads FROM DB — but not if user already edited it manually
   useEffect(() => {
@@ -189,6 +190,7 @@ export default function NewTransaction() {
 
   const usdNum     = parseFloat(amountUSD) || 0
   const isTransfer = tipo === 'Transferencia Interna'
+  const esAhorro   = tipo.includes('Ahorro')
   const tipoObj    = tipos.find(t => t.nombre === tipo) ?? { nombre: tipo, esIngreso: false }
   const meta       = tipoMeta(tipoObj.nombre, tipoObj.esIngreso)
   const cats       = config.categorias[tipo] ?? []
@@ -206,7 +208,7 @@ export default function NewTransaction() {
     setConfirm(false)
     // "may-26" → "Mayo" — DB stores Spanish month name
     const mes  = mesIdToDbKey(dateToMesId(new Date(fecha + 'T12:00:00')))
-    const sign = tipoObj.esIngreso ? 1 : -1
+    const sign = tipoObj.esIngreso ? 1 : esAhorro ? (ahorroPositivo ? 1 : -1) : -1
     const movId = crypto.randomUUID()
     const mov  = {
       id:           movId,
@@ -577,6 +579,30 @@ export default function NewTransaction() {
         )}
 
         <Rule />
+
+        {/* ── Ahorro +/− toggle ── */}
+        {esAhorro && (
+          <div style={{ padding: '0 16px', marginBottom: 0 }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              {[true, false].map(pos => (
+                <button
+                  key={String(pos)}
+                  type="button"
+                  onClick={() => setAhorroPositivo(pos)}
+                  style={{
+                    flex: 1, padding: '10px 0', borderRadius: 12, fontSize: 13, fontWeight: 700,
+                    background: ahorroPositivo === pos ? (pos ? 'rgba(88,178,106,.18)' : 'rgba(214,106,90,.18)') : 'var(--ink-2)',
+                    border: ahorroPositivo === pos ? `1.5px solid ${pos ? 'var(--pos)' : 'var(--neg)'}` : '1px solid var(--line)',
+                    color: ahorroPositivo === pos ? (pos ? 'var(--pos)' : 'var(--neg)') : 'var(--fg-mute)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {pos ? '+ Depositar' : '− Retirar'}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Descripción ── */}
         <SLabel>Descripción</SLabel>

@@ -5,10 +5,12 @@ import { MOCK_ACCOUNTS, type Account } from '../data/mock'
 import { useAccounts }   from '../hooks/useAccounts'
 import { useFormat }     from '../hooks/useFormat'
 import { usePrefsStore, type Moneda } from '../store/prefs'
+import { useTasas } from '../hooks/useTasas'
 
 /* ── Account card ── */
 function AccountCard({ acc, onClick }: { acc: Account; onClick: () => void }) {
   const { fmt } = useFormat()
+  const { tasas } = useTasas()
   const trendPos = acc.trend >= 0
   const displayBalance = fmt(acc.balance)
 
@@ -41,6 +43,11 @@ function AccountCard({ acc, onClick }: { acc: Account; onClick: () => void }) {
       <div className="num" style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-.02em', color: acc.color }}>
         {displayBalance}
       </div>
+      {acc.currency === 'USD' && tasas.bcv > 0 && (
+        <div style={{ fontSize: 10.5, color: 'var(--fg-dim)', marginTop: 3, fontWeight: 500 }}>
+          ≈ Bs {(acc.balance * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
+        </div>
+      )}
 
       {/* sparkline + trend */}
       <div style={{ marginTop: 10, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>

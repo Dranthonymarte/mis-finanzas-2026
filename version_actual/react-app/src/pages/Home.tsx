@@ -263,8 +263,8 @@ export default function Home() {
     .filter(a => !a.type.toUpperCase().includes('AHORRO'))
     .reduce((s, a) => s + (a.balanceUSD ?? a.balance), 0)
 
-  // ── Patrimonio = activos líquidos + ahorro acumulado + me deben activo ──
-  const patrimony = saldoDisponible + ahorroAcumulado + meDebenActivo
+  // ── Patrimonio = saldo disponible + me deben activo ──
+  const patrimony = saldoDisponible + meDebenActivo
 
   // ── Tasa ahorro = ahorro del mes / ingresos ──
   const savingsRate = kpiData.ingresos > 0
@@ -296,14 +296,13 @@ export default function Home() {
     return [...base, { month: cur, ingresos: kpiData.ingresos, gastos: kpiData.gastos }]
   }, [histKPIs, kpiData.ingresos, kpiData.gastos, mesActivo])
 
-  // ── Fondo emergencia — leer de fondo_emergencia DB; fallback a cuentas AHORRO ──
-  const efAccountsBalance = (liveAccounts ?? [])
-    .filter(a => a.type.toUpperCase().includes('AHORRO'))
-    .reduce((s, a) => s + a.balance, 0)
-  // Use cumulative ahorro transactions (same logic as savings) as primary fallback
-  const emergencyBalance  = efDbBalance ?? (ahorroAcumulado || efAccountsBalance)
-  const emergencyTarget   = ingresosHistoricos > 0 ? ingresosHistoricos * 0.30 : kpiData.gastos * 3
-  const efContribMes      = kpiData.ingresos * 0.30
+  // ── Fondo emergencia = 30% de ingresos históricos acumulados ──
+  // No asociado a cuentas. Reserva automática calculada sobre ingresos.
+  const fondoEmergenciaTotal = ingresosHistoricos * 0.30
+  const fondoEmergenciaMes   = kpiData.ingresos   * 0.30
+  const emergencyBalance     = fondoEmergenciaTotal
+  const emergencyTarget      = efDbBalance ?? (kpiData.gastos > 0 ? kpiData.gastos * 3 : 3000)
+  const efContribMes         = fondoEmergenciaMes
   // ── Meta editable (persisted in localStorage) ──
   const [efMeta, setEfMeta] = useState<number>(() => {
     try { return parseFloat(localStorage.getItem('mf-ef-meta') || '') || 0 } catch { return 0 }
@@ -650,6 +649,9 @@ export default function Home() {
                 Fondo de emergencia
               </div>
               <div className="num" style={{ fontSize: 20, fontWeight: 700 }}>{fmt(emergencyBalance)}</div>
+              <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 2 }}>
+                Este mes: {fmt(fondoEmergenciaMes)} (30% ingresos)
+              </div>
             </div>
             <div style={{ textAlign: 'right' }}>
               {editingMeta ? (
@@ -793,6 +795,76 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* ─── 9b. KPI INSIGHTS ─── */}
+      {liveTxns && liveTxns.length > 0 && (() => {
+        const superavit    = kpiData.ingresos - kpiData.gastos
+        const savRate      = kpiData.ingresos > 0 ? (kpiData.ahorro / kpiData.ingresos) * 100 : 0
+        const efPct        = emergencyTarget > 0 ? Math.min(100, (emergencyBalance / emergencyTarget) * 100) : 0
+        const topCat       = topGastos[0]
+        const topPct       = topCat && kpiData.gastos > 0 ? (topCat.value / kpiData.gastos) * 100 : 0
+
+        // Score: superávit(25) + ahorro≥20%(25) + ef≥20%(25) + gastos<ingresos(25)
+        const score = Math.round(
+          (superavit > 0 ? 25 : 0) +
+          (savRate >= 20 ? 25 : savRate > 0 ? savRate / 20 * 25 : 0) +
+          (efPct >= 100 ? 25 : efPct / 100 * 25) +
+          (kpiData.gastos < kpiData.ingresos ? 25 : 0)
+        )
+
+        const insights: Array<{ icon: string; text: string; color?: string }> = []
+        if (superavit > 0) insights.push({ icon: '✅', text: `Superávit de ${fmt(superavit)} — excelente gestión este mes.`, color: 'var(--pos)' })
+        else insights.push({ icon: '⚠️', text: `Déficit de ${fmt(Math.abs(superavit))} — gastos superan ingresos.`, color: 'var(--neg)' })
+        if (kpiData.ingresos > 0) {
+          insights.push({
+            icon: savRate >= 20 ? '✅' : '⚠️',
+            text: `Tasa de ahorro: ${savRate.toFixed(0)}%${savRate < 20 ? '. Meta recomendada: 20%.' : ' — dentro de la meta.'}`,
+            color: savRate >= 20 ? 'var(--pos)' : 'var(--amber)',
+          })
+        }
+        if (efPct < 100 && emergencyBalance > 0) {
+          insights.push({ icon: '🆘', text: `Fondo de emergencia al ${efPct.toFixed(0)}%. Meta: ${fmt(emergencyTarget)}. Considera reforzarlo.`, color: 'var(--amber)' })
+        }
+        if (topCat) {
+          insights.push({ icon: '📊', text: `Top gasto: "${topCat.cat}" — ${fmt(topCat.value)} (${topPct.toFixed(0)}% del total).` })
+        }
+
+        return (
+          <div style={{ padding: '12px 16px 4px' }}>
+            <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, padding: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)' }}>
+                  Score financiero
+                </div>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999,
+                  background: score >= 75 ? 'rgba(88,178,106,.15)' : score >= 50 ? 'rgba(224,168,74,.15)' : 'rgba(214,106,90,.15)',
+                  color:      score >= 75 ? 'var(--pos)'           : score >= 50 ? 'var(--amber)'          : 'var(--neg)',
+                }}>
+                  {score}/100
+                </div>
+              </div>
+              <div style={{ height: 5, background: 'var(--ink-3)', borderRadius: 3, overflow: 'hidden', marginBottom: 12 }}>
+                <div style={{
+                  height: '100%', borderRadius: 3, transition: 'width .5s',
+                  width: `${score}%`,
+                  background: score >= 75 ? 'var(--pos)' : score >= 50 ? 'var(--amber)' : 'var(--neg)',
+                }} />
+              </div>
+              {insights.map((ins, i) => (
+                <div key={i} style={{
+                  display: 'flex', gap: 8, alignItems: 'flex-start',
+                  padding: '5px 0',
+                  borderBottom: i < insights.length - 1 ? '1px solid var(--ink-3)' : 'none',
+                }}>
+                  <span style={{ fontSize: 13, flexShrink: 0 }}>{ins.icon}</span>
+                  <span style={{ fontSize: 12, lineHeight: 1.4, color: ins.color ?? 'var(--fg-dim)' }}>{ins.text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ─── 10. ANÁLISIS IA ─── */}
       <div style={{ padding: '12px 16px 4px' }}>

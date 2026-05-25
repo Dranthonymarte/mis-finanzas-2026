@@ -1,56 +1,75 @@
 // ═══════════════════════════════════════════════════
 // Subcategorias — /settings/subcategorias
-// Chips UX: one chip per parent category, list below
+// UIX idéntica a Categorías: chips solo para cats con subcats,
+// cards con ícono editable, rename on tap, ➕ por categoría.
 // ═══════════════════════════════════════════════════
 
 import { useState } from 'react'
 import { type CSSProperties } from 'react'
-import AppHeader from '../../components/shell/AppHeader'
+import AppHeader    from '../../components/shell/AppHeader'
+import CatIcon      from '../../components/ui/CatIcon'
 import ConfirmSheet from '../../components/ui/ConfirmSheet'
 import { useConfig } from '../../hooks/useConfig'
 
 const inputSt: CSSProperties = {
   flex: 1, background: 'var(--ink-1)', border: '1px solid var(--line)',
-  borderRadius: 10, padding: '8px 12px', fontSize: 13,
+  borderRadius: 10, padding: '9px 12px', fontSize: 13.5,
   color: 'var(--fg)', outline: 'none',
 }
 
+function readSubEmojiMap(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem('mf-subcat-emojis') || '{}') } catch { return {} }
+}
+function writeSubEmojiMap(map: Record<string, string>) {
+  try { localStorage.setItem('mf-subcat-emojis', JSON.stringify(map)) } catch { /* noop */ }
+}
+
 interface DeleteTarget { cat: string; subcat: string }
+interface EditState    { cat: string; sub: string; newName: string; newEmoji: string }
 
 export default function Subcategorias() {
   const { config, updateConfig } = useConfig()
-
   const subcats = config.subcategorias   // Record<string, string[]>
 
-  // All category keys (from categorias + any extra subcat keys)
-  const allCatKeys = Array.from(new Set([
-    ...Object.keys(config.categorias),
-    ...Object.keys(subcats),
-  ]))
-
-  // Active chip — default to first category
-  const [activeCat, setActiveCat] = useState<string>(allCatKeys[0] ?? '')
-
-  // inline rename: key is subcat string, value is current draft
-  const [editSub, setEditSub] = useState<{ oldVal: string; newVal: string } | null>(null)
-
-  // add-input draft for current active cat
-  const [addDraft, setAddDraft] = useState('')
-
-  // ConfirmSheet state
-  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
-
-  // ── Remove subcat (after confirm) ─────────────────
-  async function confirmDelete() {
-    if (!deleteTarget) return
-    const { cat, subcat } = deleteTarget
-    const updated: Record<string, string[]> = {
-      ...subcats,
-      [cat]: (subcats[cat] ?? []).filter(s => s !== subcat),
+  // Build ordered chip list: cats that HAVE subcats, ordered by tipo order then alpha
+  const tipoOrder = config.tipos.map(t => t.nombre)
+  const catsWithSubs = Array.from(new Set([
+    ...Object.entries(config.categorias)
+      .flatMap(([, cats]) => cats)
+      .filter(c => (subcats[c]?.length ?? 0) > 0),
+    ...Object.keys(subcats).filter(k => (subcats[k]?.length ?? 0) > 0),
+  ])).sort((a, b) => {
+    // Sort by which tipo contains each cat
+    const tipoOf = (cat: string) => {
+      for (const t of tipoOrder) {
+        if ((config.categorias[t] ?? []).includes(cat)) return tipoOrder.indexOf(t)
+      }
+      return tipoOrder.length
     }
-    setDeleteTarget(null)
-    await updateConfig('subcategorias', updated)
-  }
+    const ta = tipoOf(a), tb = tipoOf(b)
+    return ta !== tb ? ta - tb : a.localeCompare(b)
+  })
+
+  // All categories available for adding subcats (not filtered)
+  const allCatKeys = Array.from(new Set([
+    ...Object.values(config.categorias).flat(),
+    ...Object.keys(subcats),
+  ])).sort()
+
+  const [activeCat,    setActiveCat]    = useState<string>(catsWithSubs[0] ?? allCatKeys[0] ?? '')
+  const [editState,    setEditState]    = useState<EditState | null>(null)
+  const [addDraft,     setAddDraft]     = useState('')
+  const [showAddForm,  setShowAddForm]  = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
+  const [emojiMap,     setEmojiMap]     = useState<Record<string, string>>(readSubEmojiMap)
+
+  // All chips: show cats with subcats + always show activeCat
+  const chipCats = Array.from(new Set([
+    ...catsWithSubs,
+    activeCat,
+  ])).filter(Boolean)
+
+  const list = subcats[activeCat] ?? []
 
   // ── Add subcat ────────────────────────────────────
   async function addSubcat() {
@@ -59,144 +78,213 @@ export default function Subcategorias() {
     const current = subcats[activeCat] ?? []
     if (current.includes(trimmed)) { setAddDraft(''); return }
     setAddDraft('')
+    setShowAddForm(false)
     await updateConfig('subcategorias', { ...subcats, [activeCat]: [...current, trimmed] })
   }
 
   // ── Rename subcat ─────────────────────────────────
-  async function renameSubcat() {
-    if (!editSub) return
-    const { oldVal, newVal } = editSub
-    const trimmed = newVal.trim()
-    if (!trimmed || trimmed === oldVal) { setEditSub(null); return }
-    const list = subcats[activeCat] ?? []
-    if (list.includes(trimmed)) { setEditSub(null); return }
-    const updated = list.map(s => s === oldVal ? trimmed : s)
-    setEditSub(null)
-    await updateConfig('subcategorias', { ...subcats, [activeCat]: updated })
+  async function saveEdit() {
+    if (!editState) return
+    const { cat, sub, newName, newEmoji } = editState
+    const trimmed = newName.trim()
+    const emojiTrimmed = newEmoji.trim()
+    if (emojiTrimmed) {
+      const nextMap = { ...emojiMap, [`${cat}::${trimmed || sub}`]: emojiTrimmed }
+      writeSubEmojiMap(nextMap)
+      setEmojiMap(nextMap)
+    }
+    if (trimmed && trimmed !== sub) {
+      const catList = subcats[cat] ?? []
+      if (!catList.includes(trimmed)) {
+        const updated = catList.map(s => s === sub ? trimmed : s)
+        await updateConfig('subcategorias', { ...subcats, [cat]: updated })
+      }
+    }
+    setEditState(null)
   }
 
-  const list = subcats[activeCat] ?? []
+  // ── Delete subcat ─────────────────────────────────
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    const { cat, subcat } = deleteTarget
+    const updated = { ...subcats, [cat]: (subcats[cat] ?? []).filter(s => s !== subcat) }
+    setDeleteTarget(null)
+    await updateConfig('subcategorias', updated)
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       <AppHeader title="Subcategorías" back />
 
-      {/* ── Chips row ── */}
+      {/* ── Chips: solo cats con subcats ── */}
       <div style={{
-        display: 'flex', gap: 6, padding: '10px 16px 6px',
+        display: 'flex', gap: 6, padding: '12px 16px',
         overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none',
       }}>
-        {allCatKeys.map(cat => {
-          const isActive = cat === activeCat
-          return (
-            <button
-              key={cat}
-              onClick={() => { setActiveCat(cat); setEditSub(null); setAddDraft('') }}
-              style={{
-                flexShrink: 0, padding: '5px 13px', borderRadius: 999,
-                fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                background: isActive ? 'var(--amber)' : 'var(--ink-2)',
-                color:      isActive ? 'var(--ink-0)' : 'var(--fg-dim)',
-                border:     isActive ? 'none'         : '1px solid var(--line)',
-              }}
-            >
-              {cat}
-            </button>
-          )
-        })}
+        {(chipCats.length > 0 ? chipCats : allCatKeys.slice(0, 6)).map(cat => (
+          <button
+            key={cat}
+            onClick={() => { setActiveCat(cat); setEditState(null); setAddDraft(''); setShowAddForm(false) }}
+            style={{
+              flexShrink: 0, padding: '6px 12px', borderRadius: 999,
+              fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap',
+              background: activeCat === cat ? 'var(--amber)' : 'var(--ink-2)',
+              color:      activeCat === cat ? 'var(--ink-0)' : 'var(--fg-dim)',
+              border:     activeCat === cat ? 'none' : '1px solid var(--line)',
+              cursor: 'pointer',
+            }}
+          >
+            {cat}
+            {(subcats[cat]?.length ?? 0) > 0 && (
+              <span style={{ marginLeft: 4, opacity: 0.6, fontSize: 10 }}>
+                {subcats[cat].length}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
-      {/* ── Subcat list for active category ── */}
-      <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
 
-        {list.length === 0 && (
-          <div style={{ fontSize: 12.5, color: 'var(--fg-mute)', textAlign: 'center', padding: '12px 0' }}>
-            Sin subcategorías todavía.
+        {list.length === 0 && !showAddForm && (
+          <div style={{ textAlign: 'center', color: 'var(--fg-mute)', fontSize: 12.5, padding: '12px 0' }}>
+            Sin subcategorías en {activeCat}.
           </div>
         )}
 
+        {/* Subcats como cards idénticas a Categorías */}
         {list.map(sub => {
-          const isRenaming = editSub?.oldVal === sub
+          const emojiKey = `${activeCat}::${sub}`
+          const isEditing = editState?.cat === activeCat && editState?.sub === sub
+          const storedEmoji = emojiMap[emojiKey]
           return (
             <div
               key={sub}
               style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '9px 12px',
                 background: 'var(--ink-2)', border: '1px solid var(--line)',
-                borderRadius: 12,
+                borderRadius: 14, padding: '13px 14px',
+                display: 'flex', alignItems: 'center', gap: 12,
               }}
             >
-              {isRenaming ? (
-                <input
-                  type="text"
-                  value={editSub.newVal}
-                  autoFocus
-                  onChange={e => setEditSub({ ...editSub, newVal: e.target.value })}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') renameSubcat()
-                    if (e.key === 'Escape') setEditSub(null)
-                  }}
-                  onBlur={renameSubcat}
-                  style={{ ...inputSt, padding: '4px 8px', fontSize: 13 }}
-                />
+              <CatIcon cat={activeCat} size={36} />
+              {isEditing ? (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <input
+                    type="text" value={editState.newName} autoFocus
+                    onChange={e => setEditState({ ...editState, newName: e.target.value })}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') saveEdit()
+                      if (e.key === 'Escape') setEditState(null)
+                    }}
+                    placeholder="Nombre"
+                    style={{ ...inputSt, flex: 'unset', padding: '6px 10px' }}
+                  />
+                  <input
+                    type="text" value={editState.newEmoji}
+                    onChange={e => setEditState({ ...editState, newEmoji: e.target.value })}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') saveEdit()
+                      if (e.key === 'Escape') setEditState(null)
+                    }}
+                    onBlur={saveEdit}
+                    placeholder="Emoji (ej: 🏷️)"
+                    maxLength={4}
+                    style={{ ...inputSt, flex: 'unset', padding: '5px 10px', fontSize: 16, textAlign: 'center', width: 80 }}
+                  />
+                </div>
               ) : (
                 <span
-                  style={{ flex: 1, fontSize: 13.5, color: 'var(--fg)', cursor: 'text' }}
-                  onClick={() => setEditSub({ oldVal: sub, newVal: sub })}
-                  title="Toca para renombrar"
+                  style={{ flex: 1, fontSize: 14, fontWeight: 500, cursor: 'text' }}
+                  onClick={() => setEditState({ cat: activeCat, sub, newName: sub, newEmoji: storedEmoji ?? '' })}
+                  title="Toca para renombrar o cambiar emoji"
                 >
-                  {sub}
+                  {storedEmoji ? `${storedEmoji} ` : ''}{sub}
                 </span>
               )}
-              {!isRenaming && (
-                <button
-                  onClick={() => setDeleteTarget({ cat: activeCat, subcat: sub })}
-                  style={{
-                    width: 26, height: 26, borderRadius: 7, flexShrink: 0,
-                    background: 'rgba(214,106,90,.1)', border: '1px solid rgba(214,106,90,.25)',
-                    color: 'var(--neg)', fontSize: 14, cursor: 'pointer',
-                    display: 'grid', placeItems: 'center',
-                  }}
-                  aria-label={`Eliminar ${sub}`}
-                >
-                  ×
-                </button>
+              {!isEditing && (
+                <>
+                  <button
+                    onClick={() => setEditState({ cat: activeCat, sub, newName: sub, newEmoji: storedEmoji ?? '' })}
+                    style={{
+                      width: 28, height: 28, borderRadius: 8,
+                      background: 'var(--ink-3)', border: '1px solid var(--line)',
+                      color: 'var(--fg-dim)', fontSize: 13, cursor: 'pointer',
+                      display: 'grid', placeItems: 'center',
+                    }}
+                    aria-label={`Renombrar ${sub}`}
+                  >
+                    ✎
+                  </button>
+                  <button
+                    onClick={() => setDeleteTarget({ cat: activeCat, subcat: sub })}
+                    style={{
+                      width: 28, height: 28, borderRadius: 8,
+                      background: 'rgba(214,106,90,.1)', border: '1px solid rgba(214,106,90,.25)',
+                      color: 'var(--neg)', fontSize: 16, cursor: 'pointer',
+                      display: 'grid', placeItems: 'center',
+                    }}
+                    aria-label={`Eliminar ${sub}`}
+                  >
+                    ×
+                  </button>
+                </>
               )}
             </div>
           )
         })}
 
-        {/* ── Add row ── */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4 }}>
-          <input
-            type="text"
-            placeholder="Nueva subcategoría…"
-            value={addDraft}
-            onChange={e => setAddDraft(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') addSubcat() }}
-            onBlur={addSubcat}
-            style={inputSt}
-          />
+        {/* Add form */}
+        {showAddForm ? (
+          <div style={{
+            background: 'var(--ink-2)', border: '1px solid var(--amber)',
+            borderRadius: 14, padding: '13px 14px',
+            display: 'flex', gap: 8, alignItems: 'center',
+          }}>
+            <input
+              type="text" value={addDraft}
+              onChange={e => setAddDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') addSubcat() }}
+              placeholder={`Nueva subcategoría en ${activeCat}`}
+              autoFocus style={inputSt}
+            />
+            <button
+              onClick={addSubcat}
+              style={{
+                padding: '8px 12px', borderRadius: 10, fontSize: 12.5, fontWeight: 600,
+                background: 'var(--amber)', color: 'var(--ink-0)', border: 'none', cursor: 'pointer',
+              }}
+            >
+              {addDraft.trim() ? 'Añadir' : 'Cancelar'}
+            </button>
+            <button
+              onClick={() => { setShowAddForm(false); setAddDraft('') }}
+              style={{
+                padding: '8px 10px', borderRadius: 10, fontSize: 12.5,
+                background: 'var(--ink-3)', color: 'var(--fg-dim)', border: '1px solid var(--line)', cursor: 'pointer',
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
           <button
-            onClick={addSubcat}
-            disabled={!addDraft.trim()}
+            onClick={() => setShowAddForm(true)}
             style={{
-              padding: '8px 13px', borderRadius: 10, fontSize: 12.5, fontWeight: 600, flexShrink: 0,
-              background: addDraft.trim() ? 'var(--amber)' : 'var(--ink-3)',
-              color:      addDraft.trim() ? 'var(--ink-0)' : 'var(--fg-mute)',
-              border: 'none', cursor: addDraft.trim() ? 'pointer' : 'default',
+              background: 'var(--ink-2)', border: '1px dashed var(--ink-4)',
+              borderRadius: 14, padding: '13px',
+              color: 'var(--fg-mute)', fontSize: 13, fontWeight: 500,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: 8, cursor: 'pointer', width: '100%',
             }}
           >
-            +
+            <span style={{ fontSize: 18 }}>+</span>
+            Nueva subcategoría en {activeCat}
           </button>
-        </div>
-
+        )}
       </div>
 
       <div style={{ height: 32 }} />
 
-      {/* ── ConfirmSheet delete ── */}
       <ConfirmSheet
         open={!!deleteTarget}
         title="¿Eliminar subcategoría?"

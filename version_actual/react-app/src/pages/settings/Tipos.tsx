@@ -30,12 +30,14 @@ export default function Tipos() {
   const [newNombre,    setNewNombre]    = useState('')
   const [newEsIngreso, setNewEsIngreso] = useState(false)
   const [saving,       setSaving]       = useState(false)
-  const [chipFilter,   setChipFilter]   = useState<'all' | 'ingreso' | 'gasto'>('all')
+  const [chipFilter,   setChipFilter]   = useState<'all' | 'ingreso' | 'gasto' | 'ahorro'>('all')
 
   const rows: TipoRow[] = config.tipos.map(toRow)
+  const isAhorro = (r: TipoRow) => (r.nombre ?? '').toLowerCase().includes('ahorro')
   const filteredRows = rows.filter(r => {
-    if (chipFilter === 'ingreso') return r.esIngreso
-    if (chipFilter === 'gasto')   return !r.esIngreso
+    if (chipFilter === 'ingreso') return r.esIngreso && !isAhorro(r)
+    if (chipFilter === 'gasto')   return !r.esIngreso && !isAhorro(r)
+    if (chipFilter === 'ahorro')  return isAhorro(r)
     return true
   })
 
@@ -78,7 +80,7 @@ export default function Tipos() {
 
       {/* Filter chips */}
       <div style={{ display: 'flex', gap: 6, padding: '8px 16px 4px', overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
-        {([['all', 'Todos'], ['ingreso', 'Ingresos'], ['gasto', 'Gastos']] as const).map(([key, label]) => (
+        {([['all', 'Todos'], ['ingreso', 'Ingresos'], ['gasto', 'Gastos'], ['ahorro', 'Ahorro']] as const).map(([key, label]) => (
           <button
             key={key}
             onClick={() => setChipFilter(key)}
@@ -148,9 +150,9 @@ export default function Tipos() {
 
         {/* Add form */}
         <div style={{
-          display: 'flex', gap: 8, alignItems: 'center',
           background: 'var(--ink-2)', border: '1px dashed var(--line)',
           borderRadius: 14, padding: '12px 14px', marginTop: 4,
+          display: 'flex', flexDirection: 'column', gap: 8,
         }}>
           <input
             type="text"
@@ -160,34 +162,33 @@ export default function Tipos() {
             onKeyDown={e => { if (e.key === 'Enter') addTipo() }}
             style={inputSt}
           />
-
-          {/* esIngreso toggle */}
-          <button
-            onClick={() => setNewEsIngreso(v => !v)}
-            style={{
-              padding: '8px 10px', borderRadius: 10, fontSize: 12, fontWeight: 600,
-              background: newEsIngreso ? 'rgba(224,168,74,.18)' : 'rgba(214,106,90,.12)',
-              color:      newEsIngreso ? 'var(--amber)'          : 'var(--neg)',
-              border:     newEsIngreso ? '1px solid rgba(224,168,74,.35)' : '1px solid rgba(214,106,90,.3)',
-              cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap',
-            }}
-          >
-            {newEsIngreso ? 'Ingreso' : 'Gasto'}
-          </button>
-
-          <button
-            onClick={addTipo}
-            disabled={saving || !newNombre.trim()}
-            style={{
-              padding: '9px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600,
-              background: newNombre.trim() ? 'var(--amber)' : 'var(--ink-3)',
-              color:      newNombre.trim() ? 'var(--ink-0)' : 'var(--fg-mute)',
-              border: 'none', cursor: newNombre.trim() ? 'pointer' : 'default',
-              flexShrink: 0,
-            }}
-          >
-            Crear
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {/* esIngreso toggle */}
+            <button
+              onClick={() => setNewEsIngreso(v => !v)}
+              style={{
+                flex: 1, padding: '8px 10px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+                background: newEsIngreso ? 'rgba(224,168,74,.18)' : 'rgba(214,106,90,.12)',
+                color:      newEsIngreso ? 'var(--amber)'          : 'var(--neg)',
+                border:     newEsIngreso ? '1px solid rgba(224,168,74,.35)' : '1px solid rgba(214,106,90,.3)',
+                cursor: 'pointer', whiteSpace: 'nowrap',
+              }}
+            >
+              {newEsIngreso ? '↑ Ingreso' : '↓ Gasto'}
+            </button>
+            <button
+              onClick={addTipo}
+              disabled={saving || !newNombre.trim()}
+              style={{
+                flex: 1, padding: '9px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                background: newNombre.trim() ? 'var(--amber)' : 'var(--ink-3)',
+                color:      newNombre.trim() ? 'var(--ink-0)' : 'var(--fg-mute)',
+                border: 'none', cursor: newNombre.trim() ? 'pointer' : 'default',
+              }}
+            >
+              Crear
+            </button>
+          </div>
         </div>
 
       </div>

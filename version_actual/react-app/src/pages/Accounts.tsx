@@ -2,10 +2,11 @@ import { useNavigate } from 'react-router-dom'
 import Sparkline from '../components/ui/Sparkline'
 import Pill     from '../components/ui/Pill'
 import { MOCK_ACCOUNTS, type Account } from '../data/mock'
-import { useAccounts }   from '../hooks/useAccounts'
-import { useFormat }     from '../hooks/useFormat'
+import { useAccounts }    from '../hooks/useAccounts'
+import { useFormat }      from '../hooks/useFormat'
 import { usePrefsStore, type Moneda } from '../store/prefs'
-import { useTasas } from '../hooks/useTasas'
+import { useTasas }       from '../hooks/useTasas'
+import { useDineroFuera } from '../hooks/useDineroFuera'
 
 /* ── Account card ── */
 function AccountCard({ acc, onClick }: { acc: Account; onClick: () => void }) {
@@ -69,10 +70,13 @@ export default function Accounts() {
   const moneda     = usePrefsStore(s => s.moneda)
   const setMoneda  = usePrefsStore(s => s.setMoneda)
   const { accounts: liveAccounts, loading } = useAccounts()
+  const { meDebenActivo } = useDineroFuera()
   const accounts = liveAccounts ?? (loading ? MOCK_ACCOUNTS : [])
 
-  const totalUSD  = accounts.filter(a => a.currency === 'USD').reduce((s, a) => s + a.balance, 0)
-  const totalCash = accounts.find(a => a.type === 'CASH')
+  const saldoDisponible = accounts
+    .filter(a => !a.type.toUpperCase().includes('AHORRO'))
+    .reduce((s, a) => s + (a.balanceUSD ?? a.balance), 0)
+  const totalUSD = saldoDisponible + meDebenActivo
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -124,11 +128,9 @@ export default function Accounts() {
         <div className="font-display" style={{ fontSize: 42, lineHeight: 1.05, letterSpacing: '-.02em', marginTop: 4 }}>
           {fmt(totalUSD)}
         </div>
-        {totalCash && (
-          <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 4 }}>
-            + {fmt(totalCash.balance)} en efectivo
-          </div>
-        )}
+        <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginTop: 5 }}>
+          Saldo disponible{meDebenActivo > 0 ? ` + ${fmt(meDebenActivo)} que te deben` : ''}
+        </div>
       </div>
 
       {/* ── Account cards ── */}

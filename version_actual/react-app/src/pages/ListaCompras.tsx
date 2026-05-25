@@ -1,9 +1,8 @@
 // ═══════════════════════════════════════════════════
 // ListaCompras — /lista-compras
-// Schema real: tabla list-based con items JSONB.
-// Row: { id, user_id, household_id, nombre, items[], activa, archivada }
+// Multi-list: pantalla de listas + detalle de cada lista.
+// Schema: listas_compras { id, user_id, household_id, nombre, items[], activa, archivada }
 // Item: { id, nombre, cantidad, precio, checked }
-// Todas las mutaciones hacen UPDATE al array items del row activo.
 // ═══════════════════════════════════════════════════
 
 import { useState, useEffect } from 'react'
@@ -28,71 +27,27 @@ interface ListaRow {
   items:        ListItem[]
   activa:       boolean
   archivada:    boolean
+  updated_at?:  string
 }
 
 const inputSt: CSSProperties = {
   flex: 1, background: 'var(--ink-1)', border: '1px solid var(--line)',
   borderRadius: 10, padding: '9px 12px', fontSize: 13.5, color: 'var(--fg)', outline: 'none',
 }
-const numSt: CSSProperties = {
-  width: 64, background: 'var(--ink-1)', border: '1px solid var(--line)',
-  borderRadius: 10, padding: '9px 8px', fontSize: 13.5,
-  color: 'var(--fg)', outline: 'none', textAlign: 'center',
-}
 
-export default function ListaCompras() {
-  const userId      = useAuthStore(s => s.userId)
-  const householdId = useAuthStore(s => s.householdId)
-
-  const [lista,    setLista]    = useState<ListaRow | null>(null)
-  const [loading,  setLoading]  = useState(true)
+// ── Lista detail view ──────────────────────────────
+function ListaDetail({ lista, onBack, onUpdate }: {
+  lista: ListaRow
+  onBack: () => void
+  onUpdate: (updated: ListaRow) => void
+}) {
+  const userId = useAuthStore(s => s.userId)
   const [nombre,   setNombre]   = useState('')
   const [cantidad, setCantidad] = useState(1)
   const [saving,   setSaving]   = useState(false)
 
-  // ── Load active list (or create one) ────────────
-  useEffect(() => {
-    if (!householdId || !userId) { setLoading(false); return }
-
-    // Filter by user_id (auth uid) — the data key, like movimientos.
-    // household_id from household_members may differ from the data's key.
-    supabase
-      .from('listas_compras')
-      .select('id,user_id,household_id,nombre,items,activa,archivada')
-      .eq('user_id', userId)
-      .eq('archivada', false)
-      .order('updated_at', { ascending: false })
-      .then(async ({ data, error }) => {
-        if (error) { console.error('[ListaCompras] load:', error.message); setLoading(false); return }
-
-        let rows = (data ?? []) as ListaRow[]
-        let active = rows.find(r => r.activa) ?? rows[0] ?? null
-
-        if (!active) {
-          // Create a default list — both keys = auth uid for consistency
-          const newId = crypto.randomUUID()
-          const newRow = {
-            id:           newId,
-            user_id:      userId,
-            household_id: householdId ?? userId,
-            nombre:       'Compras',
-            items:        [],
-            activa:       true,
-            archivada:    false,
-          }
-          const { error: insertErr } = await supabase.from('listas_compras').insert(newRow)
-          if (!insertErr) active = newRow as ListaRow
-        }
-
-        setLista(active)
-        setLoading(false)
-      })
-  }, [userId, householdId])
-
-  // ── Persist items array to Supabase ──────────────
   async function persistItems(newItems: ListItem[]) {
-    if (!lista) return
-    setLista(prev => prev ? { ...prev, items: newItems } : prev)
+    onUpdate({ ...lista, items: newItems })
     await supabase
       .from('listas_compras')
       .update({ items: newItems, updated_at: new Date().toISOString() })
@@ -100,21 +55,16 @@ export default function ListaCompras() {
   }
 
   async function toggle(itemId: string) {
-    if (!lista) return
-    const newItems = lista.items.map(i =>
-      i.id === itemId ? { ...i, checked: !i.checked } : i
-    )
-    await persistItems(newItems)
+    await persistItems(lista.items.map(i => i.id === itemId ? { ...i, checked: !i.checked } : i))
   }
 
   async function remove(itemId: string) {
-    if (!lista) return
     await persistItems(lista.items.filter(i => i.id !== itemId))
   }
 
   async function addItem() {
     const trimmed = nombre.trim()
-    if (!trimmed || !lista) return
+    if (!trimmed || !userId) return
     setSaving(true)
     const newItem: ListItem = {
       id:       crypto.randomUUID(),
@@ -130,147 +80,135 @@ export default function ListaCompras() {
   }
 
   async function setPrecio(itemId: string, precio: number) {
-    if (!lista) return
-    await persistItems(lista.items.map(i =>
-      i.id === itemId ? { ...i, precio: precio >= 0 ? precio : 0 } : i
-    ))
+    await persistItems(lista.items.map(i => i.id === itemId ? { ...i, precio: precio >= 0 ? precio : 0 } : i))
   }
 
   async function clearChecked() {
-    if (!lista) return
     await persistItems(lista.items.filter(i => !i.checked))
   }
 
-  const items  = lista?.items ?? []
-  const sorted = [...items.filter(i => !i.checked), ...items.filter(i => i.checked)]
+  const items        = lista.items ?? []
+  const sorted       = [...items.filter(i => !i.checked), ...items.filter(i => i.checked)]
   const totalAll     = items.reduce((s, i) => s + i.cantidad * i.precio, 0)
   const totalPending = items.filter(i => !i.checked).reduce((s, i) => s + i.cantidad * i.precio, 0)
   const checkedCount = items.filter(i => i.checked).length
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
-      <AppHeader title="Lista de compras" back />
+      <AppHeader title={lista.nombre} back onBack={onBack} />
 
-      {loading ? (
-        <div style={{ padding: 24, textAlign: 'center', color: 'var(--fg-mute)', fontSize: 13 }}>
-          Cargando…
-        </div>
-      ) : (
-        <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
 
-          {sorted.length === 0 && (
-            <div style={{
+        {sorted.length === 0 && (
+          <div style={{
+            background: 'var(--ink-2)', border: '1px solid var(--line)',
+            borderRadius: 14, padding: 24, textAlign: 'center', color: 'var(--fg-mute)', fontSize: 13,
+          }}>
+            Lista vacía. Agrega ítems abajo.
+          </div>
+        )}
+
+        {sorted.map(item => (
+          <div
+            key={item.id}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
               background: 'var(--ink-2)', border: '1px solid var(--line)',
-              borderRadius: 14, padding: 24, textAlign: 'center', color: 'var(--fg-mute)', fontSize: 13,
-            }}>
-              La lista está vacía. Agrega ítems abajo.
-            </div>
-          )}
-
-          {sorted.map(item => (
-            <div
-              key={item.id}
+              borderRadius: 14, padding: '10px 12px',
+              opacity: item.checked ? 0.55 : 1, transition: 'opacity .2s',
+            }}
+          >
+            <button
+              onClick={() => toggle(item.id)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                background: 'var(--ink-2)', border: '1px solid var(--line)',
-                borderRadius: 14, padding: '12px 14px',
-                opacity: item.checked ? 0.55 : 1,
-                transition: 'opacity .2s',
+                width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+                background:   item.checked ? 'var(--pos)' : 'var(--ink-3)',
+                border:       item.checked ? 'none' : '1.5px solid var(--line)',
+                color:        'var(--ink-0)', fontSize: 14, fontWeight: 700,
+                display:      'grid', placeItems: 'center', cursor: 'pointer',
               }}
             >
-              {/* Checkbox */}
-              <button
-                onClick={() => toggle(item.id)}
-                style={{
-                  width: 26, height: 26, borderRadius: 8, flexShrink: 0,
-                  background:   item.checked ? 'var(--pos)' : 'var(--ink-3)',
-                  border:       item.checked ? 'none' : '1.5px solid var(--line)',
-                  color:        'var(--ink-0)', fontSize: 14, fontWeight: 700,
-                  display:      'grid', placeItems: 'center', cursor: 'pointer',
+              {item.checked ? '✓' : ''}
+            </button>
+
+            <span style={{
+              flex: 1, fontSize: 14, fontWeight: 500,
+              color:          item.checked ? 'var(--fg-mute)' : 'var(--fg)',
+              textDecoration: item.checked ? 'line-through' : 'none',
+            }}>
+              {item.nombre}
+            </span>
+
+            <span className="num" style={{
+              fontSize: 12, color: 'var(--fg-dim)',
+              background: 'var(--ink-3)', borderRadius: 6, padding: '2px 7px', flexShrink: 0,
+            }}>
+              ×{item.cantidad}
+            </span>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+              <span style={{ fontSize: 10, color: 'var(--fg-mute)' }}>$</span>
+              <input
+                type="number" min={0} step="0.01"
+                defaultValue={item.precio || ''}
+                placeholder="0"
+                onBlur={e => {
+                  const v = parseFloat(e.target.value)
+                  if (!isNaN(v) && v !== item.precio) setPrecio(item.id, v)
                 }}
-                aria-label={item.checked ? 'Desmarcar' : 'Marcar como comprado'}
-              >
-                {item.checked ? '✓' : ''}
-              </button>
-
-              {/* Nombre */}
-              <span style={{
-                flex: 1, fontSize: 14, fontWeight: 500,
-                color:          item.checked ? 'var(--fg-mute)' : 'var(--fg)',
-                textDecoration: item.checked ? 'line-through' : 'none',
-              }}>
-                {item.nombre}
-              </span>
-
-              {/* Cantidad */}
-              <span className="num" style={{
-                fontSize: 12.5, color: 'var(--fg-dim)',
-                background: 'var(--ink-3)', borderRadius: 6, padding: '3px 8px',
-              }}>
-                ×{item.cantidad}
-              </span>
-
-              {/* Precio unitario (editable) */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-                <span style={{ fontSize: 11, color: 'var(--fg-mute)' }}>$</span>
-                <input
-                  type="number" min={0} step="0.01"
-                  defaultValue={item.precio || ''}
-                  placeholder="0"
-                  onBlur={e => {
-                    const v = parseFloat(e.target.value)
-                    if (!isNaN(v) && v !== item.precio) setPrecio(item.id, v)
-                  }}
-                  style={{
-                    width: 52, background: 'var(--ink-1)', border: '1px solid var(--line)',
-                    borderRadius: 6, padding: '3px 5px', fontSize: 12,
-                    color: 'var(--fg)', outline: 'none', textAlign: 'right',
-                  }}
-                />
-              </div>
-
-              {/* Delete */}
-              <button
-                onClick={() => remove(item.id)}
                 style={{
-                  width: 26, height: 26, borderRadius: 8, flexShrink: 0,
-                  background: 'rgba(214,106,90,.1)', border: '1px solid rgba(214,106,90,.25)',
-                  color: 'var(--neg)', fontSize: 16, cursor: 'pointer',
-                  display: 'grid', placeItems: 'center',
+                  width: 48, background: 'var(--ink-1)', border: '1px solid var(--line)',
+                  borderRadius: 6, padding: '3px 4px', fontSize: 12,
+                  color: 'var(--fg)', outline: 'none', textAlign: 'right',
                 }}
-                aria-label="Eliminar ítem"
-              >
-                ×
-              </button>
+              />
             </div>
-          ))}
 
-          {/* Add form */}
-          <div style={{
-            display: 'flex', gap: 8, alignItems: 'center',
-            background: 'var(--ink-2)', border: '1px dashed var(--line)',
-            borderRadius: 14, padding: '12px 14px', marginTop: 4,
-          }}>
-            <span style={{ fontSize: 18, color: 'var(--fg-mute)' }}>+</span>
-            <input
-              type="text"
-              placeholder="Nuevo ítem…"
-              value={nombre}
-              onChange={e => setNombre(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') addItem() }}
-              style={inputSt}
-            />
-            <input
-              type="number" min={1}
-              value={cantidad}
-              onChange={e => setCantidad(Number(e.target.value))}
-              style={numSt}
-            />
+            <button
+              onClick={() => remove(item.id)}
+              style={{
+                width: 24, height: 24, borderRadius: 7, flexShrink: 0,
+                background: 'rgba(214,106,90,.1)', border: '1px solid rgba(214,106,90,.25)',
+                color: 'var(--neg)', fontSize: 15, cursor: 'pointer',
+                display: 'grid', placeItems: 'center',
+              }}
+            >×</button>
+          </div>
+        ))}
+
+        {/* Add form — vertical layout para evitar overflow en mobile */}
+        <div style={{
+          background: 'var(--ink-2)', border: '1px dashed var(--line)',
+          borderRadius: 14, padding: '12px 14px', marginTop: 4,
+          display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          <input
+            type="text"
+            placeholder="Nuevo ítem…"
+            value={nombre}
+            onChange={e => setNombre(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') addItem() }}
+            style={inputSt}
+          />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
+              <span style={{ fontSize: 12, color: 'var(--fg-mute)', whiteSpace: 'nowrap' }}>Cant.</span>
+              <input
+                type="number" min={1}
+                value={cantidad}
+                onChange={e => setCantidad(Number(e.target.value))}
+                style={{
+                  width: 64, background: 'var(--ink-1)', border: '1px solid var(--line)',
+                  borderRadius: 10, padding: '8px 8px', fontSize: 13.5,
+                  color: 'var(--fg)', outline: 'none', textAlign: 'center',
+                }}
+              />
+            </div>
             <button
               onClick={addItem}
               disabled={saving || !nombre.trim()}
               style={{
-                padding: '9px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                padding: '9px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600,
                 background: nombre.trim() ? 'var(--amber)' : 'var(--ink-3)',
                 color:      nombre.trim() ? 'var(--ink-0)' : 'var(--fg-mute)',
                 border: 'none', cursor: nombre.trim() ? 'pointer' : 'default',
@@ -280,42 +218,213 @@ export default function ListaCompras() {
               Agregar
             </button>
           </div>
+        </div>
 
-          {/* Summary + totals */}
-          {items.length > 0 && (
+        {/* Totals */}
+        {items.length > 0 && (
+          <div style={{
+            background: 'var(--ink-2)', border: '1px solid var(--line)',
+            borderRadius: 14, padding: '12px 14px', marginTop: 4,
+            display: 'flex', flexDirection: 'column', gap: 8,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
+              <span style={{ color: 'var(--fg-mute)' }}>Total estimado</span>
+              <span className="num" style={{ fontWeight: 700 }}>${totalAll.toFixed(2)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+              <span style={{ color: 'var(--fg-mute)' }}>Pendiente</span>
+              <span className="num" style={{ fontWeight: 600, color: 'var(--amber)' }}>${totalPending.toFixed(2)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, color: 'var(--fg-mute)', borderTop: '1px solid var(--line)', paddingTop: 8 }}>
+              <span>{checkedCount} / {items.length} comprados</span>
+              {checkedCount > 0 && (
+                <button
+                  onClick={clearChecked}
+                  style={{
+                    padding: '4px 10px', borderRadius: 8, fontSize: 11.5, fontWeight: 600,
+                    background: 'rgba(214,106,90,.1)', border: '1px solid rgba(214,106,90,.25)',
+                    color: 'var(--neg)', cursor: 'pointer',
+                  }}
+                >
+                  Limpiar comprados
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      <div style={{ height: 32 }} />
+    </div>
+  )
+}
+
+// ── Lista card (view all) ──────────────────────────
+function ListaCard({ lista, onClick }: { lista: ListaRow; onClick: () => void }) {
+  const total   = (lista.items ?? []).length
+  const pending = (lista.items ?? []).filter(i => !i.checked).length
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: '100%', textAlign: 'left',
+        background: 'var(--ink-2)', border: '1px solid var(--line)',
+        borderRadius: 14, padding: '14px 16px',
+        display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
+      }}
+    >
+      <div style={{
+        width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+        background: 'rgba(224,168,74,.12)', border: '1px solid rgba(224,168,74,.25)',
+        display: 'grid', placeItems: 'center', fontSize: 20,
+      }}>🛒</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {lista.nombre}
+        </div>
+        <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginTop: 2 }}>
+          {total === 0 ? 'Lista vacía' : `${pending} pendiente${pending !== 1 ? 's' : ''} de ${total}`}
+        </div>
+      </div>
+      <div style={{ fontSize: 18, color: 'var(--fg-mute)' }}>›</div>
+    </button>
+  )
+}
+
+// ── Main component ─────────────────────────────────
+export default function ListaCompras() {
+  const userId      = useAuthStore(s => s.userId)
+  const householdId = useAuthStore(s => s.householdId)
+
+  const [listas,      setListas]      = useState<ListaRow[]>([])
+  const [loading,     setLoading]     = useState(true)
+  const [selected,    setSelected]    = useState<ListaRow | null>(null)
+  const [creating,    setCreating]    = useState(false)
+  const [newName,     setNewName]     = useState('')
+  const [savingNew,   setSavingNew]   = useState(false)
+
+  useEffect(() => {
+    if (!householdId || !userId) { setLoading(false); return }
+    supabase
+      .from('listas_compras')
+      .select('id,user_id,household_id,nombre,items,activa,archivada,updated_at')
+      .eq('user_id', userId)
+      .eq('archivada', false)
+      .order('updated_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) { console.error('[ListaCompras]', error.message); setLoading(false); return }
+        setListas((data ?? []) as ListaRow[])
+        setLoading(false)
+      })
+  }, [userId, householdId])
+
+  async function createLista() {
+    const trimmed = newName.trim() || 'Nueva lista'
+    if (!userId || !householdId) return
+    setSavingNew(true)
+    const newRow: ListaRow = {
+      id:           crypto.randomUUID(),
+      user_id:      userId,
+      household_id: householdId,
+      nombre:       trimmed,
+      items:        [],
+      activa:       true,
+      archivada:    false,
+    }
+    const { error } = await supabase.from('listas_compras').insert(newRow)
+    if (!error) {
+      setListas(prev => [newRow, ...prev])
+      setSelected(newRow)
+    }
+    setNewName('')
+    setCreating(false)
+    setSavingNew(false)
+  }
+
+  function handleUpdate(updated: ListaRow) {
+    setListas(prev => prev.map(l => l.id === updated.id ? updated : l))
+    setSelected(updated)
+  }
+
+  if (selected) {
+    return (
+      <ListaDetail
+        lista={selected}
+        onBack={() => setSelected(null)}
+        onUpdate={handleUpdate}
+      />
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+      <AppHeader title="Listas de compras" back />
+
+      {loading ? (
+        <div style={{ padding: 24, textAlign: 'center', color: 'var(--fg-mute)', fontSize: 13 }}>Cargando…</div>
+      ) : (
+        <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+          {listas.length === 0 && !creating && (
             <div style={{
               background: 'var(--ink-2)', border: '1px solid var(--line)',
-              borderRadius: 14, padding: '12px 14px', marginTop: 8,
-              display: 'flex', flexDirection: 'column', gap: 8,
+              borderRadius: 14, padding: 24, textAlign: 'center', color: 'var(--fg-mute)', fontSize: 13,
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
-                <span style={{ color: 'var(--fg-mute)' }}>Total estimado</span>
-                <span className="num" style={{ fontWeight: 700 }}>${totalAll.toFixed(2)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                <span style={{ color: 'var(--fg-mute)' }}>Pendiente por comprar</span>
-                <span className="num" style={{ fontWeight: 600, color: 'var(--amber)' }}>${totalPending.toFixed(2)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, color: 'var(--fg-mute)', borderTop: '1px solid var(--line)', paddingTop: 8 }}>
-                <span>{checkedCount} / {items.length} comprados</span>
-                {checkedCount > 0 && (
-                  <button
-                    onClick={clearChecked}
-                    style={{
-                      padding: '5px 12px', borderRadius: 8, fontSize: 11.5, fontWeight: 600,
-                      background: 'rgba(214,106,90,.1)', border: '1px solid rgba(214,106,90,.25)',
-                      color: 'var(--neg)', cursor: 'pointer',
-                    }}
-                  >
-                    Limpiar comprados
-                  </button>
-                )}
-              </div>
+              No tienes listas todavía. Crea una abajo.
             </div>
+          )}
+
+          {listas.map(lista => (
+            <ListaCard key={lista.id} lista={lista} onClick={() => setSelected(lista)} />
+          ))}
+
+          {/* New list form */}
+          {creating ? (
+            <div style={{
+              background: 'var(--ink-2)', border: '1px solid var(--amber)',
+              borderRadius: 14, padding: '13px 14px',
+              display: 'flex', gap: 8, alignItems: 'center',
+            }}>
+              <input
+                type="text" value={newName}
+                onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') createLista() }}
+                placeholder="Nombre de la lista…"
+                autoFocus style={inputSt}
+              />
+              <button
+                onClick={createLista}
+                disabled={savingNew}
+                style={{
+                  padding: '8px 12px', borderRadius: 10, fontSize: 12.5, fontWeight: 600,
+                  background: 'var(--amber)', color: 'var(--ink-0)', border: 'none', cursor: 'pointer',
+                }}
+              >
+                {newName.trim() ? 'Crear' : 'Cancelar'}
+              </button>
+              <button
+                onClick={() => { setCreating(false); setNewName('') }}
+                style={{
+                  padding: '8px 10px', borderRadius: 10, fontSize: 12.5,
+                  background: 'var(--ink-3)', color: 'var(--fg-dim)', border: '1px solid var(--line)', cursor: 'pointer',
+                }}
+              >✕</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setCreating(true)}
+              style={{
+                background: 'var(--ink-2)', border: '1px dashed var(--ink-4)',
+                borderRadius: 14, padding: '14px',
+                color: 'var(--fg-mute)', fontSize: 13, fontWeight: 500,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 8, cursor: 'pointer', width: '100%',
+              }}
+            >
+              <span style={{ fontSize: 18 }}>+</span> Nueva lista
+            </button>
           )}
         </div>
       )}
-
       <div style={{ height: 32 }} />
     </div>
   )

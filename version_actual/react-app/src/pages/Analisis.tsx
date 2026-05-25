@@ -105,7 +105,8 @@ export default function Analisis() {
   const { transactions: liveTxns, loading }  = useTransactions(mesActivo)
   const { transactions: prevTxns }           = useTransactions(prevId)
 
-  const [openCat, setOpenCat] = useState<string | null>(null)
+  const [openCat,       setOpenCat]       = useState<string | null>(null)
+  const [ingresosOpen,  setIngresosOpen]  = useState(false)
 
   // ── Helpers ─────────────────────────────────────
   const txns     = liveTxns ?? []
@@ -159,12 +160,22 @@ export default function Analisis() {
     )
   }, [txns])
 
-  // ── Ingresos: total + desglose por persona (Anthony / Isabel) ──────
-  // Fijos mensuales agrupados por autor; el resto como "Otros ingresos".
+  // ── Ingresos: total + desglose por categoría ──
   const ingresosTotal = useMemo(
     () => txns.reduce((s, t) => txnGroup(t.tipo) === 'ingreso' ? s + Math.abs(t.amount) : s, 0),
     [txns],
   )
+  const ingresosPorCat = useMemo<BarEntry[]>(() => {
+    const map: Record<string, number> = {}
+    for (const t of txns) {
+      if (txnGroup(t.tipo) !== 'ingreso') continue
+      const key = t.cat || t.tipo
+      map[key] = (map[key] ?? 0) + Math.abs(t.amount)
+    }
+    return Object.entries(map)
+      .sort(([, a], [, b]) => b - a)
+      .map(([label, value]) => ({ label, value }))
+  }, [txns])
   const ingresosPorTipo = useMemo<BarEntry[]>(() => {
     const map: Record<string, number> = {}
     for (const t of txns) {
@@ -238,13 +249,22 @@ export default function Analisis() {
           {/* ── KPIs + comparativa ── */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
             {([
-              { label: 'Ingresos', cur: kpis.ingresos, prev: prevKpis.ingresos, color: 'var(--pos)' },
-              { label: 'Gastos',   cur: kpis.gastos,   prev: prevKpis.gastos,   color: 'var(--neg)' },
-              { label: 'Balance',  cur: kpis.balance,  prev: prevKpis.balance,  color: kpis.balance >= 0 ? 'var(--pos)' : 'var(--neg)' },
+              { label: 'Ingresos', cur: kpis.ingresos, prev: prevKpis.ingresos, color: 'var(--pos)', tappable: true },
+              { label: 'Gastos',   cur: kpis.gastos,   prev: prevKpis.gastos,   color: 'var(--neg)', tappable: false },
+              { label: 'Balance',  cur: kpis.balance,  prev: prevKpis.balance,  color: kpis.balance >= 0 ? 'var(--pos)' : 'var(--neg)', tappable: false },
             ]).map(k => (
-              <div key={k.label} style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 10px 8px' }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 5 }}>
+              <div
+                key={k.label}
+                onClick={k.tappable ? () => setIngresosOpen(v => !v) : undefined}
+                style={{
+                  background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 10px 8px',
+                  cursor: k.tappable ? 'pointer' : 'default',
+                  outline: k.tappable && ingresosOpen ? '2px solid var(--pos)' : 'none',
+                }}
+              >
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 3 }}>
                   {k.label}
+                  {k.tappable && <span style={{ fontSize: 8, opacity: 0.6 }}>{ingresosOpen ? '▲' : '▼'}</span>}
                 </div>
                 <div className="num" style={{ fontSize: 13, fontWeight: 700, color: k.color, marginBottom: 4 }}>
                   {k.label === 'Balance' && k.cur >= 0 ? '+' : ''}{fmt(k.cur)}
@@ -256,6 +276,16 @@ export default function Analisis() {
               </div>
             ))}
           </div>
+
+          {/* ── Desglose ingresos por categoría (se expande al tap) ── */}
+          {ingresosOpen && ingresosPorCat.length > 0 && (
+            <div style={{ background: 'var(--ink-2)', border: '1px solid var(--pos)30', borderRadius: 12, padding: '12px 14px' }}>
+              <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--pos)', marginBottom: 10 }}>
+                Ingresos por categoría
+              </div>
+              <HBar data={ingresosPorCat} color="var(--pos)" />
+            </div>
+          )}
 
           {/* ── Gastos por categoría: donut + lista ── */}
           <Card>

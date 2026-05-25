@@ -57,9 +57,12 @@ async function groqCall(
     body: JSON.stringify({ model, messages, max_tokens: 800, temperature: 0.7 }),
   })
   if (!res.ok) {
-    if (res.status === 429 && retry < 1) {
-      await new Promise(r => setTimeout(r, 2000))
+    if ((res.status === 429 || res.status === 405) && retry < 1) {
+      await new Promise(r => setTimeout(r, res.status === 429 ? 2000 : 500))
       return groqCall(userMsg, systemMsg, retry + 1)
+    }
+    if (res.status === 404 || res.status === 405) {
+      throw new Error('El asistente IA no está disponible. Verifica que la variable GROQ_API_KEY esté configurada en Cloudflare Pages.')
     }
     const err = await res.text()
     throw new Error(`Error Groq (${res.status}): ${err.slice(0, 120)}`)

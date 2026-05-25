@@ -161,11 +161,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 export default function Home() {
   const navigate  = useNavigate()
-  const [dismissedInsights, setDismissedInsights] = useState<Set<string>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('mf-insights-dismissed') || '[]') as string[]) }
-    catch { return new Set() }
-  })
-
   const mesActivo      = usePrefsStore(s => s.mesActivo)
   const setMesActivo   = usePrefsStore(s => s.setMesActivo)
   const ocultarMontos  = usePrefsStore(s => s.ocultarMontos)
@@ -800,45 +795,37 @@ export default function Home() {
       )}
 
       {/* ─── 10. ANÁLISIS IA ─── */}
-      {!dismissedInsights.has(mesActivo) && (
-        <div style={{ padding: '12px 16px 4px' }}>
-          <div style={{
-            padding: 14, borderRadius: 14,
-            background: 'linear-gradient(135deg, var(--amber-d) 0%, transparent 75%), var(--ink-2)',
-            border: '1px solid var(--line)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <div style={{
-                width: 20, height: 20, borderRadius: 6,
-                background: 'var(--amber)', color: 'var(--ink-0)',
-                display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700,
-              }}>✦</div>
-              <span style={{ fontSize: 9.5, letterSpacing: '.12em', color: 'var(--amber)', textTransform: 'uppercase', fontWeight: 600 }}>
-                Análisis IA
-              </span>
-              <span style={{ fontSize: 10, color: 'var(--fg-mute)', marginLeft: 'auto' }}>en vivo</span>
-            </div>
-            <div className="font-display" style={{ fontSize: 15, lineHeight: 1.45 }}>
-              {kpiData.gastos > kpiData.ingresos
-                ? <>Tus gastos superan los ingresos este mes.{' '}
-                    <span style={{ color: 'var(--neg)' }}>Revisa tu presupuesto.</span></>
-                : <>Tasa de ahorro{' '}
-                    <span style={{ color: 'var(--pos)' }}>{savingsRate.toFixed(0)}%</span>
-                    {' '}en {mesLabel(mesActivo)}. {savingsRate >= 20 ? '🎯 Excelente.' : '¡Sigue así!'}</>
-              }
-            </div>
-            <div style={{ marginTop: 10, display: 'flex', gap: 6 }}>
-              <PillBtn primary onClick={() => navigate('/ia')}>Preguntar IA</PillBtn>
-              <PillBtn onClick={() => {
-                const next = new Set(dismissedInsights)
-                next.add(mesActivo)
-                setDismissedInsights(next)
-                localStorage.setItem('mf-insights-dismissed', JSON.stringify([...next]))
-              }}>Descartar</PillBtn>
-            </div>
+      <div style={{ padding: '12px 16px 4px' }}>
+        <div style={{
+          padding: 14, borderRadius: 14,
+          background: 'linear-gradient(135deg, var(--amber-d) 0%, transparent 75%), var(--ink-2)',
+          border: '1px solid var(--line)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <div style={{
+              width: 20, height: 20, borderRadius: 6,
+              background: 'var(--amber)', color: 'var(--ink-0)',
+              display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700,
+            }}>✦</div>
+            <span style={{ fontSize: 9.5, letterSpacing: '.12em', color: 'var(--amber)', textTransform: 'uppercase', fontWeight: 600 }}>
+              Análisis IA
+            </span>
+            <span style={{ fontSize: 10, color: 'var(--fg-mute)', marginLeft: 'auto' }}>en vivo</span>
+          </div>
+          <div className="font-display" style={{ fontSize: 15, lineHeight: 1.45 }}>
+            {kpiData.gastos > kpiData.ingresos
+              ? <>Tus gastos superan los ingresos este mes.{' '}
+                  <span style={{ color: 'var(--neg)' }}>Revisa tu presupuesto.</span></>
+              : <>Tasa de ahorro{' '}
+                  <span style={{ color: 'var(--pos)' }}>{savingsRate.toFixed(0)}%</span>
+                  {' '}en {mesLabel(mesActivo)}. {savingsRate >= 20 ? '🎯 Excelente.' : '¡Sigue así!'}</>
+            }
+          </div>
+          <div style={{ marginTop: 10, display: 'flex', gap: 6 }}>
+            <PillBtn primary onClick={() => navigate('/ia')}>Preguntar IA</PillBtn>
           </div>
         </div>
-      )}
+      </div>
 
       {/* ─── 11. ÚLTIMAS TRANSACCIONES ─── */}
       <div style={{ padding: '14px 16px 24px' }}>

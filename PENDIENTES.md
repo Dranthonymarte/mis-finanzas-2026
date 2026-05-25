@@ -1,75 +1,71 @@
-# PENDIENTES — Mis Finanzas 2026
+# PENDIENTES — Mis Finanzas 2026 (React App)
 
 Orden estricto. Actualizar al completar.
-**Última actualización:** 2026-05-18 FASE 3.2 — rama `develop` = `react-preview`, HEAD `85e856f`
+**Última actualización:** 2026-05-25 · rama `react-preview` · HEAD en curso
 
 ---
 
-## 🔴 React App — Pendiente inmediato (próxima sesión)
+## 🔴 Inmediato — Acción ANTHONY (no código)
 
-> Contexto: FASE 3/3.2 corrigió de raíz auth (refresh/loop/datos
-> desconfigurados), Lista de compras, Subcat/Cat, patrimonio, sheets,
-> tasa manual, PWA install. Lo siguiente NO está hecho:
+1. **Groq API Key en producción** — Cloudflare Pages → Settings → Environment variables →
+   `VITE_GROQ_API_KEY` = (valor en `.env.local`). Sin esto, IA no funciona en deploy.
 
-1. **Fondo emergencia — lógica editable + integración**
-   - Columnas YA existen en `config_usuario`: `emergency_fund_base`,
-     `emergency_fund_goal`, `ef_manual_base`, `ef_auto_contrib`,
-     `ef_reset_date`; + tabla `fondo_emergencia` (por mes, col `monto`).
-   - `Home.tsx`: `emergencyBalance`/`emergencyTarget` hoy semi-hardcoded
-     (`kpiData.gastos*3`). Debe: meta editable desde `emergency_fund_goal`,
-     base de `ahorroAcumulado` (misma lógica de ahorro), aporte auto
-     `ef_auto_contrib`. NO requiere migración.
-   - `NewTransaction.tsx` ya muestra "30% → fondo emergencia" en Ahorro;
-     integrar persistencia real (col `ef_contribution` en `movimientos`).
+2. **hCaptcha secret key** — Supabase Dashboard → Auth → Attack Protection →
+   pegar la secret key del dashboard de hCaptcha.
 
-2. **Dashboard — iconos info por card + reordenar**
-   - Columna YA existe: `config_usuario.dashboard_order` (jsonb).
-   - `Home.tsx`: cada card con ícono ℹ️ (tooltip explicativo) y permitir
-     reordenar (drag o ↑↓) persistiendo en `dashboard_order` vía
-     `updateConfig('dashboard_order', …)` (añadir a campoMap en useConfig).
+3. **Cloudflare Pages config** — Ajustar en dashboard:
+   - Build command: `cd version_actual/react-app && npm ci && npm run build`
+   - Build output directory: `version_actual/react-app/dist`
+   - Root directory: vacío
 
-3. **Auditoría quirúrgica de los 28 bugs reportados**
-   - Verificar uno por uno: integración en código + soporte en Supabase.
-   - Lista original en `BUGS.md` / mensajes de usuario FASE 2-3.
+---
 
-4. **Groq producción (acción ANTHONY, no código)**
-   - Cloudflare Pages → Settings → Environment variables →
-     `VITE_GROQ_API_KEY` = (valor en `.env.local`). Sin esto, IA no
-     funciona en el deploy (`.env.local` es gitignored).
+## 🟢 Completado en esta sesión
 
-5. **Verificación móvil** del deploy `85e856f`: login + carga ≤3s +
-   datos correctos + banner/instalar PWA.
+- [x] Insights panel en Home: no descartable (eliminado botón "Descartar")
+- [x] Buscar: filtros avanzados por tipo, fecha desde/hasta, cuenta
+- [x] Buscar: query incluye subcategoría en resultado
+- [x] Restructura repo: app React en `react-preview`, Vanilla JS en `main`
 
-## 🟡 React App — Charts / pulido
+---
 
-6. **Bloque 3: Charts recharts**
-   - `AreaChart` ingresos vs gastos 6M en `Home.tsx` (ya hay datos reales
-     6M en `incomeVsExp` desde Supabase — falta migrar de BarChart si se
-     desea AreaChart) · `DonutChart` top-5 en `Analisis.tsx`
-   - Mantener `Sparkline` KPI cards — no tocar
+## 🔴 React App — Pendiente inmediato (código)
 
-## 🟡 React App — Seguridad / Infra
+1. **Push notifications backend** — Falta handler `self.addEventListener('push', ...)` en SW
+   + suscripción VAPID desde servidor. Solo el toggle UI existe.
 
-2. **Worker Cloudflare para Groq OCR** — sacar `fin_groq_api_key` del localStorage al backend Worker con secret
-3. **Fonts offline** — crear `/public/fonts/` con `.woff2` reales (Inter, Instrument Serif, JetBrains Mono) para PWA sin internet
-4. **Settings/Categories** — color picker por categoría (actualmente solo nombre)
-5. **Analisis** — comparativa vs mes anterior con datos reales (hoy: estática)
+2. **NewAccount → Supabase** — `NewAccount.tsx` tiene TODO comentado.
+   Conectar guardado real a tabla `cuentas`.
 
-## 🟡 React App — Features
+3. **Charts Recharts**
+   - `AreaChart` ingresos vs gastos 6M (datos reales ya disponibles en `incomeVsExp`)
+   - `DonutChart` top-5 en `Analisis.tsx` (actualmente BarChart horizontal)
 
-6. **Pareja** — invite real por email (Supabase auth.admin.inviteUserByEmail, actualmente: compartir household_id manual)
-7. **NewAccount** — conectar a Supabase (actualmente: Checkpoint B — TODO comentado en código)
-8. **useAuth.ts** — `onAuthStateChange` también puede beneficiarse de cache (actualmente: siempre llama resolveHousehold)
+4. **Pareja / invitación real** — `inviteUserByEmail` de Supabase auth.admin.
+   Actualmente: compartir household_id manual.
 
-## 🟡 Vanilla JS — Seguridad (sin cambios en sprint React)
+5. **Fonts offline PWA** — `/public/fonts/` con `.woff2` Inter, Instrument Serif,
+   JetBrains Mono para funcionar sin internet.
 
-9. **hCaptcha BUG-SEC2** — Supabase Dashboard → Auth → Attack Protection → pegar secret key
-10. **Google OAuth** — Cloud Console → anthonymarte12@gmail.com como test user aprobado
-11. **Push SW BUG-3** — agregar `self.addEventListener('push', ...)` en `service-worker.js`
+---
 
-## ⚪ Estratégico
+## 🟡 React App — Pulido / Features
 
-12. Modo desktop completo React App (breakpoints en tokens.css)
-13. `policy_acceptances` + opt-in legal (prereq Stripe)
-14. Stripe setup (`subscription_status` ya en `config_usuario`)
-15. Módulo Consultorio — Fase E (tablas en DB listas, falta UI React)
+6. Google Sign-In en Login (ya hay botón, falta flujo completo)
+7. Filtro tasa BCV/no-BCV en Buscar (requiere columna `rate_type` en query)
+8. Comparativa mes anterior en Análisis con datos reales (actualmente semi-hardcoded)
+9. Settings → color picker por categoría (actualmente solo nombre)
+10. Modo desktop completo (breakpoints en tokens.css)
+11. Exportación PDF / compartir por Telegram
+12. Bot Telegram para registrar movimientos y recibir reportes
+
+---
+
+## 🟡 Vanilla JS (rama `main`) — Bugs pendientes
+
+> La Vanilla JS quedó con mejoras aplicadas en esta sesión pero no es la app activa.
+> Si se decide mantenerla: mergear PR #1 en GitHub.
+
+- hCaptcha BUG-SEC2
+- Google OAuth test user aprobado
+- Push SW BUG-3

@@ -59,7 +59,6 @@ function TxnRow({ t, last, onTap }: { t: Transaction; last: boolean; onTap: () =
   const isSav = group === 'ahorro'
   const isTrf = t.tipo === 'Transferencia Interna'
   const color = isInc ? 'var(--pos)' : isSav || isTrf ? 'var(--info)' : 'var(--neg)'
-  const sign  = isInc ? '+' : isSav || isTrf ? (t.amount < 0 ? '−' : '') : '−'
   return (
     <div
       onClick={onTap}
@@ -98,7 +97,7 @@ function TxnRow({ t, last, onTap }: { t: Transaction; last: boolean; onTap: () =
         </div>
       </div>
       <div style={{ fontSize: 13, fontWeight: 600, color, whiteSpace: 'nowrap' }}>
-        {sign}{fmt(Math.abs(t.amount))}
+        {fmt(Math.abs(t.amount))}
       </div>
     </div>
   )
@@ -130,7 +129,6 @@ function RecRow({ t, last }: { t: Recurrente; last: boolean }) {
   const { fmt } = useFormat()
   const isInc = txnGroup(t.tipo) === 'ingreso'
   const color = isInc ? 'var(--pos)' : 'var(--neg)'
-  const sign  = isInc ? '+' : '−'
   return (
     <div style={{
       display: 'grid', gridTemplateColumns: '36px 1fr auto auto', gap: 8,
@@ -143,7 +141,7 @@ function RecRow({ t, last }: { t: Recurrente; last: boolean }) {
         <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginTop: 1 }}>Día {t.recDia} de cada mes</div>
       </div>
       <div style={{ fontSize: 12.5, fontWeight: 600, color, whiteSpace: 'nowrap' }}>
-        {sign}{fmt(Math.abs(t.amount))}
+        {fmt(Math.abs(t.amount))}
       </div>
     </div>
   )

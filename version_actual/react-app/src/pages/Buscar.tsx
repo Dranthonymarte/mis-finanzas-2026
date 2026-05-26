@@ -23,6 +23,7 @@ interface SearchRow {
   fecha:       string
   mes:         string
   cuenta_id:   string | null
+  rate_type:   string | null
 }
 
 const TIPOS = [
@@ -43,18 +44,19 @@ export default function Buscar() {
   const [filterFrom,  setFilterFrom]  = useState('')
   const [filterTo,    setFilterTo]    = useState('')
   const [filterCuenta, setFilterCuenta] = useState('')
+  const [filterBCV,   setFilterBCV]   = useState('')
   const [results, setResults] = useState<SearchRow[]>([])
   const [loading, setLoading] = useState(false)
 
   // Auto-focus on mount
   useEffect(() => { inputRef.current?.focus() }, [])
 
-  const activeFilterCount = [filterTipo, filterFrom, filterTo, filterCuenta].filter(Boolean).length
+  const activeFilterCount = [filterTipo, filterFrom, filterTo, filterCuenta, filterBCV].filter(Boolean).length
 
   // Debounced search
   useEffect(() => {
     const q = query.trim()
-    const hasFilters = !!(filterTipo || filterFrom || filterTo || filterCuenta)
+    const hasFilters = !!(filterTipo || filterFrom || filterTo || filterCuenta || filterBCV)
     if ((q.length < 2 && !hasFilters) || !householdId) {
       setResults([])
       setLoading(false)
@@ -64,7 +66,7 @@ export default function Buscar() {
     const timer = setTimeout(async () => {
       let qb = supabase
         .from('movimientos')
-        .select('id,descripcion,tipo,cat,subcat,amount,fecha,mes,cuenta_id')
+        .select('id,descripcion,tipo,cat,subcat,amount,fecha,mes,cuenta_id,rate_type')
         .eq('household_id', householdId)
         .is('deleted_at', null)
         .order('fecha', { ascending: false })
@@ -75,13 +77,15 @@ export default function Buscar() {
       if (filterFrom)   qb = qb.gte('fecha', filterFrom)
       if (filterTo)     qb = qb.lte('fecha', filterTo)
       if (filterCuenta) qb = qb.eq('cuenta_id', filterCuenta)
+      if (filterBCV === 'bcv')    qb = qb.eq('rate_type', 'bcv')
+      if (filterBCV === 'no-bcv') qb = qb.neq('rate_type', 'bcv')
 
       const { data } = await qb
       setResults((data ?? []) as SearchRow[])
       setLoading(false)
     }, 300)
     return () => clearTimeout(timer)
-  }, [query, filterTipo, filterFrom, filterTo, filterCuenta, householdId])
+  }, [query, filterTipo, filterFrom, filterTo, filterCuenta, filterBCV, householdId])
 
   const sel: React.CSSProperties = {
     background: 'var(--ink-3)', border: '1px solid var(--line)',
@@ -184,10 +188,18 @@ export default function Buscar() {
               <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginBottom: 4, letterSpacing: '.06em', textTransform: 'uppercase' }}>Hasta</div>
               <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} style={dateInput} />
             </div>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginBottom: 4, letterSpacing: '.06em', textTransform: 'uppercase' }}>Tasa</div>
+              <select value={filterBCV} onChange={e => setFilterBCV(e.target.value)} style={sel}>
+                <option value="">Todas</option>
+                <option value="bcv">Solo BCV</option>
+                <option value="no-bcv">Sin BCV</option>
+              </select>
+            </div>
             {activeFilterCount > 0 && (
               <div style={{ gridColumn: '1/-1' }}>
                 <button
-                  onClick={() => { setFilterTipo(''); setFilterFrom(''); setFilterTo(''); setFilterCuenta('') }}
+                  onClick={() => { setFilterTipo(''); setFilterFrom(''); setFilterTo(''); setFilterCuenta(''); setFilterBCV('') }}
                   style={{
                     width: '100%', padding: '7px 0', borderRadius: 10,
                     background: 'none', border: '1px solid var(--line)',

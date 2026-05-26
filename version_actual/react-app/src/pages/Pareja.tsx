@@ -24,10 +24,13 @@ export default function Pareja() {
   const userId      = useAuthStore(s => s.userId)
   const userName    = useAuthStore(s => s.userName)
 
-  const [members,  setMembers]  = useState<Member[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [email,    setEmail]    = useState('')
-  const [sent,     setSent]     = useState(false)
+  const [members,    setMembers]    = useState<Member[]>([])
+  const [loading,    setLoading]    = useState(true)
+  const [email,      setEmail]      = useState('')
+  const [sending,    setSending]    = useState(false)
+  const [sent,       setSent]       = useState(false)
+  const [sentEmail,  setSentEmail]  = useState('')
+  const [inviteErr,  setInviteErr]  = useState('')
 
   useEffect(() => {
     if (!householdId) { setLoading(false); return }
@@ -54,10 +57,29 @@ export default function Pareja() {
       })
   }, [householdId, userId, userName])
 
-  function handleInvite() {
-    if (!email.trim()) return
-    setSent(true)
-    setTimeout(() => { setSent(false); setEmail('') }, 2500)
+  async function handleInvite() {
+    const trimmed = email.trim()
+    if (!trimmed || sending) return
+    setSending(true)
+    setInviteErr('')
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: trimmed,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: { invited_by: householdId, household_id: householdId },
+        },
+      })
+      if (error) throw error
+      setSentEmail(trimmed)
+      setSent(true)
+      setEmail('')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al enviar invitación'
+      setInviteErr(msg)
+    } finally {
+      setSending(false)
+    }
   }
 
   const rolLabel = (role: string | null) => {
@@ -120,21 +142,37 @@ export default function Pareja() {
               }}
             />
             <button
-              onClick={handleInvite}
+              onClick={() => { void handleInvite() }}
+              disabled={sending || !email.trim()}
               style={{
                 padding: '9px 14px',
-                background: sent ? 'var(--pos)' : 'var(--amber)',
-                color: 'var(--ink-0)', border: 'none', borderRadius: 10,
-                fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'background .2s',
+                background: sent ? 'var(--pos)' : (sending ? 'var(--ink-3)' : 'var(--amber)'),
+                color: sent || sending ? 'var(--fg-mute)' : 'var(--ink-0)',
+                border: 'none', borderRadius: 10,
+                fontSize: 13, fontWeight: 600,
+                cursor: sending ? 'not-allowed' : 'pointer',
+                transition: 'background .2s',
                 whiteSpace: 'nowrap',
               }}
             >
-              {sent ? '✓ Enviado' : 'Invitar'}
+              {sending ? 'Enviando…' : sent ? '✓ Enviado' : 'Invitar'}
             </button>
           </div>
-          <div style={{ marginTop: 8, fontSize: 11, color: 'var(--fg-mute)' }}>
-            El enlace de invitación se enviará al correo indicado.
-          </div>
+          {sent && (
+            <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--pos)', fontWeight: 500 }}>
+              ✓ Invitación enviada a {sentEmail}
+            </div>
+          )}
+          {inviteErr && (
+            <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--neg)' }}>
+              {inviteErr}
+            </div>
+          )}
+          {!sent && !inviteErr && (
+            <div style={{ marginTop: 8, fontSize: 11, color: 'var(--fg-mute)' }}>
+              El enlace de invitación se enviará al correo indicado.
+            </div>
+          )}
         </div>
 
       </div>

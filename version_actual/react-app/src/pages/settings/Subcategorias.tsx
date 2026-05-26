@@ -63,11 +63,21 @@ export default function Subcategorias() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
   const [emojiMap,     setEmojiMap]     = useState<Record<string, string>>(readSubEmojiMap)
 
-  // All chips: show cats with subcats + always show activeCat
+  // All chips: ALL categories (discover where to add subcats), with count badge on those that have them
   const chipCats = Array.from(new Set([
-    ...catsWithSubs,
+    ...Object.entries(config.categorias).flatMap(([, cats]) => cats),
+    ...Object.keys(subcats),
     activeCat,
-  ])).filter(Boolean)
+  ])).sort((a, b) => {
+    const tipoOf = (cat: string) => {
+      for (const t of tipoOrder) {
+        if ((config.categorias[t] ?? []).includes(cat)) return tipoOrder.indexOf(t)
+      }
+      return tipoOrder.length
+    }
+    const ta = tipoOf(a), tb = tipoOf(b)
+    return ta !== tb ? ta - tb : a.localeCompare(b)
+  }).filter(Boolean)
 
   const list = subcats[activeCat] ?? []
 

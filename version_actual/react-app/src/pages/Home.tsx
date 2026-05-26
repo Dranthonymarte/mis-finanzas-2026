@@ -263,8 +263,10 @@ export default function Home() {
     .filter(a => !a.type.toUpperCase().includes('AHORRO'))
     .reduce((s, a) => s + (a.balanceUSD ?? a.balance), 0)
 
-  // ── Patrimonio = saldo disponible + me deben activo ──
-  const patrimony = saldoDisponible + meDebenActivo
+  // ── Patrimonio = TODAS las cuentas (incl. ahorro) + me deben ──
+  const totalActivos = (liveAccounts ?? [])
+    .reduce((s, a) => s + (a.balanceUSD ?? a.balance), 0)
+  const patrimony = totalActivos + meDebenActivo
 
   // ── Tasa ahorro = ahorro del mes / ingresos ──
   const savingsRate = kpiData.ingresos > 0
@@ -646,11 +648,11 @@ export default function Home() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
             <div>
               <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 4 }}>
-                Fondo de emergencia
+                Reserva recomendada
               </div>
               <div className="num" style={{ fontSize: 20, fontWeight: 700 }}>{fmt(emergencyBalance)}</div>
               <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 2 }}>
-                Este mes: {fmt(fondoEmergenciaMes)} (30% ingresos)
+                30% de ingresos acumulados · Este mes: {fmt(fondoEmergenciaMes)}
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
@@ -804,10 +806,13 @@ export default function Home() {
         const topCat       = topGastos[0]
         const topPct       = topCat && kpiData.gastos > 0 ? (topCat.value / kpiData.gastos) * 100 : 0
 
+        // savProxy: máx entre ahorro directo y superávit positivo del mes
+        const savProxy = Math.max(kpiData.ahorro, Math.max(0, kpiData.balance))
+        const savRateScore = kpiData.ingresos > 0 ? (savProxy / kpiData.ingresos) * 100 : 0
         // Score: superávit(25) + ahorro≥20%(25) + ef≥20%(25) + gastos<ingresos(25)
         const score = Math.round(
           (superavit > 0 ? 25 : 0) +
-          (savRate >= 20 ? 25 : savRate > 0 ? savRate / 20 * 25 : 0) +
+          (savRateScore >= 20 ? 25 : savRateScore > 0 ? savRateScore / 20 * 25 : 0) +
           (efPct >= 100 ? 25 : efPct / 100 * 25) +
           (kpiData.gastos < kpiData.ingresos ? 25 : 0)
         )

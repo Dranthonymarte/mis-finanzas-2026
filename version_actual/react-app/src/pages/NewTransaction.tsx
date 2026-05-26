@@ -384,6 +384,11 @@ export default function NewTransaction() {
               ⚡ Ajuste de saldo — no afecta ingresos/gastos
             </div>
           )}
+          {tasas.bcv > 0 && (
+            <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginTop: 3, paddingLeft: 2 }}>
+              Tasa BCV: {tasas.bcv.toFixed(2)} Bs/$
+            </div>
+          )}
         </div>
 
         <Rule />

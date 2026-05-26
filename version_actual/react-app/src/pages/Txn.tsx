@@ -545,6 +545,11 @@ export default function Txn() {
             </div>
           )}
           <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
+            {budgetCats.length === 0 && (
+              <div style={{ padding: '16px', textAlign: 'center', color: 'var(--fg-mute)', fontSize: 12 }}>
+                Sin presupuestos — toca "+ Agregar" para crear uno.
+              </div>
+            )}
             {budgetCats.map((cat, i) => {
               const limit  = config.presupuestos[cat]
               const spent  = spentByCat[cat] ?? 0

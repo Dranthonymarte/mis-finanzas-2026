@@ -65,7 +65,7 @@ export function useTransactions(mesId: string) {
             amount:    r.amount,
             date:      relativeDate(r.fecha),
             isoDate:   r.fecha,
-            time:      '—',
+            time:      '',
             author:    mapAuthor(r.author),
             accountId: r.cuenta_id ?? '',
             mes:       r.mes,

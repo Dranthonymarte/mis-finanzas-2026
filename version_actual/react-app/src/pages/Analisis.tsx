@@ -107,6 +107,7 @@ export default function Analisis() {
 
   const [openCat,       setOpenCat]       = useState<string | null>(null)
   const [ingresosOpen,  setIngresosOpen]  = useState(false)
+  const [gastosOpen,    setGastosOpen]    = useState(false)
 
   // ── Helpers ─────────────────────────────────────
   const txns     = liveTxns ?? []
@@ -258,8 +259,8 @@ export default function Analisis() {
             ]).map(k => {
               const isIng     = k.key === 'ing'
               const isGas     = k.key === 'gas'
-              const expanded  = isIng ? ingresosOpen : false
-              const toggle    = isIng ? () => setIngresosOpen(v => !v) : undefined
+              const expanded  = isIng ? ingresosOpen : isGas ? gastosOpen : false
+              const toggle    = isIng ? () => setIngresosOpen(v => !v) : isGas ? () => setGastosOpen(v => !v) : undefined
               return (
                 <div
                   key={k.label}
@@ -288,6 +289,18 @@ export default function Analisis() {
               )
             })}
           </div>
+
+          {/* ── Desglose gastos (expandible) ── */}
+          {gastosOpen && gastosPorCat.length > 0 && (
+            <div style={{ background: 'var(--ink-2)', border: '1px solid rgba(214,106,90,.3)', borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neg)', marginBottom: 10 }}>
+                  Gastos por categoría
+                </div>
+                <HBar data={gastosPorCat} color="var(--neg)" />
+              </div>
+            </div>
+          )}
 
           {/* ── Desglose ingresos (expandible) ── */}
           {ingresosOpen && (ingresosPorTipo.length > 0 || ingresosPorDesc.length > 0) && (

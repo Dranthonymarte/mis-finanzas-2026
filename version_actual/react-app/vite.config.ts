@@ -40,6 +40,7 @@ export default defineConfig({
         navigateFallback: '/index.html',
         cleanupOutdatedCaches: true,
         clientsClaim: true,
+        importScripts: ['sw-push-handler.js'],
       },
     }),
   ],

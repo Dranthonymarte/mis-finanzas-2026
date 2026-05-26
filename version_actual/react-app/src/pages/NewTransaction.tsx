@@ -10,6 +10,26 @@ import { useAuthStore } from '../store/auth'
 import { supabase } from '../lib/supabase'
 import { mesIdToDbKey, dateToMesId } from '../lib/mes'
 
+// ── Offline queue ──────────────────────────────────
+const QUEUE_KEY = 'mf_offline_queue'
+function queueOffline(mov: Record<string, unknown>) {
+  try {
+    const raw = localStorage.getItem(QUEUE_KEY)
+    const q: Record<string, unknown>[] = raw ? JSON.parse(raw) : []
+    localStorage.setItem(QUEUE_KEY, JSON.stringify([...q, mov]))
+  } catch { /* noop */ }
+}
+async function flushOfflineQueue() {
+  try {
+    const raw = localStorage.getItem(QUEUE_KEY)
+    if (!raw) return
+    const q: Record<string, unknown>[] = JSON.parse(raw)
+    if (!q.length) return
+    const { error } = await supabase.from('movimientos').insert(q)
+    if (!error) localStorage.removeItem(QUEUE_KEY)
+  } catch { /* noop */ }
+}
+
 // ── Métodos de pago ────────────────────────────────
 const METHODS = [
   'Pago móvil',
@@ -111,6 +131,14 @@ export default function NewTransaction() {
     } catch { /* ignore malformed */ }
     sessionStorage.removeItem('voz_prefill')
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Flush offline queue when online
+  useEffect(() => {
+    if (navigator.onLine) void flushOfflineQueue()
+    const onOnline = () => void flushOfflineQueue()
+    window.addEventListener('online', onOnline)
+    return () => window.removeEventListener('online', onOnline)
   }, [])
 
   // Set default account once — useRef prevents circular re-renders
@@ -231,6 +259,13 @@ export default function NewTransaction() {
     setSaved(true)
     const { error } = await supabase.from('movimientos').insert(mov)
     if (error) {
+      const isOffline = !navigator.onLine || error.message?.includes('network') || error.message?.includes('fetch')
+      if (isOffline) {
+        queueOffline(mov as Record<string, unknown>)
+        // Mostrar como guardado — se sincronizará cuando haya red
+        setTimeout(() => navigate(-1), 400)
+        return
+      }
       console.error('[NewTxn] insert error:', error.message)
       setSaved(false)
       return

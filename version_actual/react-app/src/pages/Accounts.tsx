@@ -53,12 +53,14 @@ function AccountCard({ acc, onClick }: { acc: Account; onClick: () => void }) {
       {/* sparkline + trend */}
       <div style={{ marginTop: 10, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <Sparkline data={acc.spark} color={acc.color} w={120} h={22} fill stroke={1.5} />
-        <div style={{
-          fontSize: 11.5, fontWeight: 600,
-          color: trendPos ? 'var(--pos)' : 'var(--neg)',
-        }}>
-          {trendPos ? '▲' : '▼'} {Math.abs(acc.trend)}%
-        </div>
+        {acc.trend !== 0 && (
+          <div style={{
+            fontSize: 11.5, fontWeight: 600,
+            color: trendPos ? 'var(--pos)' : 'var(--neg)',
+          }}>
+            {trendPos ? '▲' : '▼'} {Math.abs(acc.trend)}%
+          </div>
+        )}
       </div>
     </div>
   )

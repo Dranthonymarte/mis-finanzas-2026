@@ -29,7 +29,7 @@ function inferType(nombre: string | null, moneda: string): string {
   return 'CORRIENTE'
 }
 
-function mapCuenta(r: SupaCuenta, allMovs: MovSum[], bcv: number): Account {
+function mapCuenta(r: SupaCuenta, allMovs: MovSum[], bcv: number, prevMovs: MovSum[]): Account {
   let balance: number
 
   if (r.balance_override != null && r.balance_override_date != null) {
@@ -47,6 +47,14 @@ function mapCuenta(r: SupaCuenta, allMovs: MovSum[], bcv: number): Account {
 
   const balanceUSD = r.moneda === 'VES' && bcv > 0 ? balance / bcv : balance
 
+  // Trend: variación porcentual vs mes anterior
+  const prevBalance = prevMovs
+    .filter(m => m.cuenta_id === r.id)
+    .reduce((s, m) => s + (parseFloat(String(m.amount)) || 0), 0) + (r.saldo_inicial ?? 0)
+  const trend = prevBalance !== 0
+    ? Math.round(((balance - prevBalance) / Math.abs(prevBalance)) * 100)
+    : 0
+
   return {
     id:              r.id,
     type:            inferType(r.nombre, r.moneda),
@@ -56,7 +64,7 @@ function mapCuenta(r: SupaCuenta, allMovs: MovSum[], bcv: number): Account {
     balanceUSD,
     saldoInicial:    r.saldo_inicial ?? 0,
     balanceOverride: r.balance_override ?? null,
-    trend:           0,
+    trend,
     color:           r.color ?? '#58b26a',
     spark:           [],
   }
@@ -71,6 +79,10 @@ export function useAccounts() {
 
   const fetchData = useCallback(() => {
     if (!householdId) { setLoading(false); return }
+    const now = new Date()
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10)
+
     Promise.all([
       supabase
         .from('cuentas')
@@ -83,11 +95,19 @@ export function useAccounts() {
         .select('cuenta_id,amount,fecha')
         .eq('household_id', householdId)
         .is('deleted_at', null),
-    ]).then(([cuentasRes, movRes]) => {
+      supabase
+        .from('movimientos')
+        .select('cuenta_id,amount,fecha')
+        .eq('household_id', householdId)
+        .lt('fecha', thisMonthStart)
+        .gte('fecha', prevMonthStart)
+        .is('deleted_at', null),
+    ]).then(([cuentasRes, movRes, prevMovRes]) => {
       if (cuentasRes.error) { handleError(cuentasRes.error); setError(cuentasRes.error.message); setLoading(false); return }
-      const movData = (movRes.data ?? []) as MovSum[]
-      const cuentas = (cuentasRes.data as SupaCuenta[] ?? [])
-      setAccounts(cuentas.map(r => mapCuenta(r, movData, tasas.bcv)))
+      const movData     = (movRes.data     ?? []) as MovSum[]
+      const prevMovData = (prevMovRes.data ?? []) as MovSum[]
+      const cuentas     = (cuentasRes.data as SupaCuenta[] ?? [])
+      setAccounts(cuentas.map(r => mapCuenta(r, movData, tasas.bcv, prevMovData)))
       setLoading(false)
     })
   }, [householdId, tasas.bcv])

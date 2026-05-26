@@ -61,6 +61,7 @@ export default function NewAccount() {
     setSaving(true)
     const initialBalance = parseFloat(balance) || 0
     const { error } = await supabase.from('cuentas').insert({
+      id:           crypto.randomUUID(),
       nombre:       trimmed,
       moneda:       currency,
       saldo_inicial: initialBalance,

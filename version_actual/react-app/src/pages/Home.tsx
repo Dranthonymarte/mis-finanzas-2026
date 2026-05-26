@@ -177,68 +177,31 @@ export default function Home() {
   const { fmt, fmtShort }           = useFormat()
   const { meDebenActivo }           = useDineroFuera()
 
-  // ── Bar chart 6M: real data for prior 5 months ──
+  // ── Stats consolidadas: 5M historial + ahorro + ingresos históricos (1 RPC) ──
   interface MonthKPI { month: string; ingresos: number; gastos: number }
-  const [histKPIs, setHistKPIs] = useState<MonthKPI[]>([])
-  useEffect(() => {
-    if (!householdId) return
-    const MONTHS_5 = generateMeses(6).slice(0, 5)   // last 5 months (exclude current)
-    const incomeTipos = new Set(DEFAULTS.tipos.filter(t => t.esIngreso).map(t => t.nombre))
-
-    Promise.all(
-      MONTHS_5.map(m =>
-        supabase
-          .from('movimientos')
-          .select('tipo,amount')
-          .eq('household_id', householdId)
-          .eq('mes', m.dbKey)
-          .is('deleted_at', null)
-          .then(({ data }) => {
-            let ing = 0, gas = 0
-            for (const r of data ?? []) {
-              const v = Math.abs(parseFloat(String(r.amount)) || 0)
-              if (incomeTipos.has(r.tipo)) ing += v
-              else gas += v
-            }
-            return { month: m.label.split('.')[0], ingresos: ing, gastos: gas } as MonthKPI
-          })
-      )
-    ).then(setHistKPIs)
-  }, [householdId])
-
-  // ── Ahorro acumulado all-time (tipo "Ahorro en efectivo") ──
-  const [ahorroAcumulado, setAhorroAcumulado] = useState<number>(0)
-  useEffect(() => {
-    if (!householdId) return
-    supabase
-      .from('movimientos')
-      .select('amount')
-      .eq('household_id', householdId)
-      .eq('tipo', 'Ahorro en efectivo')
-      .is('deleted_at', null)
-      .then(({ data }) => {
-        const total = (data ?? []).reduce((s: number, r: { amount: number | string }) =>
-          s + (parseFloat(String(r.amount)) || 0), 0)
-        setAhorroAcumulado(total)
-      })
-  }, [householdId])
-
-  // ── Ingresos históricos acumulados all-time (para meta fondo emergencia) ──
+  const [histKPIs,          setHistKPIs]          = useState<MonthKPI[]>([])
+  const [ahorroAcumulado,   setAhorroAcumulado]   = useState<number>(0)
   const [ingresosHistoricos, setIngresosHistoricos] = useState<number>(0)
+
   useEffect(() => {
     if (!householdId) return
-    const incomeTipos = new Set(DEFAULTS.tipos.filter(t => t.esIngreso).map(t => t.nombre))
-    supabase
-      .from('movimientos')
-      .select('tipo,amount')
-      .eq('household_id', householdId)
-      .is('deleted_at', null)
-      .then(({ data }) => {
-        const total = (data ?? [])
-          .filter((r: { tipo: string }) => incomeTipos.has(r.tipo))
-          .reduce((s: number, r: { amount: number | string }) => s + Math.abs(parseFloat(String(r.amount)) || 0), 0)
-        setIngresosHistoricos(total)
-      })
+    const months5     = generateMeses(6).slice(0, 5)
+    const incomeTipos = DEFAULTS.tipos.filter(t => t.esIngreso).map(t => t.nombre)
+    supabase.rpc('get_home_stats', {
+      p_household_id: householdId,
+      p_income_tipos: incomeTipos,
+      p_months:       months5.map(m => m.dbKey),
+    }).then(({ data }) => {
+      if (!data) return
+      setAhorroAcumulado(parseFloat(String(data.ahorro_acumulado)) || 0)
+      setIngresosHistoricos(parseFloat(String(data.ingresos_historicos)) || 0)
+      const dbKeyToLabel = Object.fromEntries(months5.map(m => [m.dbKey, m.label.split(' ')[0]]))
+      const rows = (data.hist_kpis ?? []) as Array<{ mes: string; ingresos: number; gastos: number }>
+      setHistKPIs(months5.map(m => {
+        const row = rows.find(r => r.mes === m.dbKey)
+        return { month: dbKeyToLabel[m.dbKey] ?? m.dbKey, ingresos: row?.ingresos ?? 0, gastos: row?.gastos ?? 0 }
+      }))
+    })
   }, [householdId])
 
   // ── Fondo emergencia desde tabla fondo_emergencia ──

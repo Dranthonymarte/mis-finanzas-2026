@@ -6,10 +6,12 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sparkline from '../components/ui/Sparkline'
-import { type ChatMsg, MOCK_CHAT, fmt, txnGroup } from '../data/mock'
+import { type ChatMsg, MOCK_CHAT, txnGroup } from '../data/mock'
 import { currentMes, mesLabel } from '../lib/mes'
 import { useTransactions } from '../hooks/useTransactions'
 import { useAccounts } from '../hooks/useAccounts'
+import { usePrefsStore } from '../store/prefs'
+import { useFormat } from '../hooks/useFormat'
 
 // ── Groq config — routed via CF Pages Function /api/groq ──
 const GROQ_URL      = '/api/groq'
@@ -20,24 +22,59 @@ const GROQ_FALLBACK = 'llama-3.1-8b-instant'
 function buildContext(
   accounts: ReturnType<typeof useAccounts>['accounts'],
   txns: ReturnType<typeof useTransactions>['transactions'],
+  mesId: string,
+  fmtMoney: (n: number) => string,
 ): string {
   const accsLine = accounts
-    ? accounts.map(a => `${a.name}(${a.currency}):$${a.balance.toFixed(2)}`).join(' | ')
+    ? accounts.map(a => `${a.name}(${a.currency}):${fmtMoney(a.balance)}`).join(' | ')
     : 'cuentas no disponibles'
 
   const rateBCV = (() => {
     try { return JSON.parse(localStorage.getItem('mis_finanzas_tasas') || '{}').bcv || 36.50 } catch { return 36.50 }
   })()
 
-  const txLines = txns
-    ? txns.slice(-25).map(t => `${t.date}|${t.tipo.slice(0, 8)}|${t.cat}|${t.desc}|$${Math.abs(t.amount).toFixed(2)}`).join('\n')
-    : 'sin datos'
+  const txList = txns ?? []
 
-  const income   = txns ? txns.filter(t => txnGroup(t.tipo) === 'ingreso').reduce((s, t) => s + Math.abs(t.amount), 0) : 0
-  const expenses = txns ? txns.filter(t => txnGroup(t.tipo) === 'gasto').reduce((s, t) => s + Math.abs(t.amount), 0) : 0
-  const savings  = income - expenses
+  // Last 40 transactions with author for per-person analysis
+  const txLines = txList.length
+    ? txList.slice(-40).map(t =>
+        `${t.date}|${t.tipo}|${t.cat}|${t.desc}|${fmtMoney(Math.abs(t.amount))}|${t.author ?? 'anthony'}`
+      ).join('\n')
+    : 'sin movimientos este mes'
 
-  return `Cuentas: ${accsLine}\nBCV:${rateBCV}Bs/$ | Mes:${mesLabel(currentMes())} | Ing:${fmt(income)} Gas:${fmt(expenses)} Aho:${fmt(savings)}\n\nMovimientos recientes:\n${txLines}`
+  const income    = txList.filter(t => txnGroup(t.tipo) === 'ingreso').reduce((s, t) => s + Math.abs(t.amount), 0)
+  const expenses  = txList.filter(t => txnGroup(t.tipo) === 'gasto').reduce((s, t) => s + Math.abs(t.amount), 0)
+  const savings   = txList.filter(t => txnGroup(t.tipo) === 'ahorro').reduce((s, t) => s + Math.abs(t.amount), 0)
+  const netMonth  = income - expenses
+
+  // Per-author totals
+  const anthonyInc = txList.filter(t => txnGroup(t.tipo) === 'ingreso' && t.author !== 'isabel').reduce((s, t) => s + Math.abs(t.amount), 0)
+  const isabelInc  = txList.filter(t => txnGroup(t.tipo) === 'ingreso' && t.author === 'isabel').reduce((s, t) => s + Math.abs(t.amount), 0)
+
+  // Top expense categories
+  const catTotals: Record<string, number> = {}
+  txList.filter(t => txnGroup(t.tipo) === 'gasto').forEach(t => { catTotals[t.cat] = (catTotals[t.cat] ?? 0) + Math.abs(t.amount) })
+  const topCats = Object.entries(catTotals).sort(([, a], [, b]) => b - a).slice(0, 5)
+    .map(([cat, v]) => `${cat}:${fmtMoney(v)}`).join(', ')
+
+  return [
+    `=== DATOS REALES - ${mesLabel(mesId)} ===`,
+    `CUENTAS: ${accsLine}`,
+    `TASA BCV: ${rateBCV} Bs/$`,
+    ``,
+    `RESUMEN MES:`,
+    `  Ingresos totales: ${fmtMoney(income)}`,
+    `    - Anthony: ${fmtMoney(anthonyInc)}`,
+    `    - Isabel: ${fmtMoney(isabelInc)}`,
+    `  Gastos totales: ${fmtMoney(expenses)}`,
+    `  Ahorro del mes: ${fmtMoney(savings)}`,
+    `  Neto (Ing-Gas): ${fmtMoney(netMonth)}`,
+    `  Top categorías gastos: ${topCats || 'ninguna'}`,
+    ``,
+    `MOVIMIENTOS (últimos 40):`,
+    `[fecha|tipo|cat|descripción|monto|autor]`,
+    txLines,
+  ].join('\n')
 }
 
 // ── Call Groq API ──
@@ -132,8 +169,10 @@ export default function AI() {
   const [typing,   setTyping]   = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
+  const mesActivo = usePrefsStore(s => s.mesActivo)
+  const { fmt: fmtMoney } = useFormat()
   const { accounts } = useAccounts()
-  const { transactions } = useTransactions(currentMes())
+  const { transactions } = useTransactions(mesActivo || currentMes())
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -149,17 +188,20 @@ export default function AI() {
     setTyping(true)
 
     try {
-      const ctx = buildContext(accounts, transactions)
+      const ctx = buildContext(accounts, transactions, mesActivo || currentMes(), fmtMoney)
       const today = new Date().toLocaleDateString('es-VE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-      const systemMsg = `Eres el asistente financiero personal de Anthony Marte en Venezuela. Hoy es ${today}.
+      const systemMsg = `Eres el asistente financiero personal de Anthony Marte y su pareja Isabel, en Venezuela. Hoy es ${today}.
 
-DATOS FINANCIEROS:
+IMPORTANTE: Los datos financieros de abajo son REALES y precisos. Úsalos SIEMPRE para responder. NUNCA inventes cifras.
+
 ${ctx}
 
 INSTRUCCIONES:
 - Responde SIEMPRE en español venezolano natural y amigable
-- NUNCA digas que no puedes hacer algo ni pongas disclaimers
-- Da siempre números concretos de los datos reales
+- NUNCA digas que no tienes acceso a datos ni pongas disclaimers — los datos están arriba
+- Cita SIEMPRE los números exactos de los datos (no aproximados)
+- Si preguntan por cuentas, ingresos o gastos, usa SOLO los valores del resumen
+- Si preguntan de meses anteriores y no tienes datos, di cuál mes tienes disponible
 - Respuestas directas y concisas, máximo 350 palabras
 - Usa emojis ocasionalmente`
 

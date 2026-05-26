@@ -160,7 +160,7 @@ export default function Analisis() {
     )
   }, [txns])
 
-  // ── Ingresos: total + desglose por categoría ──
+  // ── Ingresos: total + desglose por tipo y por persona ──
   const ingresosTotal = useMemo(
     () => txns.reduce((s, t) => txnGroup(t.tipo) === 'ingreso' ? s + Math.abs(t.amount) : s, 0),
     [txns],
@@ -173,6 +173,20 @@ export default function Analisis() {
     }
     return Object.entries(map)
       .sort(([, a], [, b]) => b - a)
+      .map(([label, value]) => ({ label, value }))
+  }, [txns])
+
+  // ── Ingresos por descripción (salarios individuales) ──
+  const ingresosPorDesc = useMemo<BarEntry[]>(() => {
+    const map: Record<string, number> = {}
+    for (const t of txns) {
+      if (txnGroup(t.tipo) !== 'ingreso') continue
+      const key = t.desc || t.cat
+      map[key] = (map[key] ?? 0) + Math.abs(t.amount)
+    }
+    return Object.entries(map)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 8)
       .map(([label, value]) => ({ label, value }))
   }, [txns])
 
@@ -275,13 +289,25 @@ export default function Analisis() {
             })}
           </div>
 
-          {/* ── Desglose ingresos por tipo (expandible) ── */}
-          {ingresosOpen && ingresosPorTipo.length > 0 && (
-            <div style={{ background: 'var(--ink-2)', border: '1px solid rgba(88,178,106,.3)', borderRadius: 12, padding: '12px 14px' }}>
-              <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--pos)', marginBottom: 10 }}>
-                Desglose por fuente de ingreso
-              </div>
-              <HBar data={ingresosPorTipo} color="var(--pos)" />
+          {/* ── Desglose ingresos (expandible) ── */}
+          {ingresosOpen && (ingresosPorTipo.length > 0 || ingresosPorDesc.length > 0) && (
+            <div style={{ background: 'var(--ink-2)', border: '1px solid rgba(88,178,106,.3)', borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {ingresosPorDesc.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--pos)', marginBottom: 10 }}>
+                    Por salario / fuente
+                  </div>
+                  <HBar data={ingresosPorDesc} color="var(--pos)" />
+                </div>
+              )}
+              {ingresosPorTipo.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 10 }}>
+                    Por tipo de ingreso
+                  </div>
+                  <HBar data={ingresosPorTipo} color="var(--pos)" />
+                </div>
+              )}
             </div>
           )}
 

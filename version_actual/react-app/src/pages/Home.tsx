@@ -621,17 +621,17 @@ export default function Home() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 4 }}>
-                Reserva recomendada
+                Fondo de emergencia
                 <button onClick={() => setShowEfInfo(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-mute)', fontSize: 11, padding: '0 2px', lineHeight: 1 }} aria-label="Qué es esto">ℹ</button>
               </div>
               {showEfInfo && (
                 <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginBottom: 6, lineHeight: 1.5, maxWidth: 220 }}>
-                  Es el colchón financiero ideal: 30% de todos tus ingresos acumulados ({fmt(ingresosHistoricos)}). Cubre 3–4 meses de imprevistos si perdieras ingresos.
+                  Meta: cubrir 3–6 meses de gastos ({fmt(kpiData.gastos * 4)} aprox). Calcula: tus ingresos acumulados × 30% = {fmt(fondoEmergenciaTotal)}. Toca la meta arriba para ajustarla.
                 </div>
               )}
               <div className="num" style={{ fontSize: 20, fontWeight: 700 }}>{fmt(emergencyBalance)}</div>
               <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 2 }}>
-                30% de ingresos acumulados · Este mes: {fmt(fondoEmergenciaMes)}
+                Acumulado histórico · Aporte sugerido este mes: {fmt(fondoEmergenciaMes)}
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>

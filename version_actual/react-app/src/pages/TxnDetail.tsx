@@ -47,12 +47,6 @@ function txnColor(tipo: string, esIngreso: boolean): string {
   return 'var(--neg)'
 }
 
-function txnSign(esIngreso: boolean, tipo: string, amount: number): '+' | '−' | '' {
-  if (esIngreso) return '+'
-  if (tipo.includes('Ahorro') || tipo.includes('Transfer')) return amount < 0 ? '−' : ''
-  return '−'
-}
-
 function fmtAuthor(raw: string | null): string {
   if (!raw) return '—'
   const v = raw.toLowerCase()
@@ -150,7 +144,6 @@ export default function TxnDetail() {
   const tipoObj   = (config.tipos ?? []).find(t => t.nombre === txn.tipo) ?? { nombre: txn.tipo, esIngreso: false }
   const esIngreso = tipoObj.esIngreso
   const color     = txnColor(txn.tipo, esIngreso)
-  const sign      = txnSign(esIngreso, txn.tipo, txn.amount)
   const catC      = catColor(editMode ? editCat : txn.cat)
   const acc       = accounts?.find(a => a.id === txn.cuenta_id)
   const allCats   = config.categorias[editTipo || txn.tipo] ?? config.categorias[txn.tipo] ?? [txn.cat]
@@ -278,7 +271,7 @@ export default function TxnDetail() {
           </div>
           <div style={{ textAlign: 'center' }}>
             <div className="num" style={{ fontSize: 42, fontWeight: 700, color, letterSpacing: '-.02em', lineHeight: 1 }}>
-              {sign}{fmt(Math.abs(txn.amount))}
+              {fmt(Math.abs(txn.amount))}
             </div>
             <div style={{ fontSize: 15, fontWeight: 500, marginTop: 6 }}>
               {editMode ? editDesc : txn.descripcion}

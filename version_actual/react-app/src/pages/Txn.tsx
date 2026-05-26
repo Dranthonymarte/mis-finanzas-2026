@@ -158,9 +158,10 @@ export default function Txn() {
   const [closed,        setClosed]        = useState<Set<string>>(loadClosed)
   const [showFilters,   setShowFilters]   = useState(false)
   const [confirmClose,  setConfirmClose]  = useState(false)
-  const [addingBudget,  setAddingBudget]  = useState(false)
-  const [budgetCat,     setBudgetCat]     = useState('')
-  const [budgetAmt,     setBudgetAmt]     = useState('')
+  const [addingBudget,   setAddingBudget]   = useState(false)
+  const [budgetCat,      setBudgetCat]      = useState('')
+  const [budgetAmt,      setBudgetAmt]      = useState('')
+  const [showBudgetInfo, setShowBudgetInfo] = useState(false)
   const monthsRef = useRef<HTMLDivElement>(null)
 
   const isClosed = closed.has(activeMes)
@@ -467,8 +468,15 @@ export default function Txn() {
       {true && (
         <div style={{ padding: '20px 16px 4px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)' }}>
-              Presupuesto vs real
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)' }}>
+                Presupuesto vs real
+              </div>
+              <button
+                onClick={() => setShowBudgetInfo(v => !v)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, color: 'var(--fg-mute)', fontSize: 12, opacity: .6 }}
+                aria-label="Info presupuesto"
+              >ℹ</button>
             </div>
             <button
               onClick={() => setAddingBudget(v => !v)}
@@ -482,6 +490,12 @@ export default function Txn() {
               {addingBudget ? '✕ Cancelar' : '+ Agregar'}
             </button>
           </div>
+
+          {showBudgetInfo && (
+            <div style={{ background: 'rgba(224,168,74,.07)', border: '1px solid rgba(224,168,74,.2)', borderRadius: 10, padding: '10px 12px', marginBottom: 10, fontSize: 12, color: 'var(--fg-dim)', lineHeight: 1.5 }}>
+              Compara cuánto planificaste gastar por categoría vs lo que realmente gastaste este mes. Verde = dentro del límite, amarillo = cerca, rojo = excedido.
+            </div>
+          )}
 
           {addingBudget && (
             <div style={{ background: 'var(--ink-2)', border: '1px solid rgba(224,168,74,.3)', borderRadius: 14, padding: '12px 14px', marginBottom: 10 }}>

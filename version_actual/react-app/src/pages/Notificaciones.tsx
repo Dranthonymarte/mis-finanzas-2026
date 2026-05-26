@@ -8,6 +8,8 @@ import AppHeader from '../components/shell/AppHeader'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
 
+interface TelegramConn { telegram_chat_id: number | null; is_active: boolean }
+
 interface Notif {
   id:               string
   titulo:           string
@@ -34,25 +36,38 @@ const inpSt: React.CSSProperties = {
 
 export default function Notificaciones() {
   const userId     = useAuthStore(s => s.userId)
-  const [notifs,   setNotifs]   = useState<Notif[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [permission, setPermission] = useState<NotificationPermission>('default')
+  const [notifs,      setNotifs]      = useState<Notif[]>([])
+  const [loading,     setLoading]     = useState(true)
+  const [permission,  setPermission]  = useState<NotificationPermission>('default')
+  const [tgConn,      setTgConn]      = useState<TelegramConn | null>(null)
 
   // ── New notification form ──
-  const [showForm,   setShowForm]   = useState(false)
-  const [titulo,     setTitulo]     = useState('')
-  const [mensaje,    setMensaje]    = useState('')
-  const [sendAt,     setSendAt]     = useState(() => {
+  const [showForm,    setShowForm]    = useState(false)
+  const [titulo,      setTitulo]      = useState('')
+  const [mensaje,     setMensaje]     = useState('')
+  const [sendAt,      setSendAt]      = useState(() => {
     const d = new Date(); d.setMinutes(0, 0, 0); d.setHours(d.getHours() + 1)
     return d.toISOString().slice(0, 16)
   })
-  const [recurrente, setRecurrente] = useState(false)
-  const [recDias,    setRecDias]    = useState('7')
-  const [saving,     setSaving]     = useState(false)
+  const [recurrente,  setRecurrente]  = useState(false)
+  const [recDias,     setRecDias]     = useState('7')
+  const [canalTg,     setCanalTg]     = useState(false)
+  const [saving,      setSaving]      = useState(false)
 
   useEffect(() => {
     if ('Notification' in window) setPermission(Notification.permission)
   }, [])
+
+  useEffect(() => {
+    if (!userId) return
+    supabase
+      .from('telegram_connections')
+      .select('telegram_chat_id,is_active')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .maybeSingle()
+      .then(({ data }) => setTgConn(data as TelegramConn | null))
+  }, [userId])
 
   useEffect(() => {
     if (!userId) { setLoading(false); return }
@@ -91,7 +106,7 @@ export default function Notificaciones() {
         send_at:          new Date(sendAt).toISOString(),
         tipo:             'recordatorio',
         canal_push:       permission === 'granted',
-        canal_telegram:   false,
+        canal_telegram:   canalTg && !!tgConn,
         recurrente,
         recurrencia_dias: recurrente ? parseInt(recDias) || 7 : null,
         activo:           true,
@@ -139,6 +154,25 @@ export default function Notificaciones() {
               style={{ padding: '7px 13px', background: 'var(--amber)', color: 'var(--ink-0)', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
             >Activar</button>
           )}
+        </div>
+
+        {/* ── Telegram status ── */}
+        <div style={{
+          background: tgConn ? 'rgba(41,182,246,.06)' : 'var(--ink-2)',
+          border: `1px solid ${tgConn ? 'rgba(41,182,246,.25)' : 'var(--line)'}`,
+          borderRadius: 14, padding: '13px 14px',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <span style={{ fontSize: 22, flexShrink: 0 }}>📲</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600 }}>
+              {tgConn ? 'Telegram conectado' : 'Telegram no vinculado'}
+            </div>
+            <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginTop: 2 }}>
+              {tgConn ? 'Las alertas marcadas con 📲 llegan por Telegram' : 'Conéctalo en Configuración → Perfil → Telegram'}
+            </div>
+          </div>
+          {tgConn && <span style={{ fontSize: 11, color: 'var(--info)', fontWeight: 600 }}>● activo</span>}
         </div>
 
         {/* ── Scheduled notifications ── */}
@@ -199,6 +233,12 @@ export default function Notificaciones() {
               <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginBottom: 4 }}>Fecha y hora</div>
               <input type="datetime-local" value={sendAt} onChange={e => setSendAt(e.target.value)} style={inpSt} />
             </div>
+            {tgConn && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" checked={canalTg} onChange={e => setCanalTg(e.target.checked)} />
+                📲 Enviar por Telegram
+              </label>
+            )}
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
               <input type="checkbox" checked={recurrente} onChange={e => setRecurrente(e.target.checked)} />
               Recurrente

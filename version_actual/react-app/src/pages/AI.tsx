@@ -167,6 +167,7 @@ export default function AI() {
   const [input,    setInput]    = useState('')
   const [messages, setMessages] = useState<ChatMsg[]>(MOCK_CHAT)
   const [typing,   setTyping]   = useState(false)
+  const [showInfo, setShowInfo] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const mesActivo = usePrefsStore(s => s.mesActivo)
@@ -239,11 +240,23 @@ INSTRUCCIONES:
             <div style={{ fontSize: 14.5, fontWeight: 600, lineHeight: 1 }}>Asistente IA</div>
             <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', lineHeight: 1.2 }}>Groq · Llama 3.3</div>
           </div>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--pos)', fontWeight: 600 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--pos)', display: 'inline-block' }} />
-            en línea
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--pos)', fontWeight: 600 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--pos)', display: 'inline-block' }} />
+              en línea
+            </div>
+            <button
+              onClick={() => setShowInfo(v => !v)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, color: 'var(--fg-mute)', fontSize: 14, opacity: .65 }}
+              aria-label="Qué puede hacer el asistente"
+            >ℹ</button>
           </div>
         </div>
+        {showInfo && (
+          <div style={{ background: 'rgba(224,168,74,.07)', border: '1px solid rgba(224,168,74,.2)', borderRadius: 10, padding: '10px 12px', marginTop: 8, fontSize: 12, color: 'var(--fg-dim)', lineHeight: 1.6 }}>
+            Puedo darte <b>saldos exactos, resumen del mes, análisis de gastos, sugerencias de ahorro</b> y más — todo con tus datos reales. Solo pregúntame en lenguaje natural.
+          </div>
+        )}
       </div>
 
       {/* ── Chat area ── */}

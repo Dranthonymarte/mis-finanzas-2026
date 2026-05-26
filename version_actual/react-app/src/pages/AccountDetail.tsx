@@ -10,7 +10,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import Sparkline from '../components/ui/Sparkline'
 import Pill     from '../components/ui/Pill'
 import CatIcon  from '../components/ui/CatIcon'
-import { ArrowLeftIcon, TransferIcon, EditIcon, TrashIcon } from '../components/icons/Icons'
+import { ArrowLeftIcon, TransferIcon, EditIcon, TrashIcon, CheckIcon } from '../components/icons/Icons'
 import { txnGroup, type Transaction } from '../data/mock'
 import { useAccounts }     from '../hooks/useAccounts'
 import { useTransactions } from '../hooks/useTransactions'
@@ -20,7 +20,17 @@ import { useTasas }        from '../hooks/useTasas'
 import { useAuthStore }    from '../store/auth'
 import { supabase }        from '../lib/supabase'
 
-type TxnFilter = 'all' | 'ingresos' | 'gastos'
+type TxnFilter   = 'all' | 'ingresos' | 'gastos'
+type Currency    = 'USD' | 'BS'
+
+const COLORS = [
+  { label: 'Verde', value: '#58b26a' },
+  { label: 'Azul',  value: '#6a94c4' },
+  { label: 'Ámbar', value: '#e0a84a' },
+  { label: 'Teal',  value: '#3d8b82' },
+  { label: 'Rojo',  value: '#d66a5a' },
+  { label: 'Gris',  value: '#9aa0ab' },
+]
 
 /* ── Section label ── */
 function SLabel({ children }: { children: ReactNode }) {
@@ -97,6 +107,12 @@ export default function AccountDetail() {
   const [savingBalance,  setSavingBalance]  = useState(false)
   const [editingName,    setEditingName]    = useState(false)
   const [newName,        setNewName]        = useState('')
+  const [editMode,       setEditMode]       = useState(false)
+  const [editName,       setEditName]       = useState('')
+  const [editMoneda,     setEditMoneda]     = useState<Currency>('USD')
+  const [editColor,      setEditColor]      = useState('')
+  const [editSaldo,      setEditSaldo]      = useState('')
+  const [savingEdit,     setSavingEdit]     = useState(false)
 
   const { accounts } = useAccounts()
   const { transactions: liveTxns } = useTransactions(mesActivo)
@@ -182,6 +198,28 @@ export default function AccountDetail() {
     window.location.reload()
   }
 
+  function openEditMode() {
+    setEditName(acc?.name ?? '')
+    setEditMoneda((acc?.currency === 'BS' ? 'BS' : 'USD') as Currency)
+    setEditColor(acc?.color ?? COLORS[0].value)
+    setEditSaldo(String(acc?.saldoInicial ?? 0))
+    setEditMode(true)
+  }
+
+  async function saveEdit() {
+    if (!id || !editName.trim()) return
+    setSavingEdit(true)
+    await supabase.from('cuentas').update({
+      nombre:        editName.trim(),
+      moneda:        editMoneda,
+      color:         editColor,
+      saldo_inicial: parseFloat(editSaldo) || 0,
+    }).eq('id', id)
+    setSavingEdit(false)
+    setEditMode(false)
+    window.location.reload()
+  }
+
   async function handleDeleteAccount() {
     if (!id) return
     await supabase.from('cuentas').update({ activa: false }).eq('id', id)
@@ -189,6 +227,14 @@ export default function AccountDetail() {
   }
 
   /* ── Styles ── */
+  const segSt = (active: boolean): CSSProperties => ({
+    padding: '9px 0', flex: 1, borderRadius: 10, fontSize: 13, fontWeight: 600,
+    background: active ? 'var(--ink-3)' : 'transparent',
+    color:      active ? 'var(--amber)' : 'var(--fg-mute)',
+    border:     active ? '1.5px solid rgba(224,168,74,.27)' : '1px solid transparent',
+    transition: 'all .14s',
+  })
+
   const chipSt = (active: boolean): CSSProperties => ({
     padding: '5px 13px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
     background: active ? 'var(--amber)' : 'var(--ink-2)',
@@ -200,6 +246,131 @@ export default function AccountDetail() {
   const labelSt: CSSProperties = {
     fontSize: 9, fontWeight: 700, letterSpacing: '.12em',
     textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 4,
+  }
+
+  /* ── Edit mode (same form as NewAccount) ── */
+  if (editMode && acc) {
+    const trimmed = editName.trim()
+    return (
+      <div style={{ minHeight: '100dvh', background: 'var(--ink-1)', display: 'flex', flexDirection: 'column' }}>
+        {/* Top bar */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 12px 10px', paddingTop: 'max(12px, env(safe-area-inset-top))',
+          background: 'var(--ink-1)', position: 'sticky', top: 0, zIndex: 10,
+          borderBottom: '1px solid var(--line)',
+        }}>
+          <button
+            onClick={() => setEditMode(false)}
+            style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--ink-2)', border: '1px solid var(--line)', display: 'grid', placeItems: 'center', color: 'var(--fg-dim)', cursor: 'pointer' }}
+          ><ArrowLeftIcon /></button>
+          <div style={{ textAlign: 'center' }}>
+            <div className="font-display" style={{ fontSize: 18, lineHeight: 1 }}>Editar cuenta</div>
+            <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginTop: 2 }}>{acc.name}</div>
+          </div>
+          <button
+            onClick={() => void saveEdit()}
+            disabled={!trimmed || savingEdit}
+            style={{
+              width: 36, height: 36, borderRadius: 10, border: 'none',
+              background: trimmed ? 'var(--amber)' : 'var(--ink-3)',
+              display: 'grid', placeItems: 'center',
+              color: trimmed ? 'var(--ink-0)' : 'var(--fg-mute)',
+              cursor: trimmed ? 'pointer' : 'default',
+            }}
+          ><CheckIcon /></button>
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          {/* Preview card */}
+          <div style={{ padding: '14px 16px 0' }}>
+            <div style={{
+              borderRadius: 16, padding: '16px 16px 14px',
+              background: `radial-gradient(ellipse at 88% 12%, ${editColor}2e 0%, transparent 58%), var(--ink-2)`,
+              border: `1px solid ${editColor}30`,
+            }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: editColor, marginBottom: 4 }}>
+                {acc.type}
+              </div>
+              <div style={{ fontSize: 16.5, fontWeight: 600, color: trimmed ? 'var(--fg)' : 'var(--fg-mute)' }}>
+                {trimmed || 'Nombre de la cuenta'}
+              </div>
+              <div className="num" style={{ fontSize: 28, fontWeight: 700, color: editColor, marginTop: 6, letterSpacing: '-.02em' }}>
+                {editMoneda === 'USD' ? '$' : 'Bs '}
+                {editSaldo ? parseFloat(editSaldo).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+              </div>
+            </div>
+          </div>
+
+          {/* Name */}
+          <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)', padding: '18px 16px 8px' }}>Nombre</div>
+          <div style={{ padding: '0 16px' }}>
+            <input
+              type="text" value={editName} onChange={e => setEditName(e.target.value)}
+              placeholder="Nombre de la cuenta…" maxLength={40} autoFocus
+              style={{ width: '100%', background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px', fontSize: 14, color: 'var(--fg)', outline: 'none', fontFamily: 'var(--f-ui)', boxSizing: 'border-box' }}
+            />
+          </div>
+
+          {/* Moneda */}
+          <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)', padding: '18px 16px 8px' }}>Moneda</div>
+          <div style={{ padding: '0 16px' }}>
+            <div style={{ display: 'flex', gap: 5, background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, padding: 4 }}>
+              {(['USD', 'BS'] as Currency[]).map(c => (
+                <button key={c} onClick={() => setEditMoneda(c)} style={segSt(editMoneda === c)}>
+                  {c === 'USD' ? '🇺🇸  USD' : '🇻🇪  BS'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Saldo inicial */}
+          <div style={{ height: 1, background: 'var(--line)', margin: '16px 16px 0' }} />
+          <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)', padding: '18px 16px 8px' }}>Saldo inicial</div>
+          <div style={{ padding: '4px 16px 14px', textAlign: 'center' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+              <span style={{ fontFamily: 'var(--f-display)', fontSize: 36, color: editColor, opacity: 0.6, marginRight: 4, lineHeight: 1 }}>
+                {editMoneda === 'USD' ? '$' : 'Bs'}
+              </span>
+              <input
+                type="number" inputMode="decimal" min="0" step="0.01"
+                value={editSaldo} onChange={e => setEditSaldo(e.target.value)} placeholder="0.00"
+                style={{ fontFamily: 'var(--f-display)', fontSize: 46, lineHeight: 1, color: editColor, background: 'transparent', border: 'none', outline: 'none', width: '6ch', minWidth: '2ch', textAlign: 'left', letterSpacing: '-.02em' } as CSSProperties}
+              />
+            </div>
+          </div>
+
+          {/* Color */}
+          <div style={{ height: 1, background: 'var(--line)', margin: '0 16px' }} />
+          <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)', padding: '18px 16px 8px' }}>Color</div>
+          <div style={{ padding: '0 16px 6px', display: 'flex', gap: 12, alignItems: 'center' }}>
+            {COLORS.map(c => (
+              <button key={c.value} onClick={() => setEditColor(c.value)} aria-label={c.label}
+                style={{ width: 34, height: 34, borderRadius: '50%', background: c.value, border: editColor === c.value ? '3px solid var(--fg)' : '3px solid transparent', outline: editColor === c.value ? `2px solid ${c.value}` : 'none', outlineOffset: 2, transition: 'all .14s', cursor: 'pointer', flexShrink: 0 }}
+              />
+            ))}
+          </div>
+
+          {/* Save CTA */}
+          <div style={{ padding: '20px 16px', paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))' }}>
+            <button
+              onClick={() => void saveEdit()}
+              disabled={!trimmed || savingEdit}
+              style={{
+                width: '100%', padding: '16px', borderRadius: 16,
+                background: trimmed ? 'var(--amber)' : 'var(--ink-3)',
+                fontSize: 15.5, fontWeight: 700,
+                color: trimmed ? 'var(--ink-0)' : 'var(--fg-mute)',
+                letterSpacing: '.02em',
+                boxShadow: trimmed ? '0 4px 20px rgba(224,168,74,.35)' : 'none',
+              }}
+            >
+              {savingEdit ? 'Guardando…' : 'Guardar cambios'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -422,6 +593,22 @@ export default function AccountDetail() {
           >
             <TransferIcon />
             Transferir fondos
+          </button>
+        </div>
+
+        {/* ── Actions ── */}
+        <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button
+            onClick={openEditMode}
+            style={{
+              width: '100%', padding: '13px', borderRadius: 14,
+              background: 'transparent', border: '1px solid var(--line)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              color: 'var(--amber)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            <EditIcon />
+            Editar cuenta
           </button>
         </div>
 

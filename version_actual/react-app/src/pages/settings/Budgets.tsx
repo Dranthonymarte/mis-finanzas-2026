@@ -32,8 +32,15 @@ export default function Budgets() {
   // Cats that have a budget set
   const budgetCats = Object.keys(config.presupuestos)
 
-  // All expense cats that don't have a budget yet
-  const expenseCats = config.categorias['Gasto'] ?? []
+  // Collect all spendable expense categories: from config + actual transactions
+  const NON_BUDGET_TIPOS = new Set(['Ahorro en efectivo', 'Transferencia Interna', 'Prestamo pagado', 'Ajuste'])
+  const expenseTipos = config.tipos
+    .filter(t => !t.esIngreso && !NON_BUDGET_TIPOS.has(t.nombre))
+    .map(t => t.nombre)
+  const expenseCats = [...new Set([
+    ...expenseTipos.flatMap(tipo => config.categorias[tipo] ?? []),
+    ...Object.keys(spentByCat),
+  ])]
   const noBudgetCats = expenseCats.filter(c => !config.presupuestos[c])
 
   async function saveBudget(cat: string, value: number) {
@@ -113,19 +120,19 @@ export default function Budgets() {
                     </button>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <span style={{ fontSize: 12, color: over ? 'var(--neg)' : 'var(--fg-mute)' }}>
+                      {fmt(spent)} / {fmt(limit)}
+                    </span>
                     <button
                       onClick={() => { setEditCat(cat); setEditVal(String(limit)) }}
-                      style={{ fontSize: 12, color: over ? 'var(--neg)' : 'var(--fg-mute)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 2px' }}
-                    >
-                      {fmt(spent)} / {fmt(limit)}
-                    </button>
+                      title="Editar límite"
+                      style={{ width: 26, height: 26, borderRadius: 7, background: 'var(--ink-3)', border: '1px solid var(--line)', color: 'var(--fg-dim)', fontSize: 13, cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+                    >✎</button>
                     <button
                       onClick={() => removeBudget(cat)}
-                      style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(214,106,90,.1)', border: 'none', color: 'var(--neg)', fontSize: 14, cursor: 'pointer', display: 'grid', placeItems: 'center' }}
-                    >
-                      ×
-                    </button>
+                      style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(214,106,90,.1)', border: '1px solid rgba(214,106,90,.25)', color: 'var(--neg)', fontSize: 14, cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+                    >×</button>
                   </div>
                 )}
               </div>

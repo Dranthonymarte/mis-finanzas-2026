@@ -57,8 +57,9 @@ function TxnRow({ t, last, onTap }: { t: Transaction; last: boolean; onTap: () =
   const group = txnGroup(t.tipo)
   const isInc = group === 'ingreso'
   const isSav = group === 'ahorro'
-  const color = isInc ? 'var(--pos)' : isSav ? 'var(--info)' : 'var(--fg)'
-  const sign  = isInc ? '+' : '−'
+  const isTrf = t.tipo === 'Transferencia Interna'
+  const color = isInc ? 'var(--pos)' : isSav || isTrf ? 'var(--info)' : 'var(--neg)'
+  const sign  = isInc ? '+' : isSav || isTrf ? (t.amount < 0 ? '−' : '') : '−'
   return (
     <div
       onClick={onTap}
@@ -78,9 +79,9 @@ function TxnRow({ t, last, onTap }: { t: Transaction; last: boolean; onTap: () =
           )}
         </div>
         <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 2, display: 'flex', gap: 5, alignItems: 'center' }}>
-          <span>{t.cat}</span>
-          <span>·</span>
-          <span>{t.time}</span>
+          {t.cat && <span>{t.cat}</span>}
+          {t.cat && t.time && <span>·</span>}
+          {t.time && <span>{t.time}</span>}
           {t.author && (
             <>
               <span>·</span>

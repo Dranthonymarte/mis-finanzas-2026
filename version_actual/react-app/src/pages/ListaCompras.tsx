@@ -36,15 +36,33 @@ const inputSt: CSSProperties = {
 }
 
 // ── Lista detail view ──────────────────────────────
-function ListaDetail({ lista, onBack, onUpdate }: {
+function ListaDetail({ lista, onBack, onUpdate, onDelete }: {
   lista: ListaRow
   onBack: () => void
   onUpdate: (updated: ListaRow) => void
+  onDelete: (id: string) => void
 }) {
   const userId = useAuthStore(s => s.userId)
-  const [nombre,   setNombre]   = useState('')
-  const [cantidad, setCantidad] = useState(1)
-  const [saving,   setSaving]   = useState(false)
+  const [nombre,        setNombre]        = useState('')
+  const [cantidad,      setCantidad]      = useState(1)
+  const [saving,        setSaving]        = useState(false)
+  const [editingTitle,  setEditingTitle]  = useState(false)
+  const [titleInput,    setTitleInput]    = useState(lista.nombre)
+  const [confirmDel,    setConfirmDel]    = useState(false)
+
+  async function saveTitle() {
+    const trimmed = titleInput.trim()
+    if (!trimmed || trimmed === lista.nombre) { setEditingTitle(false); return }
+    await supabase.from('listas_compras').update({ nombre: trimmed, updated_at: new Date().toISOString() }).eq('id', lista.id)
+    onUpdate({ ...lista, nombre: trimmed })
+    setEditingTitle(false)
+  }
+
+  async function deleteLista() {
+    await supabase.from('listas_compras').update({ archivada: true }).eq('id', lista.id)
+    onDelete(lista.id)
+    onBack()
+  }
 
   async function persistItems(newItems: ListItem[]) {
     onUpdate({ ...lista, items: newItems })
@@ -95,7 +113,95 @@ function ListaDetail({ lista, onBack, onUpdate }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
-      <AppHeader title={lista.nombre} back onBack={onBack} />
+      <AppHeader
+        title={editingTitle ? 'Renombrar lista' : lista.nombre}
+        back
+        onBack={onBack}
+        right={!editingTitle && !confirmDel ? (
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={() => { setTitleInput(lista.nombre); setEditingTitle(true) }}
+              aria-label="Renombrar lista"
+              style={{
+                width: 32, height: 32, borderRadius: 9, border: '1px solid var(--line)',
+                background: 'var(--ink-2)', color: 'var(--fg-dim)', fontSize: 15,
+                display: 'grid', placeItems: 'center', cursor: 'pointer',
+              }}
+            >✎</button>
+            <button
+              onClick={() => setConfirmDel(true)}
+              aria-label="Eliminar lista"
+              style={{
+                width: 32, height: 32, borderRadius: 9,
+                border: '1px solid rgba(214,106,90,.3)',
+                background: 'rgba(214,106,90,.08)', color: 'var(--neg)', fontSize: 15,
+                display: 'grid', placeItems: 'center', cursor: 'pointer',
+              }}
+            >🗑</button>
+          </div>
+        ) : undefined}
+      />
+
+      {editingTitle && (
+        <div style={{
+          padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'center',
+          borderBottom: '1px solid var(--line)', background: 'var(--ink-1)',
+        }}>
+          <input
+            type="text"
+            value={titleInput}
+            onChange={e => setTitleInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') saveTitle(); if (e.key === 'Escape') setEditingTitle(false) }}
+            autoFocus
+            style={inputSt}
+          />
+          <button
+            onClick={saveTitle}
+            style={{
+              padding: '8px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+              background: 'var(--amber)', color: 'var(--ink-0)', border: 'none', cursor: 'pointer', flexShrink: 0,
+            }}
+          >Guardar</button>
+          <button
+            onClick={() => setEditingTitle(false)}
+            style={{
+              padding: '8px 10px', borderRadius: 10, fontSize: 13,
+              background: 'var(--ink-3)', color: 'var(--fg-dim)', border: '1px solid var(--line)', cursor: 'pointer', flexShrink: 0,
+            }}
+          >✕</button>
+        </div>
+      )}
+
+      {confirmDel && (
+        <div style={{
+          margin: '12px 16px', padding: '16px',
+          background: 'rgba(214,106,90,.08)', border: '1px solid rgba(214,106,90,.3)',
+          borderRadius: 14, display: 'flex', flexDirection: 'column', gap: 12,
+        }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fg)' }}>
+            ¿Eliminar "{lista.nombre}"?
+          </div>
+          <div style={{ fontSize: 12.5, color: 'var(--fg-mute)' }}>
+            Esta acción no se puede deshacer. Los ítems de la lista se perderán.
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={deleteLista}
+              style={{
+                flex: 1, padding: '9px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                background: 'var(--neg)', color: '#fff', border: 'none', cursor: 'pointer',
+              }}
+            >Sí, eliminar</button>
+            <button
+              onClick={() => setConfirmDel(false)}
+              style={{
+                flex: 1, padding: '9px', borderRadius: 10, fontSize: 13,
+                background: 'var(--ink-3)', color: 'var(--fg-dim)', border: '1px solid var(--line)', cursor: 'pointer',
+              }}
+            >Cancelar</button>
+          </div>
+        </div>
+      )}
 
       <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
 
@@ -307,7 +413,7 @@ export default function ListaCompras() {
     supabase
       .from('listas_compras')
       .select('id,user_id,household_id,nombre,items,activa,archivada,updated_at')
-      .eq('user_id', userId)
+      .eq('household_id', householdId)
       .eq('archivada', false)
       .order('updated_at', { ascending: false })
       .then(({ data, error }) => {
@@ -345,12 +451,18 @@ export default function ListaCompras() {
     setSelected(updated)
   }
 
+  function handleDelete(id: string) {
+    setListas(prev => prev.filter(l => l.id !== id))
+    setSelected(null)
+  }
+
   if (selected) {
     return (
       <ListaDetail
         lista={selected}
         onBack={() => setSelected(null)}
         onUpdate={handleUpdate}
+        onDelete={handleDelete}
       />
     )
   }

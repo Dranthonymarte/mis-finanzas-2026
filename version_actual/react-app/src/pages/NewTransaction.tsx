@@ -253,7 +253,9 @@ export default function NewTransaction() {
       fecha,
       author:       autor,
       rate_type:    'bcv' as const,
+      rate_bcv:     rateBCV > 0 ? rateBCV : null,
       cuenta_id:    account || null,
+      notas:        notes || null,
       // NOTE: 'recurrente' is NOT a DB column — stored in config.recurrentes JSONB
     }
     setSaved(true)

@@ -165,17 +165,6 @@ export default function Analisis() {
     () => txns.reduce((s, t) => txnGroup(t.tipo) === 'ingreso' ? s + Math.abs(t.amount) : s, 0),
     [txns],
   )
-  const ingresosPorCat = useMemo<BarEntry[]>(() => {
-    const map: Record<string, number> = {}
-    for (const t of txns) {
-      if (txnGroup(t.tipo) !== 'ingreso') continue
-      const key = t.cat || t.tipo
-      map[key] = (map[key] ?? 0) + Math.abs(t.amount)
-    }
-    return Object.entries(map)
-      .sort(([, a], [, b]) => b - a)
-      .map(([label, value]) => ({ label, value }))
-  }, [txns])
   const ingresosPorTipo = useMemo<BarEntry[]>(() => {
     const map: Record<string, number> = {}
     for (const t of txns) {
@@ -277,13 +266,13 @@ export default function Analisis() {
             ))}
           </div>
 
-          {/* ── Desglose ingresos por categoría (se expande al tap) ── */}
-          {ingresosOpen && ingresosPorCat.length > 0 && (
+          {/* ── Desglose ingresos por tipo (se expande al tap) ── */}
+          {ingresosOpen && ingresosPorTipo.length > 0 && (
             <div style={{ background: 'var(--ink-2)', border: '1px solid var(--pos)30', borderRadius: 12, padding: '12px 14px' }}>
               <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--pos)', marginBottom: 10 }}>
-                Ingresos por categoría
+                Por tipo de ingreso
               </div>
-              <HBar data={ingresosPorCat} color="var(--pos)" />
+              <HBar data={ingresosPorTipo} color="var(--pos)" />
             </div>
           )}
 

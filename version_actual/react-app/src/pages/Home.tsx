@@ -102,10 +102,12 @@ function PillBtn({
 function TxnRowPreview({ t, last }: { t: Transaction; last: boolean }) {
   const { fmt }  = useFormat()
   const navigate = useNavigate()
-  const isInc = txnGroup(t.tipo) === 'ingreso'
-  const isSav = txnGroup(t.tipo) === 'ahorro'
-  const color = isInc ? 'var(--pos)' : isSav ? 'var(--info)' : 'var(--fg)'
-  const sign  = isInc ? '+' : '−'
+  const group = txnGroup(t.tipo)
+  const isInc = group === 'ingreso'
+  const isSav = group === 'ahorro'
+  const isTrf = t.tipo === 'Transferencia Interna'
+  const color = isInc ? 'var(--pos)' : isSav || isTrf ? 'var(--info)' : 'var(--neg)'
+  const sign  = isInc ? '+' : isSav || isTrf ? (t.amount < 0 ? '−' : '') : '−'
   return (
     <div
       onClick={() => navigate(`/txn/${t.id}`)}
@@ -121,9 +123,9 @@ function TxnRowPreview({ t, last }: { t: Transaction; last: boolean }) {
           {t.desc}
         </div>
         <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 2, display: 'flex', gap: 5, alignItems: 'center' }}>
-          <span>{t.cat}</span>
-          <span>·</span>
-          <span>{t.time}</span>
+          {t.cat && <span>{t.cat}</span>}
+          {t.cat && t.time && <span>·</span>}
+          {t.time && <span>{t.time}</span>}
           {t.author && (
             <>
               <span>·</span>
@@ -260,6 +262,8 @@ export default function Home() {
     const cur = mesLabel(mesActivo).split(' ')[0]
     return [...base, { month: cur, ingresos: kpiData.ingresos, gastos: kpiData.gastos }]
   }, [histKPIs, kpiData.ingresos, kpiData.gastos, mesActivo])
+
+  const [showEfInfo, setShowEfInfo] = useState(false)
 
   // ── Fondo emergencia = 30% de ingresos históricos acumulados ──
   // No asociado a cuentas. Reserva automática calculada sobre ingresos.
@@ -610,9 +614,15 @@ export default function Home() {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
             <div>
-              <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 4 }}>
                 Reserva recomendada
+                <button onClick={() => setShowEfInfo(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-mute)', fontSize: 11, padding: '0 2px', lineHeight: 1 }} aria-label="Qué es esto">ℹ</button>
               </div>
+              {showEfInfo && (
+                <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginBottom: 6, lineHeight: 1.5, maxWidth: 220 }}>
+                  Es el colchón financiero ideal: 30% de todos tus ingresos acumulados ({fmt(ingresosHistoricos)}). Cubre 3–4 meses de imprevistos si perdieras ingresos.
+                </div>
+              )}
               <div className="num" style={{ fontSize: 20, fontWeight: 700 }}>{fmt(emergencyBalance)}</div>
               <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 2 }}>
                 30% de ingresos acumulados · Este mes: {fmt(fondoEmergenciaMes)}

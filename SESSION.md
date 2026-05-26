@@ -1,393 +1,99 @@
 # SESSION.md — Mis Finanzas 2026
-*Actualizar después de cada corrección considerable*
 
 ---
 
-## SESIÓN — 18 May 2026 (FASE 4 — PWA instalable + modelo household REAL + RLS + P1.1)
-
-📊 **Modelo: Opus** (arquitectura datos/RLS, decisiones top-3)
-
-### Hecho y pusheado (rama develop = react-preview)
-```
-a71cf9b fix(pwa): _redirects + _headers (instalabilidad Cloudflare Pages)
-f49ee9e fix(pwa): iconos PNG reales (replica config vanilla instalable)
-85b72dc docs+data: modelo household-scoped (CLAUDE.md+SCHEMA) + migracion backfill
-1471294 fix(data): useAuth resuelve household + reads household_id + RLS prod
-5f62870 feat(dinero-fuera): CRUD completo Me deben/Yo debo/Pagados + useDineroFuera
-```
-
-### Verdad del modelo de datos (verificada en Supabase live — CLAUDE.md ya corregido)
-- Anthony uid `fa3f7b3b` = owner household `fa3f7b3b`. Isabel uid
-  `455c23cd` = **partner/accepted** del MISMO household `fa3f7b3b`
-  (tiene household propio legacy `d806a2b6` SIN uso — ignorar).
-- Datos (`movimientos`,`cuentas`,`dinero_fuera`) scoped por `household_id`.
-  `config_usuario`/`fondo_emergencia`/`tasas` son per-user (sin col
-  household_id) — quedan correctos vía householdId resuelto = fa3f7b3b.
-- **Migraciones en PRODUCCIÓN aplicadas (confirmadas por Anthony):**
-  1. Backfill: 240 movimientos + 4 cuentas (owner, household_id NULL→fa3f7b3b). 0 NULL restante.
-  2. `active_household_id()` ahora determinista: `ORDER BY CASE role WHEN 'partner' THEN 0 WHEN 'owner' THEN 1 ELSE 2 END LIMIT 1`.
-  3. RLS `movimientos_household` + `dinero_fuera_household`: `user_id` → `household_id = active_household_id()` (cuentas ya lo era).
-  - Verificado: Anthony e Isabel → fa3f7b3b. 611 mov activos, 13 cuentas, 10 dinero_fuera.
-- `useAuth`: resuelve householdId de household_members (prefiere partner),
-  cache-first, NO bloqueante, sin provisionHousehold (no regresa 9b9c0a8).
-
-### Asunción documentada (P1.1 — confirmar con Anthony)
-`tipo='prestamo'` = **Me deben** · `tipo='deuda'` = **Yo debo**. El
-paréntesis del prompt estaba invertido; lo binding ("Luis Eduardo en
-me deben") coincide con prestamo=me deben. Si Anthony dice lo contrario
-→ invertir labels en DineroFuera.tsx + useDineroFuera.ts (trivial).
-
-### PENDIENTE — próxima sesión (orden estricto). 📊 Modelo: Opus
-**Verif. móvil de Anthony primero:** (a) PWA instalable en Chrome Android
-(deploy `5f62870` o posterior; incógnito; ⋮→Instalar — Chrome ya NO da
-banner automático); (b) Anthony e Isabel ven los MISMOS 611 mov / mismo
-patrimonio; (c) DineroFuera: crear/editar/eliminar, Cashea editable,
-Luis Eduardo en "Me deben".
-
-1. **P1.2 Patrimonio Neto** (`Home.tsx` ~243-249): fórmula correcta =
-   `saldo_cuentas_y_billeteras + fondo_emergencia + ahorros_acumulados +
-   meDebenActivo`. `meDebenActivo` ya disponible vía
-   `useDineroFuera().meDebenActivo` (USD). Saldo disponible (Dashboard)
-   debe EXCLUIR fondo de emergencia. Coherencia patrimonio↔saldo. Cuentas
-   DEBT excluidas del balance. Verificar `useAccounts` balanceUSD.
-2. **P1.3 Presupuesto**: identificar error exacto ANTES de tocar
-   (consultar `BUGS.md`, buscar entrada presupuesto/budget; revisar
-   `pages/settings/Budgets.tsx` + `Txn.tsx` + `useConfig` presupuestos).
-   Corregir de raíz.
-3. **P1.4 Groq (ACCIÓN ANTHONY, no código):** Cloudflare Pages →
-   proyecto react-preview → Settings → Environment variables → Production
-   → añadir `VITE_GROQ_API_KEY` = (key de console.groq.com). Sin esto la
-   IA no funciona en prod (`.env.local` es gitignored). Confirmado uso en
-   `src/pages/AI.tsx:18`.
-4. **P2 (2.1–2.7):** 2.1 Fondo emergencia editable/integrado · 2.2
-   autologin · 2.3 Subcat/Cat filtro+edición (prefijo 2 letras bug) ·
-   2.4 Lista de compras rediseño completo (Google Maps) · 2.5 Dashboard
-   cards info+reorder (dashboard_order jsonb) · 2.6 Análisis ingresos ·
-   2.7 botón "Obtener tasa BCV" en NewTransaction. Commit atómico+push
-   por feature; pedir verificación a Anthony entre bloques.
-5. **P3:** auditoría tabla de los 28 bugs de BUGS.md (solo tras confirmar).
-
-### Reglas activas de esta línea de trabajo
-- Reads dinero por `household_id`; inserts `user_id=auth.uid()` (creador)
-  + `household_id=householdId`. NUNCA reintroducir provisionHousehold.
-- `npm run build` verde antes de cada push. Commit atómico por bloque.
-- Claude NO deploya (wrangler/CF lo hace Anthony). Push develop+react-preview OK.
-
----
-
-## SESIÓN — 18 May 2026 (FASE 3.2 — auth loop FIX real + Lista/Subcat/Cat)
-
-📊 **Modelo: Opus**
-
-### Crítico resuelto de raíz (commit 9831108)
-- **Refresh→login/loop PERSISTÍA** porque en `d3a2983` yo había puesto
-  `storageKey:'mis-finanzas-sb-auth'` en `supabase.ts` → invalidó la sesión
-  persistida (Supabase la buscaba en key nueva vacía). **REVERTIDO** al
-  storageKey por defecto. Además `onAuthStateChange` ahora SOLO limpia en
-  `SIGNED_OUT` (antes limpiaba ante cualquier null transitorio →
-  ping-pong de redirects). `getSession().catch()` → spinner nunca colgado.
-
-### Integrado (commit siguiente)
-- **Lista de compras**: causa de "no funciona" = filtraba `household_id`
-  (el householdId de household_members ≠ key real). Fix → filtra `user_id`
-  (= auth uid, como movimientos). Tabla `listas_compras` YA existía (la usa
-  la app vieja). Añadido: precio editable por ítem, total estimado, total
-  pendiente, "limpiar comprados".
-- **Categorías**: añadido rename inline (faltaba "modificar"); al renombrar
-  migra también la key en `subcategorias` para coherencia.
-- **Subcategorías**: añadido filtro de categoría (búsqueda). CRUD ya
-  funcionaba (updateConfig optimista arreglado en FASE 3).
-
-### Hallazgos de esquema (para próxima sesión, SIN migración)
-- `config_usuario` ya tiene: `dashboard_order` (jsonb) → reordenar cards;
-  `emergency_fund_base/goal`, `ef_manual_base`, `ef_auto_contrib`,
-  `ef_reset_date` → lógica fondo emergencia; `cat_emojis`, `cat_rules`.
-- Tabla `fondo_emergencia` (por mes) + `listas_compras` + `dinero_fuera`
-  (10 filas) ya existen. NINGUNA requiere migración.
-
-### Cierre FASE 3.2 — commits finales (rama develop = react-preview)
-```
-9831108  fix(auth): revertir storageKey + endurecer onAuthStateChange
-f1e689a  feat(config): Lista de compras + Categorías rename + Subcat filtro
-9b9c0a8  fix(auth): CRÍTICO householdId=userId, sin provisionHousehold
-         (datos desconfigurados + loop + carga lenta) — cache-first 3.5s
-85e856f  feat(pwa): captura global beforeinstallprompt + Instalar app (More)
-```
-HEAD `85e856f` pusheado a `develop` y `react-preview`. Build ✓ dist/sw.js.
-
-### Pendiente próxima sesión (NO hecho — columnas listas, sin migración)
-Ver `PENDIENTES.md` §1-5:
-- Fondo emergencia (cols `emergency_fund_*`, `ef_*` en config_usuario)
-- Dashboard iconos info + reordenar (col `dashboard_order`)
-- Auditoría quirúrgica 28 bugs (código + Supabase)
-- Groq prod: `VITE_GROQ_API_KEY` en CF Pages env (acción Anthony)
-- Verificación móvil del deploy `85e856f`
-
----
-
-## SESIÓN — 18 May 2026 (FASE 3 — críticos: PWA, auth refresh, patrimonio, sheets)
-
-📊 **Modelo: Opus** (debugging causa-raíz multi-archivo)
-
-### Causas raíz encontradas y corregidas
-1. **PWA no instalable** — `vite-plugin-pwa` estaba configurado pero `main.tsx`
-   NUNCA llamaba `registerSW()` → cero service worker en runtime → Android
-   Chrome no ofrece "Instalar". Fix: `registerSW({immediate:true})` + `src/vite-env.d.ts`
-   + manifest enriquecido (id, scope, maskable). Build genera `dist/sw.js` ✓
-2. **Refresh → /login + "autologin" + "conexión tardó"** — el timer de 5s en
-   `useAuth` disparaba `setAuthReady()` antes de resolver `getSession()`/household
-   → RequireAuth flash-redirect a /login → al resolver sesión, RequireNoAuth
-   rebota a / (percibido como autologin). Fix: `authReady`+`isAuthenticated` se
-   fijan YA desde `getSession()` (lectura local, sin esperar DB); household
-   resuelve en background; timer solo catastrófico 8s; `INITIAL_SESSION` skip
-   para no duplicar buildSession. `supabase.ts`: auth config explícita.
-3. **Candado/sheets "capa transparente sin diálogo"** — `.page-slide-*` aplica
-   `transform` → se vuelve containing-block de `position:fixed` → la hoja se
-   renderiza al fondo del scroll, no del viewport. Fix: `<Sheet>` con
-   `createPortal` a `document.body` (Txn candado, More logout, DineroFuera).
-4. **Patrimonio/Saldo incongruentes** — `useAccounts` sumaba montos sin
-   normalizar moneda; Home filtraba solo `currency==='USD'`. Fix: `balanceUSD`
-   (VES÷BCV) en useAccounts; Home patrimonio = Σ todas; saldo = Σ sin AHORRO;
-   `fmt()` convierte USD→moneda activa. Quitados pills mock "+$342.18".
-5. **Tasa manual imposible de escribir** — `parseFloat(e.target.value)||tasas.bcv`
-   en cada tecla → input vacío/parcial resnapeaba a tasa DB. Fix: input
-   string-backed (`rateStr`), parse solo si válido, normaliza en blur.
-6. **DineroFuera vacío** — datos reales están en `movimientos`
-   (tipo Prestamo recibido/pagado), no en tabla `dinero_fuera`. Fix: merge
-   derivado read-only agrupado por descripción (Luis Eduardo/Prima Isa).
-7. **Analisis ingresos** — revertido group-by-desc (generaba entradas basura);
-   ahora Total + desglose Fijo·Anthony / Fijo·Isabel / Otros (por `author`).
-
-### Pendientes reportados NO resueltos esta sesión
-- Groq en producción: `VITE_GROQ_API_KEY` está en `.env.local` (gitignored) →
-  **NO existe en build de Cloudflare Pages**. Requiere setear la env var en el
-  dashboard de CF Pages (acción de Anthony, no código).
-- Iconos info por card + reordenar dashboard cards (no integrado aún)
-- Subcategorías/Categorías: filtro por categoría + CRUD igual que Tipos
-- Lista de compras: rediseño + lógica + tablas Supabase (no integrado)
-- Fondo emergencia: lógica completa + integración dinero-fuera/ahorros
-- Presupuestos: validar en runtime tras fix de updateConfig optimista
-
----
-
-## SESIÓN — 18 May 2026 (fix build CF Pages + CLAUDE.md React App)
-
-📊 **Modelo próxima sesión: Sonnet 4.6**
-
-### Qué se hizo
-1. **fix(build) BUG-R27** — `MovSum.total → MovSum.amount` en `useAccounts.ts`
-   - Error TS bloqueaba TODOS los deploys desde commit `9fe7992`
-   - 1 línea cambiada. Build: ✅ 0 errores, 694 módulos, 28s
-2. **docs(claude)** — CLAUDE.md actualizado con contexto React App completo
-   - Stack React, reglas críticas (householdId, subcat, soft-delete, mes)
-   - Arquitectura de carpetas, TypeScript strict, git push PowerShell
-   - Versión: 25 Abr → 18 May 2026
-
-### Commits esta sesión
-```
-8faba93 docs(claude): añadir contexto React App v1.0.3 a CLAUDE.md
-f6e7262 fix(build): MovSum.total → MovSum.amount — resuelve error TS en CF Pages
-```
-
-### Estado post-sesión
-| Item | Estado |
-|------|--------|
-| Build React App | ✅ 0 errores |
-| CF Pages deploy | ✅ auto-build disparado (react-preview) |
-| CLAUDE.md | ✅ Actualizado con contexto React App |
-| BUG-R27 (MovSum) | ✅ Resuelto |
-
-### PRÓXIMO PASO
-```
-Leer: CLAUDE.md + MORNING_BRIEF.md
-
-PENDIENTES prioritarios:
-1. Verificar deploy en CF Pages (react-preview)
-2. Worker Cloudflare para Groq OCR (sacar fin_groq_api_key del localStorage)
-3. Fonts offline PWA — /public/fonts/ woff2
-4. Settings/Categories — color picker por categoría
-5. Analisis — comparativa mes anterior real
-```
-
----
-
-## SESIÓN — 17 May 2026 sesión 2 (sprint 27 bugs React App + auth fast-path)
-
-📊 **Modelo próxima sesión: Sonnet 4.6** — Charts recharts (implementación con referencia visual)
-
-### Qué se hizo
-1. **PASO 0 — Fix ID en queries**
-   - `useAccounts.ts`: cambiado `userId` → `householdId` en query cuentas (BUG-R23 `0153570`)
-   - Isabel ahora ve sus cuentas correctamente
-2. **perf(auth) — login instantáneo en F5** (`5e672eb`)
-   - `userId` + `householdId` persistidos en localStorage via zustand persist
-   - `useAuth`: cache-hit → `setSession()` inmediato sin DB round-trip
-   - Verificación en background, fallback cold-start si userId no coincide
-   - `setUserName()` action añadida al AuthState
-3. **fix(crash) BUG-R24** — `CatIcon.tsx` crashaba con `cat: null` de DB real (`6ab2a97`)
-   - `cat: string|null|undefined`, `safe.slice(0,2) || '??'`
-   - `txnGroup()`: guard `if (!tipo) return 'gasto'`
-4. **fix(data) BUG-R25** — `useAccounts` retornaba saldo estático (`9fe7992`)
-   - 2 queries paralelas: cuentas + `movimientos SELECT cuenta_id,amount`
-   - `balance = balance_override ?? saldoInicial + SUM(movimientos by cuenta_id)`
-5. **fix(data) BUG-R26** — `useTasas` siempre usaba mes `'global'` (`9fe7992`)
-   - Lee `mesActivo` del prefs store → `mesIdToDbKey()` → row mes-específico, fallback `'global'`
-   - `saveTasas` guarda mes-específico + actualiza `global` para compat
-   - `Monedas.tsx` pasa `mesActivo` a `saveTasas`
-6. **Auditoría 27 bugs** — verificados BUG-1 a BUG-26 del checklist:
-   - 22 ya estaban correctamente implementados de sesiones anteriores
-   - 3 necesitaron código nuevo (BUG-1/BUG-10/BUG-11 → BUG-R24/R25/R26)
-7. **Docs** — BUGS.md, REACT_APP_STATUS.md actualizados (`fce3797`)
-
-### Commits esta sesión
-```
-fce3797 docs: marcar BUG-R24/R25/R26 resueltos, historial v1.0.3
-9fe7992 fix(data): balance real en cuentas + tasas por mes activo
-6ab2a97 fix(crash): null guard en CatIcon.cat + txnGroup.tipo
-5e672eb perf(auth): login instantaneo en F5 via cache householdId
-c9163d2 docs: marcar BUG-R21/R22/R23 resueltos, actualizar pendientes
-0153570 fix(data): useAccounts usa householdId en lugar de userId
-```
-
-### Estado React App post-sesión
-| Item | Estado |
-|------|--------|
-| BUG-R01..R26 | ✅ Todos resueltos |
-| Balance cuentas real | ✅ saldoInicial + SUM(movimientos) |
-| Tasas por mes activo | ✅ fallback a 'global' |
-| Login F5 instantáneo | ✅ cache householdId persistido |
-| CatIcon null safe | ✅ |
-| Bloque 3 Charts recharts | ⏳ PRÓXIMO |
-
-### PRÓXIMO PASO EXACTO
-```
-Leer: CLAUDE.md + MORNING_BRIEF.md + REACT_APP_STATUS.md
-
-CONTEXTO:
-- v1.0.3-bugfix ✅: todos los bugs del checklist resueltos
-- branch: develop → push también a react-preview
-- household_id: fa3f7b3b-148b-4dea-8e2a-37f740c08b3d
-
-TAREA — Bloque 3 Charts (recharts):
-1. npm install recharts (en version_actual/react-app/)
-2. AreaChart ingresos vs gastos 6M en Home.tsx
-   - Datos reales de useKPIs + últimos 5 meses estáticos como base
-   - Colores: var(--pos) ingresos, var(--neg) gastos, fondo ink-2
-   - Tooltip oscuro, sin ejes pesados
-3. DonutChart top-5 categorías en /txn (Txn.tsx o Analisis.tsx)
-   - Colores de catColor() — consistente con CatIcon
-4. Mantener Sparkline para KPI cards (no tocar)
-5. Build 0 errores → commit → push develop + react-preview
-
-REGLAS:
-- user_id inserts = householdId
-- subcat: siempre '' (NOT NULL)
-- mes DB: "Mayo" | store: "may-26" → mesIdToDbKey()
-```
-
----
-
-## SESIÓN — 17 May 2026 sesión 1 (PASO 0 + PASO 0 queries + docs v1.0.2)
-
-📊 **Modelo próxima sesión: Sonnet 4.6**
-
-### Qué se hizo
-1. **PASO 0 Supabase**: verificados IDs reales por tabla (movimientos/cuentas/config_usuario)
-2. **BUG-R23**: `useAccounts` userId → householdId (Isabel: 0 cuentas con auth.uid()) (`0153570`)
-3. **BUG-R21 ✅**: AccountDetail balance real confirmado en commit `c52da61`
-4. **BUG-R22 ✅**: useTasas mes 'global' verificado — por diseño (corregido en sesión 2)
-5. **perf(auth)**: `userId+householdId` persistidos en zustand localStorage (`5e672eb`)
-6. **Docs**: BUGS.md, REACT_APP_STATUS.md v1.0.2 actualizados
-
----
-
-## SESIÓN — 16-17 May 2026 (sprint bugfix v1.0.1 — Checkpoint C React App)
+## SESIÓN — 26 May 2026 (Batches 3–5 React App · rama react-preview)
 
 📊 **Modelo: Sonnet 4.6**
 
-### Qué se hizo
-- Checkpoint C completo: Supabase real en las 31 rutas de React App
-- 20 bugs corregidos (BUG-R01 a BUG-R20)
-- OCR real Groq Vision, Transfer cuentas reales, Fire shape real, ListaCompras JSONB
-- RLS project_files, fonts CDN, tema FOUC fix, inline edits metas/budgets/subcats
-- Docs: SUPABASE_SCHEMA.md, REACT_APP_STATUS.md v1.0.1, BUGS.md, FLUJO_APP.md
+### HEAD: `e824580` — rama `react-preview`
 
-Commits principales: `63890d7` (docs) · `012372b..3fb0c3d` (BUG-R01..R20)
+### Completado esta sesión
+
+**Batch 3 (UIX + lógica)**
+- AppShell slide animation eliminada
+- Subcategorías: rewrite UIX idéntico a Categorías (CatIcon, rename, emoji, ✎/×)
+- Tipos: chip Ahorro separado + botón Crear layout correcto
+- ListaCompras: multi-lista completa
+- KPI Insights: score/100, superávit, tasa ahorro, fondo %, top gasto
+- Análisis: Ingresos tappable → desglose HBar + comparativa mes anterior real
+
+**Batch 4 (datos + UIX)**
+- useAccounts + useTransactions: Supabase Realtime postgres_changes + visibilitychange
+- NewTransaction: tasa BCV activa bajo campo monto
+- Pareja: invitación real supabase.auth.signInWithOtp
+- Home: patrimonio = TODAS cuentas + me deben; score max(ahorro, neto+); "Reserva recomendada"
+- Buscar: filtro rate_type BCV/Sin BCV + select incluye rate_type
+- Subcategorías chips: TODAS las categorías para discovery
+- Backfill household_id NULL: 1,434 movimientos corregidos (Supabase MCP)
+
+**Batch 5 (infraestructura + performance)**
+- Groq 405 FIX: functions/api/groq.js movido a raíz del repo (CF Pages busca ahí)
+- Home.tsx: 7 queries → 1 RPC get_home_stats (histKPIs 5M + ahorro acum + ingresos hist)
+- NewTransaction: offline queue localStorage + flush al reconectar (online event)
+- NewAccount: insert real a cuentas con UUID explícito
+- useAccounts: trend real vs mes anterior (3ra query paralela); Accounts.tsx oculta trend 0%
+- Push notifications: sw-push-handler.js, usePushSubscription hook, push_subscriptions tabla RLS
+- vite.config.ts: importScripts sw-push-handler en workbox generateSW
+- workers/bcv-rate: CF Worker cron 3pm VET + trigger manual /update (pendiente deploy Anthony)
+- Supabase: RPC get_home_stats + tabla push_subscriptions aplicados en producción
+
+### Commits rama react-preview
+```
+e824580  feat(react-app): batch 5 — Groq fix, RPC, offline queue, push VAPID, BCV worker, trend
+a75ac60  feat(react-app): batch 4 — Realtime, tasa date, invitación pareja, patrimonio, score, BCV filter
+(prev)   feat(react-app): batch 3 — UIX múltiples mejoras
+```
+
+### Estado actual
+| Item | Estado |
+|------|--------|
+| Build React App | ✅ 0 errores, 69 entries precached |
+| Groq IA | ✅ function en repo root (soluciona 405) |
+| Supabase Realtime | ✅ useAccounts + useTransactions |
+| Home queries | ✅ 7 → 1 RPC |
+| Offline queue | ✅ localStorage + flush online |
+| Push SW handler | ✅ código listo |
+| CF Worker BCV | ⏳ código listo, pendiente `wrangler deploy` Anthony |
+| VAPID keys | ⏳ pendiente generación Anthony |
+| hCaptcha | ⏳ acción Anthony en Supabase dashboard |
+
+### Pendiente próxima sesión (orden por impacto)
+```
+1. Rate limiting en /api/groq (seguridad — cualquiera puede llamarla sin auth)
+2. Google Sign-In flujo OAuth completo
+3. Fonts offline PWA (/public/fonts/ .woff2)
+4. Settings color picker por categoría
+5. KPI presupuesto excedido (requiere cats con presupuesto definido)
+6. Export PDF / Telegram
+```
+
+### Modelo recomendado próxima sesión
+📊 **Sonnet 4.6** — features CSS/JS con referencia, seguridad rate-limiting
 
 ---
 
-## SESIÓN — 16 May 2026 — React App Bloque 2 (AccountDetail + NewAccount + Transfer)
+## SESIÓN — 18 May 2026 (FASE 4 — PWA + household REAL + RLS)
 
-📊 **Modelo: Sonnet 4.6**
-
-### Qué se hizo
-1. `/accounts/:id` — hero radial, Sparkline, stats 3 col, filtro chips, soft-delete log
-2. `/new-account` — preview card en vivo, tipo/moneda/color picker
-3. `/transfer` — AccountPicker, monto hero teal, par DEBIT/CREDIT con pairId
-4. Icons.tsx → EditIcon + TrashIcon
-5. Build ✅ · Push `384ef91` → develop + react-preview
+Commits: `a71cf9b` `f49ee9e` `85b72dc` `1471294` `5f62870`
+- Anthony uid fa3f7b3b = owner household fa3f7b3b. Isabel uid 455c23cd = partner del mismo household.
+- RLS movimientos + dinero_fuera: household_id = active_household_id()
+- PWA instalable, DineroFuera CRUD, meDebenActivo en patrimonio
 
 ---
 
-## SESIÓN — 15 May 2026 (F3-F6 rediseño + GitHub/Cloudflare CI)
+## SESIÓN — 17-18 May 2026 (sprint 27 bugs React App · BUG-R01..R26 todos resueltos)
 
-### Qué se hizo
-1. GitHub conectado: repo `Dranthonymarte/mis-finanzas-2026`, remote origin, push master+develop
-2. Cloudflare Pages → GitHub: `react-preview` auto-build
-3. `.git/HEAD` corrupto reparado
-4. F3 batch56: dashboard.css hero Instrument Serif, KPI tokens
-5. F4 batch56: pages.css base DRY (modales/forms/botones)
-6. F5: media queries móvil + bottom-sheet
-7. F6: theme.js NUEVO módulo lógica-UI aislado
-8. Feedback Anthony: "UIX no se parece" → enfoque re-skin no funciona → markup del bundle necesario
+Commits: `fce3797` `9fe7992` `6ab2a97` `5e672eb` `0153570` y anteriores
+- 26 bugs corregidos: OCR real, Transfer cuentas reales, RLS, fonts, auth fast-path
+- useAccounts householdId, balance real, tasas por mes activo, CatIcon null-safe
 
 ---
 
-## SESIÓN — 26 Abr 2026 (Extractos BDV Isabel abril)
+## SESIONES ANTERIORES (Abr 2026)
 
-### Qué se hizo
-- INSERT Batch A: 36 filas Isabel 2026-04-09..11 ✅
-- INSERT Batch B: 39 filas Isabel 2026-04-12..16 ✅
-- Isabel: 197 movimientos totales (03-21 → 04-16)
-- _inbox limpiado → _procesados
-
----
-
-## SESIÓN — 24 Abr 2026 NOCHE-2 (F2 batch55 deploy — cambios NO visibles)
-SW cache stale. Deploy OK en Cloudflare. Cliente necesita unregister SW + hard refresh.
-
-## SESIÓN — 24 Abr 2026 NOCHE (F2 batch55 — Shell Visual)
-shell.css: sidebar 240px + nav 64px. Deploy pendiente verificación.
-
-## SESIÓN — 24 Abr 2026 PM (F1.1 batch54 DEPLOYED ✅)
-fonts self-hosted (Inter/Instrument Serif/JetBrains Mono). Anthony verificó ✅.
-
-## SESIÓN — 23 Abr 2026 PM (F0 + F1 parcial)
-git init baseline. Fonts descargadas (100KB latin). tokens.css pendiente.
-
-## SESIÓN — 23 Abr 2026 (Planning rediseño visual)
-Bundle handoff recibido. Plan F0→F6 acordado. Vanilla JS mantenido.
-
-## SESIÓN — 18 Abr 2026 noche-4 (batch52 — BUG-1 deadlock fix)
-`setTimeout(0)` en onAuthStateChange para liberar lock SDK. Deploy ✅.
-
-## SESIÓN — 18 Abr 2026 noche-3 (batch51 instrumentación)
-[AUTH-DEBUG] logs agregados. Deploy ✅.
-
-## SESIÓN — 18 Abr 2026 noche-2 (batch49 — unhandledrejection fix)
-`signOut()` + `removeItem()` eliminados de handler. Deploy ✅.
-
-## SESIÓN — 18 Abr 2026 noche (batch48 + deploy-check.js)
-Validador pre-deploy Node.js creado. Safety timer 3s→8s pendiente.
-
-## SESIÓN — 18 Abr 2026 tarde (batch47)
-Registro SW duplicado en app-offline.js:98-116 eliminado.
-
-## SESIÓN — 18 Abr 2026 PM (batch46)
-Ghost files eliminados. sw-loader.js v13 desregistra sw.js viejo.
-
-## SESIÓN — 18 Abr 2026 (batch45 deploy + infraestructura nocturna)
-Deploy batch45 ✅. CLAUDE.md consolidado. Triggers nocturnos configurados.
-
-## SESIÓN — 16 Abr 2026 PM (batch42-44 + BUG-1 fix real)
-app-features.js: RECURRENTES doble-decl eliminada. BUG-1 fixes × 4.
+- 26 Abr: Extractos BDV Isabel — 75 movimientos insertados
+- 24 Abr: F2 batch55 shell visual, fonts self-hosted
+- 23 Abr: git init, planning rediseño visual
+- 18 Abr: batch52 BUG-1 deadlock fix (setTimeout 0 en onAuthStateChange)
+- 15 Abr: GitHub + CF Pages conectados, batch56 dashboard redesign

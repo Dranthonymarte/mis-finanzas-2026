@@ -49,6 +49,9 @@ function ListaDetail({ lista, onBack, onUpdate, onDelete }: {
   const [editingTitle,  setEditingTitle]  = useState(false)
   const [titleInput,    setTitleInput]    = useState(lista.nombre)
   const [confirmDel,    setConfirmDel]    = useState(false)
+  const [editingItem,   setEditingItem]   = useState<string | null>(null)
+  const [editNombre,    setEditNombre]    = useState('')
+  const [editCantidad,  setEditCantidad]  = useState(1)
 
   async function saveTitle() {
     const trimmed = titleInput.trim()
@@ -99,6 +102,21 @@ function ListaDetail({ lista, onBack, onUpdate, onDelete }: {
 
   async function setPrecio(itemId: string, precio: number) {
     await persistItems(lista.items.map(i => i.id === itemId ? { ...i, precio: precio >= 0 ? precio : 0 } : i))
+  }
+
+  function startEditItem(item: ListItem) {
+    setEditingItem(item.id)
+    setEditNombre(item.nombre)
+    setEditCantidad(item.cantidad)
+  }
+
+  async function saveEditItem(itemId: string) {
+    const trimmed = editNombre.trim()
+    if (!trimmed) { setEditingItem(null); return }
+    await persistItems(lista.items.map(i =>
+      i.id === itemId ? { ...i, nombre: trimmed, cantidad: editCantidad > 0 ? editCantidad : 1 } : i,
+    ))
+    setEditingItem(null)
   }
 
   async function clearChecked() {
@@ -218,67 +236,116 @@ function ListaDetail({ lista, onBack, onUpdate, onDelete }: {
           <div
             key={item.id}
             style={{
-              display: 'flex', alignItems: 'center', gap: 10,
               background: 'var(--ink-2)', border: '1px solid var(--line)',
               borderRadius: 14, padding: '10px 12px',
               opacity: item.checked ? 0.55 : 1, transition: 'opacity .2s',
             }}
           >
-            <button
-              onClick={() => toggle(item.id)}
-              style={{
-                width: 26, height: 26, borderRadius: 8, flexShrink: 0,
-                background:   item.checked ? 'var(--pos)' : 'var(--ink-3)',
-                border:       item.checked ? 'none' : '1.5px solid var(--line)',
-                color:        'var(--ink-0)', fontSize: 14, fontWeight: 700,
-                display:      'grid', placeItems: 'center', cursor: 'pointer',
-              }}
-            >
-              {item.checked ? '✓' : ''}
-            </button>
+            {editingItem === item.id ? (
+              /* ── Edit mode ── */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <input
+                  autoFocus
+                  type="text"
+                  value={editNombre}
+                  onChange={e => setEditNombre(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') void saveEditItem(item.id); if (e.key === 'Escape') setEditingItem(null) }}
+                  style={{ ...inputSt, fontSize: 13 }}
+                />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, color: 'var(--fg-mute)', whiteSpace: 'nowrap' }}>Cant.</span>
+                  <input
+                    type="number" min={1}
+                    value={editCantidad}
+                    onChange={e => setEditCantidad(Number(e.target.value))}
+                    style={{ width: 64, background: 'var(--ink-1)', border: '1px solid var(--line)', borderRadius: 10, padding: '7px 8px', fontSize: 13, color: 'var(--fg)', outline: 'none', textAlign: 'center' }}
+                  />
+                  <button
+                    onClick={() => void saveEditItem(item.id)}
+                    style={{ flex: 1, padding: '8px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--pos)', color: '#fff', border: 'none', cursor: 'pointer' }}
+                  >Guardar</button>
+                  <button
+                    onClick={() => setEditingItem(null)}
+                    style={{ padding: '8px 12px', borderRadius: 10, fontSize: 13, background: 'var(--ink-3)', color: 'var(--fg-dim)', border: '1px solid var(--line)', cursor: 'pointer' }}
+                  >✕</button>
+                </div>
+              </div>
+            ) : (
+              /* ── Normal mode ── */
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  onClick={() => toggle(item.id)}
+                  style={{
+                    width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+                    background:   item.checked ? 'var(--pos)' : 'var(--ink-3)',
+                    border:       item.checked ? 'none' : '1.5px solid var(--line)',
+                    color:        'var(--ink-0)', fontSize: 14, fontWeight: 700,
+                    display:      'grid', placeItems: 'center', cursor: 'pointer',
+                  }}
+                >
+                  {item.checked ? '✓' : ''}
+                </button>
 
-            <span style={{
-              flex: 1, fontSize: 14, fontWeight: 500,
-              color:          item.checked ? 'var(--fg-mute)' : 'var(--fg)',
-              textDecoration: item.checked ? 'line-through' : 'none',
-            }}>
-              {item.nombre}
-            </span>
+                <span
+                  onClick={() => startEditItem(item)}
+                  style={{
+                    flex: 1, fontSize: 14, fontWeight: 500,
+                    color:          item.checked ? 'var(--fg-mute)' : 'var(--fg)',
+                    textDecoration: item.checked ? 'line-through' : 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {item.nombre}
+                </span>
 
-            <span className="num" style={{
-              fontSize: 12, color: 'var(--fg-dim)',
-              background: 'var(--ink-3)', borderRadius: 6, padding: '2px 7px', flexShrink: 0,
-            }}>
-              ×{item.cantidad}
-            </span>
+                <span className="num" style={{
+                  fontSize: 12, color: 'var(--fg-dim)',
+                  background: 'var(--ink-3)', borderRadius: 6, padding: '2px 7px', flexShrink: 0,
+                }}>
+                  ×{item.cantidad}
+                </span>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-              <span style={{ fontSize: 10, color: 'var(--fg-mute)' }}>$</span>
-              <input
-                type="number" min={0} step="0.01"
-                defaultValue={item.precio || ''}
-                placeholder="0"
-                onBlur={e => {
-                  const v = parseFloat(e.target.value)
-                  if (!isNaN(v) && v !== item.precio) setPrecio(item.id, v)
-                }}
-                style={{
-                  width: 48, background: 'var(--ink-1)', border: '1px solid var(--line)',
-                  borderRadius: 6, padding: '3px 4px', fontSize: 12,
-                  color: 'var(--fg)', outline: 'none', textAlign: 'right',
-                }}
-              />
-            </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                  <span style={{ fontSize: 10, color: 'var(--fg-mute)' }}>$</span>
+                  <input
+                    type="number" min={0} step="0.01"
+                    defaultValue={item.precio || ''}
+                    placeholder="0"
+                    onBlur={e => {
+                      const v = parseFloat(e.target.value)
+                      if (!isNaN(v) && v !== item.precio) setPrecio(item.id, v)
+                    }}
+                    style={{
+                      width: 48, background: 'var(--ink-1)', border: '1px solid var(--line)',
+                      borderRadius: 6, padding: '3px 4px', fontSize: 12,
+                      color: 'var(--fg)', outline: 'none', textAlign: 'right',
+                    }}
+                  />
+                </div>
 
-            <button
-              onClick={() => remove(item.id)}
-              style={{
-                width: 24, height: 24, borderRadius: 7, flexShrink: 0,
-                background: 'rgba(214,106,90,.1)', border: '1px solid rgba(214,106,90,.25)',
-                color: 'var(--neg)', fontSize: 15, cursor: 'pointer',
-                display: 'grid', placeItems: 'center',
-              }}
-            >×</button>
+                <button
+                  onClick={() => startEditItem(item)}
+                  style={{
+                    width: 24, height: 24, borderRadius: 7, flexShrink: 0,
+                    background: 'rgba(106,148,196,.1)', border: '1px solid rgba(106,148,196,.25)',
+                    color: 'var(--info)', fontSize: 13, cursor: 'pointer',
+                    display: 'grid', placeItems: 'center',
+                  }}
+                  aria-label="Editar ítem"
+                >✎</button>
+
+                <button
+                  onClick={() => remove(item.id)}
+                  style={{
+                    width: 24, height: 24, borderRadius: 7, flexShrink: 0,
+                    background: 'rgba(214,106,90,.1)', border: '1px solid rgba(214,106,90,.25)',
+                    color: 'var(--neg)', fontSize: 15, cursor: 'pointer',
+                    display: 'grid', placeItems: 'center',
+                  }}
+                  aria-label="Eliminar ítem"
+                >×</button>
+              </div>
+            )}
           </div>
         ))}
 

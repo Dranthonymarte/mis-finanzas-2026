@@ -110,15 +110,6 @@ export default function Accounts() {
               >{m}</button>
             ))}
           </div>
-          <button
-            onClick={() => navigate('/settings')}
-            style={{
-              fontSize: 11.5, fontWeight: 600, color: 'var(--amber)',
-              background: 'none', border: 'none', cursor: 'pointer',
-            }}
-          >
-            Gestionar
-          </button>
         </div>
       </div>
 

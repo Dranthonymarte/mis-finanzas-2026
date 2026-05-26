@@ -107,7 +107,6 @@ function TxnRowPreview({ t, last }: { t: Transaction; last: boolean }) {
   const isSav = group === 'ahorro'
   const isTrf = t.tipo === 'Transferencia Interna'
   const color = isInc ? 'var(--pos)' : isSav || isTrf ? 'var(--info)' : 'var(--neg)'
-  const sign  = isInc ? '+' : isSav || isTrf ? (t.amount < 0 ? '−' : '') : '−'
   return (
     <div
       onClick={() => navigate(`/txn/${t.id}`)}
@@ -142,7 +141,7 @@ function TxnRowPreview({ t, last }: { t: Transaction; last: boolean }) {
         </div>
       </div>
       <div style={{ fontSize: 13, fontWeight: 600, color, whiteSpace: 'nowrap' }}>
-        {sign}{fmt(Math.abs(t.amount))}
+        {fmt(Math.abs(t.amount))}
       </div>
     </div>
   )
@@ -317,6 +316,7 @@ export default function Home() {
   const savedByEOM   = (kpiData.ingresos + recIngresoPend) - (dailySpend * daysInMonth + recGastoPend)
 
   const recentTxns = (liveTxns ?? []).slice(0, 5)
+  const [openKpiInfo, setOpenKpiInfo] = useState<string | null>(null)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -340,6 +340,12 @@ export default function Home() {
             position: 'absolute', top: 7, right: 7,
             width: 6, height: 6, borderRadius: '50%', background: 'var(--amber)',
           }} />
+        </button>
+        <button
+          onClick={() => navigate('/settings')}
+          style={iBtn} aria-label="Configuración"
+        >
+          <span style={{ fontSize: 17, lineHeight: 1 }}>⚙</span>
         </button>
       </div>
 
@@ -477,77 +483,77 @@ export default function Home() {
       </div>
 
       {/* ─── 5. KPI CARDS 2×2 ─── */}
-      <div style={{ padding: '12px 16px 4px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        {kpis.map(k => {
-          const good = k.neg ? k.delta < 0 : k.delta > 0
-          // ── NETO: signo explícito + color rojo/verde ──
-          if (k.id === 'neto') {
-            const isPos   = kpiData.balance >= 0
-            const netoStr = isPos ? '+' + fmt(kpiData.balance) : fmt(kpiData.balance)
-            return (
-              <div key="neto" style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ fontSize: 9.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
-                    Neto
-                  </span>
-                  <Pill tone={isPos ? 'pos' : 'neg'} size="xs">
-                    {isPos ? '+' : ''}{k.delta}%
-                  </Pill>
+      {(() => {
+        const KPI_INFO: Record<string, string> = {
+          ingresos: 'Todo el dinero que entró este mes: salarios, ventas, transferencias recibidas, etc.',
+          gastos:   'Todo lo que gastaste este mes en compras, servicios, facturas y pagos.',
+          neto:     'Ingresos menos gastos. Positivo = ahorraste. Negativo = gastaste más de lo que ingresaste.',
+          ahorro:   'Movimientos registrados como "Ahorro en efectivo". La tasa es ahorro ÷ ingresos del mes.',
+        }
+        return (
+          <div style={{ padding: '12px 16px 4px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {kpis.map(k => {
+              const good     = k.neg ? k.delta < 0 : k.delta > 0
+              const infoOpen = openKpiInfo === k.id
+
+              let value: React.ReactNode
+              let color = 'inherit'
+              let extraRow: React.ReactNode = null
+
+              if (k.id === 'neto') {
+                const isPos = kpiData.balance >= 0
+                color = isPos ? 'var(--pos)' : 'var(--neg)'
+                value = (isPos ? '+' : '') + fmt(kpiData.balance)
+              } else if (k.id === 'ahorro') {
+                value = fmt(kpiData.ahorro)
+                extraRow = (
+                  <div style={{ fontSize: 9.5, color: 'var(--fg-mute)', marginTop: 4 }}>
+                    {savingsRate.toFixed(1)}% de ingresos
+                  </div>
+                )
+              } else {
+                value = k.suffix ? `${k.value}${k.suffix}` : fmt(k.value)
+              }
+
+              return (
+                <div key={k.id} style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 9.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
+                        {k.label}
+                      </span>
+                      <button
+                        onClick={() => setOpenKpiInfo(infoOpen ? null : k.id)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-mute)', fontSize: 11, padding: '0 2px', lineHeight: 1, opacity: 0.65 }}
+                        aria-label={`Qué es ${k.label}`}
+                      >ℹ</button>
+                    </div>
+                    <Pill tone={good ? 'pos' : 'neg'} size="xs">
+                      {k.delta > 0 ? '+' : ''}{k.delta}%
+                    </Pill>
+                  </div>
+                  {infoOpen && (
+                    <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginBottom: 6, lineHeight: 1.5, background: 'var(--ink-3)', borderRadius: 8, padding: '6px 8px' }}>
+                      {KPI_INFO[k.id]}
+                    </div>
+                  )}
+                  <div className="num" style={{ fontSize: 17, fontWeight: 600, color }}>
+                    {value}
+                  </div>
+                  <div style={{ marginTop: 5 }}>
+                    <Sparkline
+                      data={k.spark}
+                      color={k.id === 'neto' ? color : k.id === 'ahorro' ? 'var(--amber)' : k.neg ? 'var(--neg)' : 'var(--amber)'}
+                      w={140} h={18} fill stroke={1.4}
+                    />
+                  </div>
+                  {extraRow}
                 </div>
-                <div className="num" style={{ fontSize: 17, fontWeight: 600, color: isPos ? 'var(--pos)' : 'var(--neg)' }}>
-                  {netoStr}
-                </div>
-                <div style={{ marginTop: 5 }}>
-                  <Sparkline data={k.spark} color={isPos ? 'var(--pos)' : 'var(--neg)'} w={140} h={18} fill stroke={1.4} />
-                </div>
-              </div>
-            )
-          }
-          // ── AHORRO: monto del mes + tasa fusionada en subtexto ──
-          if (k.id === 'ahorro') {
-            return (
-              <div key="ahorro" style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ fontSize: 9.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
-                    Ahorro
-                  </span>
-                  <Pill tone={good ? 'pos' : 'neg'} size="xs">
-                    {k.delta > 0 ? '+' : ''}{k.delta}%
-                  </Pill>
-                </div>
-                <div className="num" style={{ fontSize: 17, fontWeight: 600 }}>
-                  {fmt(kpiData.ahorro)}
-                </div>
-                <div style={{ marginTop: 5 }}>
-                  <Sparkline data={k.spark} color="var(--amber)" w={140} h={18} fill stroke={1.4} />
-                </div>
-                <div style={{ fontSize: 9.5, color: 'var(--fg-mute)', marginTop: 4 }}>
-                  {savingsRate.toFixed(1)}% de ingresos
-                </div>
-              </div>
-            )
-          }
-          // ── Genérico: Ingresos / Gastos ──
-          return (
-            <div key={k.id} style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <span style={{ fontSize: 9.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
-                  {k.label}
-                </span>
-                <Pill tone={good ? 'pos' : 'neg'} size="xs">
-                  {k.delta > 0 ? '+' : ''}{k.delta}%
-                </Pill>
-              </div>
-              <div className="num" style={{ fontSize: 17, fontWeight: 600 }}>
-                {k.suffix ? `${k.value}${k.suffix}` : fmt(k.value)}
-              </div>
-              <div style={{ marginTop: 5 }}>
-                <Sparkline data={k.spark} color={k.neg ? 'var(--neg)' : 'var(--amber)'} w={140} h={18} fill stroke={1.4} />
-              </div>
-            </div>
-          )
-        })}
-      </div>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {/* ─── 5b. AHORRO ACUMULADO ─── */}
       {ahorroAcumulado > 0 && (

@@ -463,8 +463,20 @@ export default function Txn() {
       {/* ── Presupuesto vs real ── */}
       {budgetCats.length > 0 && (
         <div style={{ padding: '20px 16px 4px' }}>
-          <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 10 }}>
-            Presupuesto vs real
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)' }}>
+              Presupuesto vs real
+            </div>
+            <button
+              onClick={() => navigate('/settings')}
+              style={{
+                fontSize: 11, fontWeight: 600, color: 'var(--amber)',
+                background: 'rgba(224,168,74,.1)', border: '1px solid rgba(224,168,74,.25)',
+                borderRadius: 8, padding: '3px 10px', cursor: 'pointer',
+              }}
+            >
+              + Gestionar
+            </button>
           </div>
           <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
             {budgetCats.map((cat, i) => {

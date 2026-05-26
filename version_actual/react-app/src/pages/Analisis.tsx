@@ -238,39 +238,48 @@ export default function Analisis() {
           {/* ── KPIs + comparativa ── */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
             {([
-              { label: 'Ingresos', cur: kpis.ingresos, prev: prevKpis.ingresos, color: 'var(--pos)', tappable: true },
-              { label: 'Gastos',   cur: kpis.gastos,   prev: prevKpis.gastos,   color: 'var(--neg)', tappable: false },
-              { label: 'Balance',  cur: kpis.balance,  prev: prevKpis.balance,  color: kpis.balance >= 0 ? 'var(--pos)' : 'var(--neg)', tappable: false },
-            ]).map(k => (
-              <div
-                key={k.label}
-                onClick={k.tappable ? () => setIngresosOpen(v => !v) : undefined}
-                style={{
-                  background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 10px 8px',
-                  cursor: k.tappable ? 'pointer' : 'default',
-                  outline: k.tappable && ingresosOpen ? '2px solid var(--pos)' : 'none',
-                }}
-              >
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 3 }}>
-                  {k.label}
-                  {k.tappable && <span style={{ fontSize: 8, opacity: 0.6 }}>{ingresosOpen ? '▲' : '▼'}</span>}
+              { label: 'Ingresos', cur: kpis.ingresos, prev: prevKpis.ingresos, color: 'var(--pos)',                                      key: 'ing' },
+              { label: 'Gastos',   cur: kpis.gastos,   prev: prevKpis.gastos,   color: 'var(--neg)',                                      key: 'gas' },
+              { label: 'Balance',  cur: kpis.balance,  prev: prevKpis.balance,  color: kpis.balance >= 0 ? 'var(--pos)' : 'var(--neg)',   key: 'bal' },
+            ]).map(k => {
+              const isIng     = k.key === 'ing'
+              const isGas     = k.key === 'gas'
+              const expanded  = isIng ? ingresosOpen : false
+              const toggle    = isIng ? () => setIngresosOpen(v => !v) : undefined
+              return (
+                <div
+                  key={k.label}
+                  onClick={toggle}
+                  style={{
+                    background: 'var(--ink-2)', border: `1px solid ${expanded ? k.color + '50' : 'var(--line)'}`,
+                    borderRadius: 12, padding: '10px 10px 8px',
+                    cursor: toggle ? 'pointer' : 'default',
+                    transition: 'border-color .15s',
+                  }}
+                >
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 3 }}>
+                    {k.label}
+                    {(isIng || isGas) && (
+                      <span style={{ fontSize: 9, opacity: 0.5, color: k.color }}>{expanded ? '▲' : '▼'}</span>
+                    )}
+                  </div>
+                  <div className="num" style={{ fontSize: 13, fontWeight: 700, color: k.color, marginBottom: 4 }}>
+                    {k.label === 'Balance' && k.cur >= 0 ? '+' : ''}{fmt(k.cur)}
+                  </div>
+                  <Delta cur={k.cur} prev={k.prev} />
+                  {k.prev > 0 && (
+                    <div style={{ fontSize: 9, color: 'var(--fg-mute)', marginTop: 3 }}>vs {prevLabel}</div>
+                  )}
                 </div>
-                <div className="num" style={{ fontSize: 13, fontWeight: 700, color: k.color, marginBottom: 4 }}>
-                  {k.label === 'Balance' && k.cur >= 0 ? '+' : ''}{fmt(k.cur)}
-                </div>
-                <Delta cur={k.cur} prev={k.prev} />
-                {k.prev > 0 && (
-                  <div style={{ fontSize: 9, color: 'var(--fg-mute)', marginTop: 3 }}>vs {prevLabel}</div>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
 
-          {/* ── Desglose ingresos por tipo (se expande al tap) ── */}
+          {/* ── Desglose ingresos por tipo (expandible) ── */}
           {ingresosOpen && ingresosPorTipo.length > 0 && (
-            <div style={{ background: 'var(--ink-2)', border: '1px solid var(--pos)30', borderRadius: 12, padding: '12px 14px' }}>
+            <div style={{ background: 'var(--ink-2)', border: '1px solid rgba(88,178,106,.3)', borderRadius: 12, padding: '12px 14px' }}>
               <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--pos)', marginBottom: 10 }}>
-                Por tipo de ingreso
+                Desglose por fuente de ingreso
               </div>
               <HBar data={ingresosPorTipo} color="var(--pos)" />
             </div>

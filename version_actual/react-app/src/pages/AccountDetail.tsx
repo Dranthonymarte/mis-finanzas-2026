@@ -45,20 +45,25 @@ function SLabel({ children }: { children: ReactNode }) {
   )
 }
 
-/* ── Transaction row ── */
+/* ── Transaction row — tappable, navigates to TxnDetail ── */
 function TxnRow({ t, last }: { t: Transaction; last: boolean }) {
-  const { fmt } = useFormat()
-  const grp      = txnGroup(t.tipo)
-  const isInc    = grp === 'ingreso'
-  const isSav    = grp === 'ahorro'
-  const color    = isInc ? 'var(--pos)' : isSav ? 'var(--info)' : 'var(--fg)'
-  const sign     = isInc ? '+' : '−'
+  const { fmt }  = useFormat()
+  const navigate = useNavigate()
+  const grp   = txnGroup(t.tipo)
+  const isInc = grp === 'ingreso'
+  const isSav = grp === 'ahorro'
+  const isTrf = t.tipo === 'Transferencia Interna'
+  const color = isInc ? 'var(--pos)' : isSav || isTrf ? 'var(--info)' : 'var(--neg)'
   return (
-    <div style={{
-      display: 'grid', gridTemplateColumns: '36px 1fr auto', gap: 10,
-      alignItems: 'center', padding: '11px 12px',
-      borderBottom: last ? 'none' : '1px solid var(--line)',
-    }}>
+    <div
+      onClick={() => navigate(`/txn/${t.id}`)}
+      style={{
+        display: 'grid', gridTemplateColumns: '36px 1fr auto', gap: 10,
+        alignItems: 'center', padding: '11px 12px',
+        borderBottom: last ? 'none' : '1px solid var(--line)',
+        cursor: 'pointer',
+      }}
+    >
       <CatIcon cat={t.cat} />
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 13.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -84,7 +89,7 @@ function TxnRow({ t, last }: { t: Transaction; last: boolean }) {
         </div>
       </div>
       <div style={{ fontSize: 13, fontWeight: 600, color, whiteSpace: 'nowrap' }}>
-        {sign}{fmt(Math.abs(t.amount))}
+        {fmt(Math.abs(t.amount))}
       </div>
     </div>
   )

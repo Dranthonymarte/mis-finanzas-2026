@@ -161,21 +161,11 @@ export default function Analisis() {
     )
   }, [txns])
 
-  // ── Ingresos: total + desglose por tipo y por persona ──
+  // ── Ingresos: total ──────────────────────────────
   const ingresosTotal = useMemo(
     () => txns.reduce((s, t) => txnGroup(t.tipo) === 'ingreso' ? s + Math.abs(t.amount) : s, 0),
     [txns],
   )
-  const ingresosPorTipo = useMemo<BarEntry[]>(() => {
-    const map: Record<string, number> = {}
-    for (const t of txns) {
-      if (txnGroup(t.tipo) !== 'ingreso') continue
-      map[t.tipo] = (map[t.tipo] ?? 0) + Math.abs(t.amount)
-    }
-    return Object.entries(map)
-      .sort(([, a], [, b]) => b - a)
-      .map(([label, value]) => ({ label, value }))
-  }, [txns])
 
   // ── Ingresos por descripción (salarios individuales) ──
   const ingresosPorDesc = useMemo<BarEntry[]>(() => {
@@ -190,6 +180,34 @@ export default function Analisis() {
       .slice(0, 8)
       .map(([label, value]) => ({ label, value }))
   }, [txns])
+
+  // ── BUG-4: Ingresos fijos vs variables ──────────────────────────
+  // Fijo: tipo === 'Ingreso Fijo' | Variable: 'Ingreso Variable' o cualquier otro ingreso
+  const ingresosFijos = useMemo<BarEntry[]>(() => {
+    const map: Record<string, number> = {}
+    for (const t of txns) {
+      if (txnGroup(t.tipo) !== 'ingreso' || t.tipo !== 'Ingreso Fijo') continue
+      const key = t.desc || t.cat || t.tipo
+      map[key] = (map[key] ?? 0) + Math.abs(t.amount)
+    }
+    return Object.entries(map).sort(([, a], [, b]) => b - a).map(([label, value]) => ({ label, value }))
+  }, [txns])
+
+  const ingresosVariables = useMemo<BarEntry[]>(() => {
+    const map: Record<string, number> = {}
+    for (const t of txns) {
+      if (txnGroup(t.tipo) !== 'ingreso' || t.tipo === 'Ingreso Fijo') continue
+      const key = t.desc || t.cat || t.tipo
+      map[key] = (map[key] ?? 0) + Math.abs(t.amount)
+    }
+    return Object.entries(map).sort(([, a], [, b]) => b - a).map(([label, value]) => ({ label, value }))
+  }, [txns])
+
+  const totalFijos     = ingresosFijos.reduce((s, e) => s + e.value, 0)
+  const totalVariables = ingresosVariables.reduce((s, e) => s + e.value, 0)
+  const prevIngresosTotal = prevTxnsArr.reduce(
+    (s, t) => txnGroup(t.tipo) === 'ingreso' ? s + Math.abs(t.amount) : s, 0
+  )
 
   // ── Desglose semanal (gastos) ────────────────────
   const semanal = useMemo<BarEntry[]>(() => {
@@ -302,23 +320,51 @@ export default function Analisis() {
             </div>
           )}
 
-          {/* ── Desglose ingresos (expandible) ── */}
-          {ingresosOpen && (ingresosPorTipo.length > 0 || ingresosPorDesc.length > 0) && (
+          {/* ── BUG-4: Desglose ingresos fijo/variable (expandible) ── */}
+          {ingresosOpen && (ingresosFijos.length > 0 || ingresosVariables.length > 0 || ingresosPorDesc.length > 0) && (
             <div style={{ background: 'var(--ink-2)', border: '1px solid rgba(88,178,106,.3)', borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {ingresosPorDesc.length > 0 && (
-                <div>
-                  <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--pos)', marginBottom: 10 }}>
-                    Por salario / fuente
-                  </div>
-                  <HBar data={ingresosPorDesc} color="var(--pos)" />
+
+              {/* Totales comparativa vs mes anterior */}
+              {prevIngresosTotal > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: 'var(--fg-mute)', borderBottom: '1px solid var(--line)', paddingBottom: 10 }}>
+                  <span>vs {prevLabel}</span>
+                  <Delta cur={ingresosTotal} prev={prevIngresosTotal} />
                 </div>
               )}
-              {ingresosPorTipo.length > 0 && (
+
+              {/* Ingresos Fijos */}
+              {totalFijos > 0 && (
                 <div>
-                  <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 10 }}>
-                    Por tipo de ingreso
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--pos)' }}>
+                      Fijos
+                    </div>
+                    <span className="num" style={{ fontSize: 12, fontWeight: 700, color: 'var(--pos)' }}>{fmt(totalFijos)}</span>
                   </div>
-                  <HBar data={ingresosPorTipo} color="var(--pos)" />
+                  <HBar data={ingresosFijos} color="var(--pos)" />
+                </div>
+              )}
+
+              {/* Ingresos Variables */}
+              {totalVariables > 0 && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--amber)' }}>
+                      Variables
+                    </div>
+                    <span className="num" style={{ fontSize: 12, fontWeight: 700, color: 'var(--amber)' }}>{fmt(totalVariables)}</span>
+                  </div>
+                  <HBar data={ingresosVariables} color="var(--amber)" />
+                </div>
+              )}
+
+              {/* Fallback: desglose por fuente si no hay tipos Fijo/Variable */}
+              {totalFijos === 0 && totalVariables === 0 && ingresosPorDesc.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--pos)', marginBottom: 10 }}>
+                    Por fuente
+                  </div>
+                  <HBar data={ingresosPorDesc} color="var(--pos)" />
                 </div>
               )}
             </div>
@@ -398,15 +444,32 @@ export default function Analisis() {
             )}
           </Card>
 
-          {/* ── Ingresos: total + desglose por persona ── */}
-          <Card>
-            <SLabel>Ingresos — {mesLabel(mesActivo)}</SLabel>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-              <span style={{ fontSize: 12, color: 'var(--fg-mute)' }}>Total ingresos</span>
-              <span className="num" style={{ fontSize: 20, fontWeight: 700, color: 'var(--pos)' }}>{fmt(ingresosTotal)}</span>
-            </div>
-            <HBar data={ingresosPorTipo} color="var(--pos)" />
-          </Card>
+          {/* ── Ingresos: resumen de fijo/variable en Card (siempre visible) ── */}
+          {(totalFijos > 0 || totalVariables > 0) && (
+            <Card>
+              <SLabel>Composición de ingresos — {mesLabel(mesActivo)}</SLabel>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {totalFijos > 0 && (
+                  <div style={{ flex: 1, background: 'rgba(88,178,106,.08)', border: '1px solid rgba(88,178,106,.2)', borderRadius: 10, padding: '10px 12px' }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--pos)', marginBottom: 4 }}>Fijos</div>
+                    <div className="num" style={{ fontSize: 15, fontWeight: 700, color: 'var(--pos)' }}>{fmt(totalFijos)}</div>
+                    <div style={{ fontSize: 9.5, color: 'var(--fg-mute)', marginTop: 2 }}>
+                      {ingresosTotal > 0 ? Math.round((totalFijos / ingresosTotal) * 100) : 0}%
+                    </div>
+                  </div>
+                )}
+                {totalVariables > 0 && (
+                  <div style={{ flex: 1, background: 'rgba(224,168,74,.08)', border: '1px solid rgba(224,168,74,.2)', borderRadius: 10, padding: '10px 12px' }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--amber)', marginBottom: 4 }}>Variables</div>
+                    <div className="num" style={{ fontSize: 15, fontWeight: 700, color: 'var(--amber)' }}>{fmt(totalVariables)}</div>
+                    <div style={{ fontSize: 9.5, color: 'var(--fg-mute)', marginTop: 2 }}>
+                      {ingresosTotal > 0 ? Math.round((totalVariables / ingresosTotal) * 100) : 0}%
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
 
           {/* ── Desglose semanal ── */}
           {semanal.length > 0 && (

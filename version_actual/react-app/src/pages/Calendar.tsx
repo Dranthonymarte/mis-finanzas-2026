@@ -12,8 +12,8 @@ import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
 import { useToastStore } from '../store/toast'
 
-const SUPABASE_URL = 'https://jcgoccaisemrfsuwwrrl.supabase.co'
-const GCAL_SYNC_URL = `${SUPABASE_URL}/functions/v1/google-calendar-sync`
+const SUPABASE_URL   = import.meta.env.VITE_SUPABASE_URL as string
+const GCAL_SYNC_URL  = `${SUPABASE_URL}/functions/v1/google-calendar-sync`
 const GOOGLE_OAUTH_URL = `${SUPABASE_URL}/functions/v1/google-oauth`
 
 interface CalEvent {

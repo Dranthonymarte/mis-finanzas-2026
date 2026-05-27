@@ -5,7 +5,7 @@
 // fondo emergencia, top gastos, pronóstico, IA, txns
 // ═══════════════════════════════════════════════════
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Sparkline          from '../components/ui/Sparkline'
@@ -240,14 +240,22 @@ export default function Home() {
     ? (kpiData.ahorro / kpiData.ingresos) * 100
     : 0
 
-  // ── KPI cards ──
-  // [2] neto  = ingresos − gastos (signo explícito, rojo/verde en render)
-  // [3] ahorro = suma tipo 'Ahorro en efectivo' mes activo; tasa fusionada en subtexto
+  // ── KPI cards — delta real vs mes anterior ──
+  const prevKPIs  = histKPIs.at(-1)
+  const safeDelta = (cur: number, prev: number) =>
+    prev === 0 ? 0 : Math.round(((cur - prev) / Math.abs(prev)) * 100)
+  const sparkFromHist = (key: 'ingresos' | 'gastos') =>
+    histKPIs.length > 0
+      ? [...histKPIs.map(h => h[key]), kpiData[key]]
+      : MOCK_KPIS[key === 'ingresos' ? 0 : 1].spark
+
+  const prevNeto = (prevKPIs?.ingresos ?? 0) - (prevKPIs?.gastos ?? 0)
+
   const kpis = liveTxns ? [
-    { ...MOCK_KPIS[0], value: kpiData.ingresos },
-    { ...MOCK_KPIS[1], value: kpiData.gastos   },
-    { ...MOCK_KPIS[2], id: 'neto',   label: 'Neto',   value: kpiData.balance },
-    { ...MOCK_KPIS[3], id: 'ahorro', label: 'Ahorro', value: kpiData.ahorro, suffix: undefined },
+    { ...MOCK_KPIS[0], value: kpiData.ingresos, delta: safeDelta(kpiData.ingresos, prevKPIs?.ingresos ?? 0), spark: sparkFromHist('ingresos') },
+    { ...MOCK_KPIS[1], value: kpiData.gastos,   delta: safeDelta(kpiData.gastos,   prevKPIs?.gastos   ?? 0), spark: sparkFromHist('gastos')   },
+    { ...MOCK_KPIS[2], id: 'neto',   label: 'Neto',   value: kpiData.balance, delta: safeDelta(kpiData.balance, prevNeto) },
+    { ...MOCK_KPIS[3], id: 'ahorro', label: 'Ahorro', value: kpiData.ahorro,  delta: 0, suffix: undefined },
   ] : MOCK_KPIS
 
   // ── Bar chart 6M: 5 meses reales + mes activo ──
@@ -275,12 +283,11 @@ export default function Home() {
   }, [])
 
   // ── Fondo emergencia ──────────────────────────────────────────────
-  // Lógica: alcancía de emergencia. Meta = 30% de ingresos del MES ACTUAL.
-  // No retroactivo — muestra progreso desde que el usuario empieza a ahorrar.
-  // Balance = ahorros acumulados en la app (tipo ahorro).
-  const emergencyBalance = ahorroAcumulado
+  // Balance = ahorro del MES ACTIVO (empieza en 0, crece con nuevos ingresos)
+  // Meta = 30% de ingresos del mes actual — no retroactivo
+  const emergencyBalance = kpiData.ahorro   // solo mes activo, parte de 0
   const emergencyTarget  = kpiData.ingresos > 0 ? kpiData.ingresos * 0.30 : 0
-  const efContribMes     = emergencyTarget  // aporte sugerido = la meta del mes
+  const efContribMes     = emergencyTarget  // aporte sugerido = meta del mes
   // ── Meta editable (persisted in localStorage) ──
   const [efMeta, setEfMeta] = useState<number>(() => {
     try { return parseFloat(localStorage.getItem('mf-ef-meta') || '') || 0 } catch { return 0 }
@@ -328,6 +335,21 @@ export default function Home() {
   const recentTxns = (liveTxns ?? []).slice(0, 5)
   const [openKpiInfo, setOpenKpiInfo] = useState<string | null>(null)
 
+  /* ── KPI carousel ── */
+  const [kpiPage, setKpiPage] = useState(0)  // 0 = ingresos+gastos, 1 = neto+ahorro
+  const kpiScrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setKpiPage(p => {
+        const next = (p + 1) % 2
+        kpiScrollRef.current?.scrollTo({ left: next * kpiScrollRef.current.clientWidth, behavior: 'smooth' })
+        return next
+      })
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
 
@@ -343,13 +365,9 @@ export default function Home() {
         </button>
         <button
           onClick={() => navigate('/notificaciones')}
-          style={{ ...iBtn, position: 'relative' }} aria-label="Notificaciones"
+          style={iBtn} aria-label="Notificaciones"
         >
           <BellIcon />
-          <span style={{
-            position: 'absolute', top: 7, right: 7,
-            width: 6, height: 6, borderRadius: '50%', background: 'var(--amber)',
-          }} />
         </button>
         <button
           onClick={() => navigate('/settings')}
@@ -551,75 +569,129 @@ export default function Home() {
         </div>
       </Sheet>
 
-      {/* ─── 5. KPI CARDS 2×2 ─── */}
+      {/* ─── 5. KPI CAROUSEL ─── */}
       {(() => {
         const KPI_INFO: Record<string, string> = {
-          ingresos: 'Todo el dinero que entró este mes: salarios, ventas, transferencias recibidas, etc.',
-          gastos:   'Todo lo que gastaste este mes en compras, servicios, facturas y pagos.',
-          neto:     'Ingresos menos gastos. Positivo = ahorraste. Negativo = gastaste más de lo que ingresaste.',
+          ingresos: 'Todo el dinero que entró este mes: salarios, ventas, transferencias recibidas, etc. El % compara con el mes anterior.',
+          gastos:   'Todo lo que gastaste este mes en compras, servicios, facturas y pagos. El % compara con el mes anterior.',
+          neto:     'Ingresos menos gastos. Positivo = ahorraste. Negativo = gastaste más de lo que ingresaste. El % compara con el neto del mes anterior.',
           ahorro:   'Movimientos registrados como "Ahorro en efectivo". La tasa es ahorro ÷ ingresos del mes.',
         }
-        return (
-          <div style={{ padding: '12px 16px 4px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {kpis.map(k => {
-              const good     = k.neg ? k.delta < 0 : k.delta > 0
-              const infoOpen = openKpiInfo === k.id
 
-              let value: React.ReactNode
-              let color = 'inherit'
-              let extraRow: React.ReactNode = null
-
-              if (k.id === 'neto') {
-                const isPos = kpiData.balance >= 0
-                color = isPos ? 'var(--pos)' : 'var(--neg)'
-                value = (isPos ? '+' : '') + fmt(kpiData.balance)
-              } else if (k.id === 'ahorro') {
-                value = fmt(kpiData.ahorro)
-                extraRow = (
-                  <div style={{ fontSize: 9.5, color: 'var(--fg-mute)', marginTop: 4 }}>
-                    {savingsRate.toFixed(1)}% de ingresos
-                  </div>
-                )
-              } else {
-                value = k.suffix ? `${k.value}${k.suffix}` : fmt(k.value)
-              }
-
-              return (
-                <div key={k.id} style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ fontSize: 9.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
-                        {k.label}
-                      </span>
-                      <button
-                        onClick={() => setOpenKpiInfo(infoOpen ? null : k.id)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--info)', fontSize: 12, padding: '0 2px', lineHeight: 1 }}
-                        aria-label={`Qué es ${k.label}`}
-                      >ℹ</button>
-                    </div>
-                    <Pill tone={good ? 'pos' : 'neg'} size="xs">
-                      {k.delta > 0 ? '+' : ''}{k.delta}%
-                    </Pill>
-                  </div>
-                  {infoOpen && (
-                    <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginBottom: 6, lineHeight: 1.5, background: 'var(--ink-3)', borderRadius: 8, padding: '6px 8px' }}>
-                      {KPI_INFO[k.id]}
-                    </div>
-                  )}
-                  <div className="num" style={{ fontSize: 17, fontWeight: 600, color }}>
-                    {value}
-                  </div>
-                  <div style={{ marginTop: 5 }}>
-                    <Sparkline
-                      data={k.spark}
-                      color={k.id === 'neto' ? color : k.id === 'ahorro' ? 'var(--amber)' : k.neg ? 'var(--neg)' : 'var(--amber)'}
-                      w={140} h={18} fill stroke={1.4}
-                    />
-                  </div>
-                  {extraRow}
+        function KpiCard({ k }: { k: typeof kpis[0] }) {
+          const good     = k.neg ? k.delta < 0 : k.delta > 0
+          const infoOpen = openKpiInfo === k.id
+          let value: React.ReactNode
+          let color = 'inherit'
+          let extraRow: React.ReactNode = null
+          if (k.id === 'neto') {
+            const isPos = kpiData.balance >= 0
+            color = isPos ? 'var(--pos)' : 'var(--neg)'
+            value = (isPos ? '+' : '') + fmt(kpiData.balance)
+          } else if (k.id === 'ahorro') {
+            value = fmt(kpiData.ahorro)
+            extraRow = (
+              <div style={{ fontSize: 9.5, color: 'var(--fg-mute)', marginTop: 4 }}>
+                {savingsRate.toFixed(1)}% de ingresos
+              </div>
+            )
+          } else {
+            value = k.suffix ? `${k.value}${k.suffix}` : fmt(k.value)
+          }
+          return (
+            <div style={{
+              background: 'var(--ink-2)', border: '1px solid var(--line)',
+              borderRadius: 12, padding: 12, flex: '0 0 calc(50% - 4px)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: 9.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
+                    {k.label}
+                  </span>
+                  <button
+                    onClick={() => setOpenKpiInfo(infoOpen ? null : k.id)}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1,
+                      color: 'var(--fg-mute)', fontSize: 11, fontWeight: 700,
+                      width: 16, height: 16, borderRadius: '50%',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                    aria-label={`Qué es ${k.label}`}
+                  >ℹ</button>
                 </div>
-              )
-            })}
+                <Pill tone={k.delta === 0 ? 'mute' : good ? 'pos' : 'neg'} size="xs" title="vs. mes anterior">
+                  {k.delta === 0 ? '—' : `${k.delta > 0 ? '+' : ''}${k.delta}%`}
+                </Pill>
+              </div>
+              {infoOpen && (
+                <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginBottom: 6, lineHeight: 1.5, background: 'var(--ink-3)', borderRadius: 8, padding: '6px 8px' }}>
+                  {KPI_INFO[k.id]}
+                </div>
+              )}
+              <div className="num" style={{ fontSize: 17, fontWeight: 600, color }}>
+                {value}
+              </div>
+              <div style={{ marginTop: 5 }}>
+                <Sparkline
+                  data={k.spark}
+                  color={k.id === 'neto' ? color : k.id === 'ahorro' ? 'var(--amber)' : k.neg ? 'var(--neg)' : 'var(--amber)'}
+                  w={140} h={18} fill stroke={1.4}
+                />
+              </div>
+              {extraRow}
+            </div>
+          )
+        }
+
+        /* ── 2 slides: [ingresos, gastos] | [neto, ahorro] ── */
+        const slides = [[kpis[0], kpis[1]], [kpis[2], kpis[3]]] as (typeof kpis[0])[][]
+
+        return (
+          <div style={{ padding: '12px 16px 4px' }}>
+            {/* scroll container */}
+            <div
+              ref={kpiScrollRef}
+              onScroll={e => {
+                const el = e.currentTarget
+                const page = Math.round(el.scrollLeft / el.clientWidth)
+                setKpiPage(page)
+              }}
+              style={{
+                display: 'flex', gap: 8, overflowX: 'auto', scrollSnapType: 'x mandatory',
+                msOverflowStyle: 'none', scrollbarWidth: 'none', paddingBottom: 2,
+              }}
+            >
+              {slides.map((pair, si) => (
+                <div
+                  key={si}
+                  style={{
+                    display: 'flex', gap: 8,
+                    flex: '0 0 100%', scrollSnapAlign: 'start',
+                  }}
+                >
+                  {pair.map(k => k && <KpiCard key={k.id} k={k} />)}
+                </div>
+              ))}
+            </div>
+            {/* dot pagination */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 5, marginTop: 8 }}>
+              {slides.map((_, si) => (
+                <button
+                  key={si}
+                  onClick={() => {
+                    kpiScrollRef.current?.scrollTo({ left: si * (kpiScrollRef.current.clientWidth), behavior: 'smooth' })
+                    setKpiPage(si)
+                  }}
+                  style={{
+                    width: kpiPage === si ? 16 : 6, height: 6, borderRadius: 999,
+                    background: kpiPage === si ? 'var(--amber)' : 'var(--ink-4)',
+                    border: 'none', cursor: 'pointer', padding: 0,
+                    transition: 'all .25s ease',
+                  }}
+                  aria-label={`Página ${si + 1}`}
+                />
+              ))}
+            </div>
           </div>
         )
       })()}
@@ -691,16 +763,28 @@ export default function Home() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 4 }}>
                 Fondo de emergencia
-                <button onClick={() => setShowEfInfo(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-mute)', fontSize: 11, padding: '0 2px', lineHeight: 1 }} aria-label="Qué es esto">ℹ</button>
+                <button
+                  onClick={() => setShowEfInfo(v => !v)}
+                  style={{
+                    background: showEfInfo ? 'var(--amber)' : 'var(--ink-3)',
+                    border: '1px solid var(--line)', borderRadius: '50%',
+                    cursor: 'pointer', padding: 0, lineHeight: 1,
+                    color: showEfInfo ? 'var(--ink-0)' : 'var(--fg-dim)',
+                    fontSize: 10, fontWeight: 700,
+                    width: 16, height: 16,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                  aria-label="Qué es esto"
+                >ℹ</button>
               </div>
               {showEfInfo && (
                 <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginBottom: 6, lineHeight: 1.5, maxWidth: 220 }}>
-                  Meta: cubrir 3 meses de ingresos ({fmt(emergencyTarget)} aprox). Basado en promedio mensual de ingresos. Toca la meta arriba para ajustarla.
+                  Meta mensual: 30% de tus ingresos del mes ({fmt(emergencyTarget)}). Crece cada mes conforme ahorras. Toca la meta para ajustarla.
                 </div>
               )}
               <div className="num" style={{ fontSize: 20, fontWeight: 700 }}>{fmt(emergencyBalance)}</div>
               <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 2 }}>
-                Acumulado histórico · Aporte sugerido este mes: {fmt(efContribMes)}
+                Mes actual · Meta: {fmt(displayTarget)}
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
@@ -747,7 +831,7 @@ export default function Home() {
                     fontSize: 18, fontWeight: 700,
                     color: emergencyPct >= 100 ? 'var(--pos)' : emergencyPct >= 50 ? 'var(--amber)' : 'var(--neg)',
                   }}>
-                    {emergencyMonths}m
+                    {emergencyPct.toFixed(0)}%
                   </div>
                 </button>
               )}
@@ -761,14 +845,12 @@ export default function Home() {
             }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5, fontSize: 9.5, color: 'var(--fg-mute)' }}>
-            <span>0m</span><span>1m</span><span>2m</span>
-            <span style={{ color: emergencyPct >= 100 ? 'var(--pos)' : 'inherit' }}>3m ✓</span>
+            <span>0%</span>
+            <span style={{ color: emergencyPct >= 100 ? 'var(--pos)' : 'inherit' }}>
+              {emergencyPct >= 100 ? '✓ Meta alcanzada' : `Aporte sugerido: ${fmt(efContribMes)}`}
+            </span>
+            <span>100%</span>
           </div>
-          {efContribMes > 0 && (
-            <div style={{ fontSize: 9.5, color: 'var(--fg-mute)', marginTop: 6, textAlign: 'center' }}>
-              Aporte sugerido este mes: {fmt(efContribMes)}
-            </div>
-          )}
         </div>
       </div>
 

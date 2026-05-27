@@ -127,6 +127,16 @@ function MiniChart() {
   )
 }
 
+/* ── Strip basic markdown so AI responses don't show asteriscs ── */
+function stripMd(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/gs, '$1')
+    .replace(/\*(.+?)\*/gs, '$1')
+    .replace(/^#{1,3}\s+/gm, '')
+    .replace(/`(.+?)`/g, '$1')
+    .replace(/^[-*]\s+/gm, '• ')
+}
+
 /* ── Chat bubble ── */
 function Bubble({ msg }: { msg: ChatMsg }) {
   const isUser = msg.role === 'user'
@@ -151,7 +161,7 @@ function Bubble({ msg }: { msg: ChatMsg }) {
           lineHeight: 1.5, fontWeight: isUser ? 500 : 400,
           whiteSpace: 'pre-wrap',
         }}>
-          {msg.text}
+          {isUser ? msg.text : stripMd(msg.text)}
           {msg.chart && <MiniChart />}
         </div>
         <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 3, textAlign: isUser ? 'right' : 'left', paddingInline: 4 }}>
@@ -283,7 +293,15 @@ INSTRUCCIONES:
             </div>
             <button
               onClick={() => setShowInfo(v => !v)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, color: 'var(--fg-mute)', fontSize: 14, opacity: .65 }}
+              style={{
+                background: showInfo ? 'var(--amber)' : 'var(--ink-3)',
+                border: '1px solid var(--line)', borderRadius: '50%',
+                cursor: 'pointer', padding: 0, lineHeight: 1,
+                color: showInfo ? 'var(--ink-0)' : 'var(--fg-dim)',
+                fontSize: 10, fontWeight: 700,
+                width: 18, height: 18,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              }}
               aria-label="Qué puede hacer el asistente"
             >ℹ</button>
           </div>
@@ -296,7 +314,7 @@ INSTRUCCIONES:
       </div>
 
       {/* ── Chat area ── */}
-      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '8px 16px 4px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '8px 16px 96px' }}>
         {messages.map((msg, i) => <Bubble key={i} msg={msg} />)}
         {typing && (
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 14 }}>

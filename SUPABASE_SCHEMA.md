@@ -134,6 +134,14 @@ emergency_fund_base / _goal / ef_manual_base / ef_auto_contrib / ef_reset_date
 subscription_status (text: 'free' | 'pro' | ...)
 ```
 
+Text columns (non-jsonb):
+```
+telegram_bot_token    text  nullable  ← token del bot personal del usuario (multi-tenant)
+telegram_bot_username text  nullable  ← username del bot (sin @), para mostrar en UI
+```
+Nota: telegram_bot_token se guarda por user_id (per-user, no household-scoped) con RLS.
+Añadidas 2026-05-27 via migración `add_telegram_bot_columns_to_config_usuario`.
+
 ---
 
 ## METAS / GOALS — 3 fuentes (DECIDIR cuál usar)
@@ -255,3 +263,4 @@ created_at, updated_at
 | 2026-04-25 | Doc inicial — captura de schema vivo via MCP |
 | 2026-05-17 | Actualización: row counts, mes format ("Mayo"), tipo valores en español, user_id=householdId, fire_config shape real, listas_compras schema, project_files RLS fix (BUG-25/26) |
 | 2026-05-18 | **Modelo CORREGIDO con evidencia live**: regla previa `user_id=householdId` era falsa (perdía 96 filas de Isabel). Verdad: Isabel uid `455c23cd` = partner/accepted del household `fa3f7b3b`. READS scope por `household_id`, NUNCA `user_id`. Migración backfill: 240 mov + 4 cuentas owner NULL→fa3f7b3b (0 NULL restante). `config_usuario` es per-user (sin household_id, Isabel tiene row propia). `profiles` no existe. |
+| 2026-05-27 | config_usuario: añadidas columnas `telegram_bot_token` (text, nullable) y `telegram_bot_username` (text, nullable) para multi-tenancy de bots Telegram. Migración: `add_telegram_bot_columns_to_config_usuario`. |

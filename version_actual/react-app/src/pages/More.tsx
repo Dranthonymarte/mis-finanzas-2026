@@ -11,6 +11,7 @@ import {
   BudgetIcon, PaletteIcon, LockIcon, BellIcon, GlobeIcon,
   LogoutIcon, SearchIcon, TransferIcon,
   UserIcon, TagIcon, MicIcon, UploadIcon,
+  TelegramIcon, CalendarIcon, ShoppingIcon, UsersIcon,
 } from '../components/icons/Icons'
 import { useAuthStore } from '../store/auth'
 import { supabase }     from '../lib/supabase'
@@ -185,6 +186,20 @@ export default function More() {
             onClick={() => navigate('/settings/security')}
           />
           <RowLink
+            icon={<IcoBg color="#1a2030"><TelegramIcon /></IcoBg>}
+            iconBg="transparent"
+            label="Bot de Telegram"
+            sub="Configura tu bot personal"
+            onClick={() => navigate('/settings/notifications')}
+          />
+          <RowLink
+            icon={<IcoBg color="#2a1a2a"><UsersIcon /></IcoBg>}
+            iconBg="transparent"
+            label="Pareja / Hogar"
+            sub="Invita y comparte finanzas"
+            onClick={() => navigate('/pareja')}
+          />
+          <RowLink
             icon={<IcoBg color="#1a2416"><UserIcon /></IcoBg>}
             iconBg="transparent"
             label="Perfil"
@@ -215,6 +230,20 @@ export default function More() {
             label="Búsqueda global"
             sub="Encuentra cualquier movimiento"
             onClick={() => navigate('/buscar')}
+          />
+          <RowLink
+            icon={<IcoBg color="#1a2a3a"><CalendarIcon /></IcoBg>}
+            iconBg="transparent"
+            label="Google Calendar"
+            sub="Sincroniza recurrentes al calendario"
+            onClick={() => navigate('/calendar')}
+          />
+          <RowLink
+            icon={<IcoBg color="#1a3020"><ShoppingIcon /></IcoBg>}
+            iconBg="transparent"
+            label="Lista de compras"
+            sub="Gestiona tu lista del mercado"
+            onClick={() => navigate('/lista-compras')}
           />
           <RowLink
             icon={<IcoBg color="#1a2a3a"><TransferIcon /></IcoBg>}

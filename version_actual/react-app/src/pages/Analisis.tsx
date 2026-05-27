@@ -105,9 +105,11 @@ export default function Analisis() {
   const { transactions: liveTxns, loading }  = useTransactions(mesActivo)
   const { transactions: prevTxns }           = useTransactions(prevId)
 
-  const [openCat,       setOpenCat]       = useState<string | null>(null)
-  const [ingresosOpen,  setIngresosOpen]  = useState(false)
-  const [gastosOpen,    setGastosOpen]    = useState(false)
+  const [openCat,         setOpenCat]         = useState<string | null>(null)
+  const [ingresosOpen,    setIngresosOpen]    = useState(false)
+  const [gastosOpen,      setGastosOpen]      = useState(false)
+  const [openIngCat,      setOpenIngCat]      = useState<string | null>(null)
+  const [semanalesOpen,   setSemanalesOpen]   = useState(false)
 
   // ── Helpers ─────────────────────────────────────
   const txns     = liveTxns ?? []
@@ -208,6 +210,32 @@ export default function Analisis() {
   const prevIngresosTotal = prevTxnsArr.reduce(
     (s, t) => txnGroup(t.tipo) === 'ingreso' ? s + Math.abs(t.amount) : s, 0
   )
+
+  // ── Ingresos por categoría ────────────────────────
+  const ingresosPorCat = useMemo<BarEntry[]>(() => {
+    const acc: Record<string, number> = {}
+    for (const t of txns) {
+      if (txnGroup(t.tipo) !== 'ingreso') continue
+      acc[t.cat] = (acc[t.cat] ?? 0) + Math.abs(t.amount)
+    }
+    return Object.entries(acc).sort(([, a], [, b]) => b - a).map(([label, value]) => ({ label, value }))
+  }, [txns])
+
+  const subcatByIngCat = useMemo<Record<string, BarEntry[]>>(() => {
+    const acc: Record<string, Record<string, number>> = {}
+    for (const t of txns) {
+      if (txnGroup(t.tipo) !== 'ingreso') continue
+      const sub = t.subcat ?? 'Sin subcategoría'
+      if (!acc[t.cat]) acc[t.cat] = {}
+      acc[t.cat][sub] = (acc[t.cat][sub] ?? 0) + Math.abs(t.amount)
+    }
+    return Object.fromEntries(
+      Object.entries(acc).map(([cat, subs]) => [
+        cat,
+        Object.entries(subs).sort(([, a], [, b]) => b - a).map(([label, value]) => ({ label, value })),
+      ])
+    )
+  }, [txns])
 
   // ── Desglose semanal (gastos) ────────────────────
   const semanal = useMemo<BarEntry[]>(() => {
@@ -450,38 +478,79 @@ export default function Analisis() {
             )}
           </Card>
 
-          {/* ── Ingresos: resumen de fijo/variable en Card (siempre visible) ── */}
-          {(totalFijos > 0 || totalVariables > 0) && (
+          {/* ── Ingresos por categoría (expandible por subcategoría) ── */}
+          {ingresosPorCat.length > 0 && (
             <Card>
-              <SLabel>Composición de ingresos — {mesLabel(mesActivo)}</SLabel>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {totalFijos > 0 && (
-                  <div style={{ flex: 1, background: 'rgba(88,178,106,.08)', border: '1px solid rgba(88,178,106,.2)', borderRadius: 10, padding: '10px 12px' }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--pos)', marginBottom: 4 }}>Fijos</div>
-                    <div className="num" style={{ fontSize: 15, fontWeight: 700, color: 'var(--pos)' }}>{fmt(totalFijos)}</div>
-                    <div style={{ fontSize: 9.5, color: 'var(--fg-mute)', marginTop: 2 }}>
-                      {ingresosTotal > 0 ? Math.round((totalFijos / ingresosTotal) * 100) : 0}%
+              <SLabel>Ingresos por categoría — {mesLabel(mesActivo)}</SLabel>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {ingresosPorCat.map(({ label, value }, i) => {
+                  const isOpen = openIngCat === label
+                  const subs   = subcatByIngCat[label] ?? []
+                  const pct    = ingresosTotal > 0 ? (value / ingresosTotal) * 100 : 0
+                  return (
+                    <div key={label}>
+                      <button
+                        onClick={() => setOpenIngCat(isOpen ? null : label)}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '9px 0', background: 'none', border: 'none', cursor: 'pointer',
+                          borderTop: i === 0 ? '1px solid var(--line)' : 'none',
+                        }}
+                      >
+                        <CatIcon cat={label} size={16} />
+                        <span style={{ flex: 1, fontSize: 12.5, fontWeight: 500, color: 'var(--fg)', textAlign: 'left' }}>{label}</span>
+                        <span className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--pos)' }}>{fmt(value)}</span>
+                        <span style={{ fontSize: 10, color: 'var(--fg-mute)', minWidth: 30, textAlign: 'right' }}>{pct.toFixed(0)}%</span>
+                        {subs.length > 0 && (
+                          <span style={{ fontSize: 10, color: 'var(--fg-mute)', marginLeft: 2 }}>{isOpen ? '▲' : '▼'}</span>
+                        )}
+                      </button>
+
+                      {/* Barra horizontal de porcentaje */}
+                      <div style={{ height: 4, background: 'var(--ink-3)', borderRadius: 2, overflow: 'hidden', marginBottom: 4 }}>
+                        <div style={{ height: '100%', borderRadius: 2, background: 'var(--pos)', width: `${pct}%`, transition: 'width .35s' }} />
+                      </div>
+
+                      {/* Subcategorías expandibles */}
+                      {isOpen && subs.length > 0 && (
+                        <div style={{ marginLeft: 20, marginBottom: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {subs.map(s => (
+                            <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0 4px 12px', borderLeft: '2px solid rgba(88,178,106,.2)' }}>
+                              <span style={{ fontSize: 11.5, color: 'var(--fg-dim)' }}>{s.label}</span>
+                              <span className="num" style={{ fontSize: 11.5, color: 'var(--fg-dim)' }}>{fmt(s.value)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
-                {totalVariables > 0 && (
-                  <div style={{ flex: 1, background: 'rgba(224,168,74,.08)', border: '1px solid rgba(224,168,74,.2)', borderRadius: 10, padding: '10px 12px' }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--amber)', marginBottom: 4 }}>Variables</div>
-                    <div className="num" style={{ fontSize: 15, fontWeight: 700, color: 'var(--amber)' }}>{fmt(totalVariables)}</div>
-                    <div style={{ fontSize: 9.5, color: 'var(--fg-mute)', marginTop: 2 }}>
-                      {ingresosTotal > 0 ? Math.round((totalVariables / ingresosTotal) * 100) : 0}%
-                    </div>
-                  </div>
-                )}
+                  )
+                })}
               </div>
             </Card>
           )}
 
-          {/* ── Desglose semanal ── */}
+          {/* ── Desglose semanal (desplegable) ── */}
           {semanal.length > 0 && (
             <Card>
-              <SLabel>Gastos semanales — {mesLabel(mesActivo)}</SLabel>
-              <HBar data={semanal} color="var(--amber)" />
+              <button
+                onClick={() => setSemanalesOpen(v => !v)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: semanalesOpen ? 12 : 0,
+                }}
+              >
+                <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)' }}>
+                  Gastos semanales — {mesLabel(mesActivo)}
+                </div>
+                <span style={{
+                  fontSize: 10, color: 'var(--amber)', fontWeight: 700,
+                  background: semanalesOpen ? 'rgba(224,168,74,.22)' : 'var(--ink-3)',
+                  borderRadius: 4, padding: '1px 6px', lineHeight: 1.4,
+                }}>
+                  {semanalesOpen ? '▲' : '▼'}
+                </span>
+              </button>
+              {semanalesOpen && <HBar data={semanal} color="var(--amber)" />}
             </Card>
           )}
 

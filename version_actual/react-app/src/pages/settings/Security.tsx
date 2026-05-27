@@ -1,8 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import AppHeader from '../../components/shell/AppHeader'
 import { supabase } from '../../lib/supabase'
-
-const GROQ_KEY_LS = 'fin_groq_api_key'
 
 const inputSt: React.CSSProperties = {
   width: '100%', background: 'var(--ink-1)', border: '1px solid var(--line)',
@@ -16,24 +14,6 @@ export default function Security() {
   const [confirm,  setConfirm]  = useState('')
   const [saving,   setSaving]   = useState(false)
   const [msg,      setMsg]      = useState<{ text: string; ok: boolean } | null>(null)
-
-  // Groq API key
-  const [groqKey,      setGroqKey]      = useState('')
-  const [groqKeySaved, setGroqKeySaved] = useState(false)
-
-  useEffect(() => {
-    setGroqKey(localStorage.getItem(GROQ_KEY_LS) ?? '')
-  }, [])
-
-  function handleSaveGroqKey() {
-    if (groqKey.trim()) {
-      localStorage.setItem(GROQ_KEY_LS, groqKey.trim())
-    } else {
-      localStorage.removeItem(GROQ_KEY_LS)
-    }
-    setGroqKeySaved(true)
-    setTimeout(() => setGroqKeySaved(false), 2000)
-  }
 
   async function handleSave() {
     if (!current || !next || !confirm) return setMsg({ text: 'Completa todos los campos.', ok: false })
@@ -75,6 +55,8 @@ export default function Security() {
       <AppHeader title="Seguridad" back />
 
       <div style={{ padding: '20px 16px 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+        {/* ── Contraseña ── */}
         <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
           Cambiar contraseña
         </div>
@@ -85,7 +67,7 @@ export default function Security() {
             <input
               type="password" value={val}
               onChange={e => set(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleSave() }}
+              onKeyDown={e => { if (e.key === 'Enter') void handleSave() }}
               style={inputSt}
             />
           </div>
@@ -103,7 +85,7 @@ export default function Security() {
         )}
 
         <button
-          onClick={handleSave}
+          onClick={() => void handleSave()}
           disabled={saving}
           style={{
             padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 600,
@@ -114,33 +96,59 @@ export default function Security() {
           {saving ? 'Guardando…' : 'Actualizar contraseña'}
         </button>
 
-        {/* ── Groq API key ── */}
-        <div style={{ borderTop: '1px solid var(--line)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
-            Integración IA (Groq)
+        {/* ── Biometría & PIN ── */}
+        <div style={{ borderTop: '1px solid var(--line)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 0 }}>
+          <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 12 }}>
+            Acceso rápido
           </div>
-          <div style={{ fontSize: 12, color: 'var(--fg-mute)' }}>API key de Groq</div>
-          <input
-            type="password"
-            value={groqKey}
-            onChange={e => setGroqKey(e.target.value)}
-            placeholder="gsk_..."
-            style={inputSt}
-          />
-          <div style={{ fontSize: 10.5, color: 'var(--fg-mute)' }}>
-            Usada para el OCR de recibos en Escanear. Se guarda solo en este dispositivo.
+
+          {/* Biometría row */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            background: 'var(--ink-2)', border: '1px solid var(--line)',
+            borderRadius: '12px 12px 0 0', padding: '14px 14px',
+          }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>🫆</span> Huella / Face ID
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginTop: 3 }}>
+                Desbloquear con biometría del dispositivo
+              </div>
+            </div>
+            <div style={{
+              padding: '4px 10px', borderRadius: 8, fontSize: 10.5, fontWeight: 700,
+              background: 'var(--ink-3)', color: 'var(--fg-mute)', letterSpacing: '.05em',
+            }}>
+              Próximo
+            </div>
           </div>
-          <button
-            onClick={handleSaveGroqKey}
-            style={{
-              alignSelf: 'flex-start',
-              padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600,
-              background: groqKeySaved ? 'var(--pos)' : 'var(--amber)',
-              color: 'var(--ink-0)', border: 'none', cursor: 'pointer', transition: 'background .2s',
-            }}
-          >
-            {groqKeySaved ? '✓ API key guardada' : 'Guardar API key'}
-          </button>
+
+          {/* PIN row */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            background: 'var(--ink-2)', border: '1px solid var(--line)', borderTop: 'none',
+            borderRadius: '0 0 12px 12px', padding: '14px 14px',
+          }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>🔢</span> PIN de acceso
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginTop: 3 }}>
+                Código de 4 o 6 dígitos para desbloquear
+              </div>
+            </div>
+            <div style={{
+              padding: '4px 10px', borderRadius: 8, fontSize: 10.5, fontWeight: 700,
+              background: 'var(--ink-3)', color: 'var(--fg-mute)', letterSpacing: '.05em',
+            }}>
+              Próximo
+            </div>
+          </div>
+
+          <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginTop: 10, lineHeight: 1.5 }}>
+            La autenticación biométrica usa WebAuthn / Passkeys del dispositivo. Disponible en la próxima actualización.
+          </div>
         </div>
 
       </div>

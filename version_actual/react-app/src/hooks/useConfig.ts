@@ -36,17 +36,23 @@ export interface RecurrenteConfig {
 }
 
 export interface Config {
-  tipos:         TipoConfig[]
-  categorias:    Record<string, string[]>
-  subcategorias: Record<string, string[]>
-  presupuestos:  Record<string, number>
-  recurrentes:   RecurrenteConfig[]
-  closedMonths:  string[]
-  metasAhorro:   MetaAhorro[]
-  fireConfig:    FireConfig
+  tipos:               TipoConfig[]
+  categorias:          Record<string, string[]>
+  subcategorias:       Record<string, string[]>
+  presupuestos:        Record<string, number>
+  recurrentes:         RecurrenteConfig[]
+  closedMonths:        string[]
+  metasAhorro:         MetaAhorro[]
+  fireConfig:          FireConfig
+  // ── Telegram bot config (per-user, multi-tenant) ──────────────────────────
+  telegramBotToken:    string | null
+  telegramBotUsername: string | null
 }
 
 export const DEFAULTS: Config = {
+  // ── Telegram bot config defaults (null = not connected) ───────────────────
+  telegramBotToken:    null,
+  telegramBotUsername: null,
   tipos: [
     { nombre: 'Gasto',                 esIngreso: false },
     { nombre: 'Ingreso Fijo',          esIngreso: true  },
@@ -130,7 +136,7 @@ export function useConfig() {
 
     supabase
       .from('config_usuario')
-      .select('tipos,categorias,subcategorias,presupuestos,recurrentes,closed_months,metas_ahorro,fire_config')
+      .select('tipos,categorias,subcategorias,presupuestos,recurrentes,closed_months,metas_ahorro,fire_config,telegram_bot_token,telegram_bot_username')
       .eq('user_id', userId)
       .single()
       .then(({ data, error }) => {
@@ -139,14 +145,17 @@ export function useConfig() {
         const subs = (data.subcategorias as Record<string,string[]> | null)
 
         setConfig({
-          tipos:         normalizeTipos(data.tipos),
-          categorias:    (cats  && Object.keys(cats).length)  ? cats   : DEFAULTS.categorias,
-          subcategorias: (subs  && Object.keys(subs).length)  ? subs   : DEFAULTS.subcategorias,
-          presupuestos:  (data.presupuestos  as Record<string,number>) ?? DEFAULTS.presupuestos,
-          recurrentes:   normalizeRecurrentes(data.recurrentes),
-          closedMonths:  (data.closed_months as string[])             ?? [],
-          metasAhorro:   (data.metas_ahorro  as MetaAhorro[])         ?? [],
-          fireConfig:    (data.fire_config   as FireConfig)            ?? DEFAULTS.fireConfig,
+          tipos:               normalizeTipos(data.tipos),
+          categorias:          (cats  && Object.keys(cats).length)  ? cats   : DEFAULTS.categorias,
+          subcategorias:       (subs  && Object.keys(subs).length)  ? subs   : DEFAULTS.subcategorias,
+          presupuestos:        (data.presupuestos  as Record<string,number>) ?? DEFAULTS.presupuestos,
+          recurrentes:         normalizeRecurrentes(data.recurrentes),
+          closedMonths:        (data.closed_months as string[])             ?? [],
+          metasAhorro:         (data.metas_ahorro  as MetaAhorro[])         ?? [],
+          fireConfig:          (data.fire_config   as FireConfig)            ?? DEFAULTS.fireConfig,
+          // ── Telegram bot columns (nullable, per-user) ────────────────────
+          telegramBotToken:    (data.telegram_bot_token    as string | null) ?? null,
+          telegramBotUsername: (data.telegram_bot_username as string | null) ?? null,
         })
         setLoading(false)
       })
@@ -156,14 +165,17 @@ export function useConfig() {
     if (!userId) return
     // Optimistic local update so UI reflects changes immediately
     const campoMap: Record<string, keyof Config> = {
-      tipos:         'tipos',
-      categorias:    'categorias',
-      subcategorias: 'subcategorias',
-      presupuestos:  'presupuestos',
-      recurrentes:   'recurrentes',
-      closed_months: 'closedMonths',
-      metas_ahorro:  'metasAhorro',
-      fire_config:   'fireConfig',
+      tipos:                 'tipos',
+      categorias:            'categorias',
+      subcategorias:         'subcategorias',
+      presupuestos:          'presupuestos',
+      recurrentes:           'recurrentes',
+      closed_months:         'closedMonths',
+      metas_ahorro:          'metasAhorro',
+      fire_config:           'fireConfig',
+      // ── Telegram bot columns ─────────────────────────────────────────────
+      telegram_bot_token:    'telegramBotToken',
+      telegram_bot_username: 'telegramBotUsername',
     }
     const key = campoMap[campo]
     if (key) setConfig(prev => ({ ...prev, [key]: valor }))

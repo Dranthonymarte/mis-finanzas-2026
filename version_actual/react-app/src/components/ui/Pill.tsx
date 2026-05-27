@@ -26,13 +26,15 @@ interface PillProps {
   children: ReactNode
   tone?: Tone
   size?: Size
+  title?: string
 }
 
-export default function Pill({ children, tone = 'pos', size = 'xs' }: PillProps) {
+export default function Pill({ children, tone = 'pos', size = 'xs', title }: PillProps) {
   const c = TONES[tone]
   const s = SIZES[size]
   return (
     <span
+      title={title}
       style={{
         display: 'inline-flex',
         alignItems: 'center',

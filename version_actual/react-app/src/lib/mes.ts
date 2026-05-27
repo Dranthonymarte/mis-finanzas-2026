@@ -48,17 +48,19 @@ export function currentMes(): string {
   return dateToMesId(new Date())
 }
 
-/** Last N months as { id: "may-26", label: "Mayo 26", dbKey: "Mayo" } */
+/** Last N months as { id: "may-26", label: "Mayo" | "Dic 2025", dbKey: "Mayo" } */
 export function generateMeses(count = 12): Array<{ id: string; label: string; dbKey: string }> {
-  const result = []
-  const now = new Date()
+  const result  = []
+  const now     = new Date()
+  const curYear = now.getFullYear()
   for (let i = count - 1; i >= 0; i--) {
-    const d    = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const d    = new Date(curYear, now.getMonth() - i, 1)
     const id   = dateToMesId(d)
     const full = FULL[d.getMonth()]
+    const yearSuffix = d.getFullYear() !== curYear ? ` ${d.getFullYear()}` : ''
     result.push({
       id,
-      label: `${full.slice(0,3)}. ${String(d.getFullYear()).slice(2)}`,
+      label: `${full}${yearSuffix}`,
       dbKey: full,
     })
   }

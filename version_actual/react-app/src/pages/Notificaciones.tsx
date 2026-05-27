@@ -16,6 +16,7 @@ interface Notif {
   tipo:             string
   canal_telegram:   boolean
   canal_push:       boolean
+  canal_gcal:       boolean
   recurrente:       boolean
   recurrencia_dias: number | null
   activo:           boolean
@@ -26,6 +27,17 @@ interface NotifToggles {
   telegram_enabled: boolean
   gcal_enabled:     boolean
 }
+
+// Days of the week for recurring weekly notifications
+const DIAS_SEMANA = [
+  { key: 1, label: 'L' },
+  { key: 2, label: 'M' },
+  { key: 3, label: 'X' },
+  { key: 4, label: 'J' },
+  { key: 5, label: 'V' },
+  { key: 6, label: 'S' },
+  { key: 0, label: 'D' },
+]
 
 function fmtSendAt(iso: string) {
   const d = new Date(iso)
@@ -39,17 +51,19 @@ const inpSt: React.CSSProperties = {
 }
 
 // ── Toggle switch ────────────────────────────────────
-function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
     <button
       role="switch"
       aria-checked={on}
-      onClick={() => onChange(!on)}
+      onClick={() => !disabled && onChange(!on)}
       style={{
         width: 46, height: 26, borderRadius: 13, flexShrink: 0,
         background: on ? 'var(--amber)' : 'var(--ink-3)',
         border: '2px solid', borderColor: on ? 'var(--amber)' : 'var(--ink-4)',
-        position: 'relative', transition: 'background .2s, border-color .2s', cursor: 'pointer',
+        position: 'relative', transition: 'background .2s, border-color .2s',
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.45 : 1,
       }}
     >
       <div style={{
@@ -58,6 +72,165 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
         transition: 'left .2s',
       }} />
     </button>
+  )
+}
+
+// ── Inline edit form for a notification ──────────────
+interface InlineFormProps {
+  notif: Notif
+  onSave:   (updated: Notif) => void
+  onCancel: () => void
+}
+
+function defaultHora(iso: string): string {
+  return new Date(iso).toTimeString().slice(0, 5)
+}
+
+function InlineEditForm({ notif, onSave, onCancel }: InlineFormProps) {
+  const [titulo,       setTitulo]       = useState(notif.titulo)
+  const [hora,         setHora]         = useState(defaultHora(notif.send_at))
+  const [diasSemana,   setDiasSemana]   = useState<number[]>([])
+  const [canalTg,      setCanalTg]      = useState(notif.canal_telegram)
+  const [canalGcal,    setCanalGcal]    = useState(notif.canal_gcal)
+  const [canalPush,    setCanalPush]    = useState(notif.canal_push)
+  const [saving,       setSaving]       = useState(false)
+
+  function toggleDia(d: number) {
+    setDiasSemana(prev =>
+      prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]
+    )
+  }
+
+  async function handleSave() {
+    if (!titulo.trim()) return
+    setSaving(true)
+
+    // Rebuild send_at preserving date, only changing hour
+    const base = new Date(notif.send_at)
+    const [hh, mm] = hora.split(':').map(Number)
+    base.setHours(hh, mm, 0, 0)
+
+    const payload = {
+      titulo:         titulo.trim(),
+      send_at:        base.toISOString(),
+      canal_telegram: canalTg,
+      canal_push:     canalPush,
+      canal_gcal:     canalGcal,
+    }
+
+    const { data, error } = await supabase
+      .from('scheduled_notifications')
+      .update(payload)
+      .eq('id', notif.id)
+      .select('id,titulo,mensaje,send_at,tipo,canal_telegram,canal_push,canal_gcal,recurrente,recurrencia_dias,activo')
+      .single()
+
+    setSaving(false)
+    if (!error && data) {
+      onSave(data as Notif)
+    }
+  }
+
+  return (
+    <div style={{
+      padding: '14px 14px 12px',
+      borderTop: '1px solid var(--line)',
+      display: 'flex', flexDirection: 'column', gap: 10,
+      background: 'var(--ink-1)',
+    }}>
+
+      {/* Descripción */}
+      <div>
+        <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginBottom: 4 }}>Descripción</div>
+        <input
+          type="text" value={titulo}
+          onChange={e => setTitulo(e.target.value)}
+          placeholder="Título *"
+          style={inpSt}
+        />
+      </div>
+
+      {/* Hora */}
+      <div>
+        <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginBottom: 4 }}>Hora</div>
+        <input
+          type="time" value={hora}
+          onChange={e => setHora(e.target.value)}
+          style={inpSt}
+        />
+      </div>
+
+      {/* Días de la semana (solo si recurrente o frecuencia semanal) */}
+      {notif.recurrente && (
+        <div>
+          <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginBottom: 6 }}>Días de la semana</div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {DIAS_SEMANA.map(d => {
+              const sel = diasSemana.includes(d.key)
+              return (
+                <button
+                  key={d.key}
+                  onClick={() => toggleDia(d.key)}
+                  style={{
+                    width: 32, height: 32, borderRadius: 8, fontSize: 12, fontWeight: 700,
+                    background: sel ? 'rgba(224,168,74,.18)' : 'var(--ink-3)',
+                    color:      sel ? 'var(--amber)' : 'var(--fg-mute)',
+                    border:     sel ? '1.5px solid rgba(224,168,74,.5)' : '1px solid var(--line)',
+                    cursor: 'pointer', flexShrink: 0,
+                  }}
+                >
+                  {d.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Channel toggles */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ fontSize: 10.5, color: 'var(--fg-mute)' }}>Canales</div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ flex: 1, fontSize: 12.5 }}>📲 Telegram</span>
+          <Toggle on={canalTg} onChange={setCanalTg} />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ flex: 1, fontSize: 12.5 }}>📅 Google Calendar</span>
+          <Toggle on={canalGcal} onChange={setCanalGcal} />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ flex: 1, fontSize: 12.5 }}>🔔 Push</span>
+          <Toggle on={canalPush} onChange={setCanalPush} />
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+        <button
+          onClick={() => void handleSave()}
+          disabled={saving || !titulo.trim()}
+          style={{
+            flex: 1, padding: '9px', borderRadius: 10, fontWeight: 700, fontSize: 13,
+            background: saving || !titulo.trim() ? 'var(--ink-3)' : 'var(--amber)',
+            color:      saving || !titulo.trim() ? 'var(--fg-mute)' : 'var(--ink-0)',
+            border: 'none', cursor: 'pointer',
+          }}
+        >
+          {saving ? 'Guardando…' : 'Guardar cambios'}
+        </button>
+        <button
+          onClick={onCancel}
+          style={{
+            padding: '9px 14px', borderRadius: 10,
+            background: 'var(--ink-3)', color: 'var(--fg-mute)',
+            border: '1px solid var(--line)', cursor: 'pointer', fontSize: 13,
+          }}
+        >✕</button>
+      </div>
+    </div>
   )
 }
 
@@ -72,12 +245,14 @@ export default function Notificaciones() {
   const [toggles,       setToggles]       = useState<NotifToggles>({ push_enabled: false, telegram_enabled: false, gcal_enabled: false })
   const [savingToggle,  setSavingToggle]  = useState<string | null>(null)
 
-  // ── New / edit notification form ──
-  const [editingNotif, setEditingNotif] = useState<Notif | null>(null)  // null = new, Notif = edit
-  const [showForm,     setShowForm]     = useState(false)
-  const [titulo,       setTitulo]       = useState('')
-  const [mensaje,      setMensaje]      = useState('')
-  const [sendAt,       setSendAt]       = useState(() => {
+  // ── Inline edit: which notif id is expanded ──
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  // ── New notification form ──
+  const [showNewForm, setShowNewForm] = useState(false)
+  const [titulo,      setTitulo]      = useState('')
+  const [mensaje,     setMensaje]     = useState('')
+  const [sendAt,      setSendAt]      = useState(() => {
     const d = new Date(); d.setMinutes(0, 0, 0); d.setHours(d.getHours() + 1)
     return d.toISOString().slice(0, 16)
   })
@@ -96,7 +271,7 @@ export default function Notificaciones() {
     Promise.all([
       supabase
         .from('scheduled_notifications')
-        .select('id,titulo,mensaje,send_at,tipo,canal_telegram,canal_push,recurrente,recurrencia_dias,activo')
+        .select('id,titulo,mensaje,send_at,tipo,canal_telegram,canal_push,canal_gcal,recurrente,recurrencia_dias,activo')
         .eq('user_id', userId)
         .eq('activo', true)
         .order('send_at', { ascending: true }),
@@ -123,7 +298,6 @@ export default function Notificaciones() {
     if (!('Notification' in window)) return
     const perm = await Notification.requestPermission()
     setPermission(perm)
-    // Auto-enable push toggle when user grants permission
     if (perm === 'granted') void saveToggle('push_enabled', true)
   }
 
@@ -140,27 +314,16 @@ export default function Notificaciones() {
   async function disableNotif(id: string) {
     await supabase.from('scheduled_notifications').update({ activo: false }).eq('id', id)
     setNotifs(prev => prev.filter(n => n.id !== id))
+    if (expandedId === id) setExpandedId(null)
   }
 
-  function openNewForm() {
-    setEditingNotif(null)
-    setTitulo('')
-    setMensaje('')
-    const d = new Date(); d.setMinutes(0, 0, 0); d.setHours(d.getHours() + 1)
-    setSendAt(d.toISOString().slice(0, 16))
-    setRecurrente(false)
-    setRecDias('7')
-    setShowForm(true)
+  function handleRowTap(n: Notif) {
+    setExpandedId(prev => (prev === n.id ? null : n.id))
   }
 
-  function openEditForm(n: Notif) {
-    setEditingNotif(n)
-    setTitulo(n.titulo)
-    setMensaje(n.mensaje)
-    setSendAt(new Date(n.send_at).toISOString().slice(0, 16))
-    setRecurrente(n.recurrente)
-    setRecDias(String(n.recurrencia_dias ?? 7))
-    setShowForm(true)
+  function handleInlineSave(updated: Notif) {
+    setNotifs(prev => prev.map(n => n.id === updated.id ? updated : n))
+    setExpandedId(null)
   }
 
   async function saveNotif() {
@@ -175,42 +338,31 @@ export default function Notificaciones() {
       tipo:             'recordatorio',
       canal_push:       toggles.push_enabled && permission === 'granted',
       canal_telegram:   toggles.telegram_enabled,
+      canal_gcal:       toggles.gcal_enabled,
       recurrente,
       recurrencia_dias: recurrente ? parseInt(recDias) || 7 : null,
       activo:           true,
     }
 
-    if (editingNotif) {
-      // UPDATE existing
-      const { data, error } = await supabase
-        .from('scheduled_notifications')
-        .update(payload)
-        .eq('id', editingNotif.id)
-        .select('id,titulo,mensaje,send_at,tipo,canal_telegram,canal_push,recurrente,recurrencia_dias,activo')
-        .single()
-      if (!error && data) {
-        setNotifs(prev => prev.map(n => n.id === editingNotif.id ? data as Notif : n))
-      }
-    } else {
-      // INSERT new
-      const { data, error } = await supabase
-        .from('scheduled_notifications')
-        .insert(payload)
-        .select('id,titulo,mensaje,send_at,tipo,canal_telegram,canal_push,recurrente,recurrencia_dias,activo')
-        .single()
-      if (!error && data) {
-        setNotifs(prev => [data as Notif, ...prev])
-      }
+    const { data, error } = await supabase
+      .from('scheduled_notifications')
+      .insert(payload)
+      .select('id,titulo,mensaje,send_at,tipo,canal_telegram,canal_push,canal_gcal,recurrente,recurrencia_dias,activo')
+      .single()
+    if (!error && data) {
+      setNotifs(prev => [data as Notif, ...prev])
     }
 
     setSaving(false)
-    setShowForm(false)
-    setEditingNotif(null)
+    setShowNewForm(false)
+    setTitulo(''); setMensaje('')
+    setRecurrente(false); setRecDias('7')
   }
 
   const canals = (n: Notif) => [
     n.canal_telegram && 'Telegram',
     n.canal_push     && 'Push',
+    n.canal_gcal     && 'GCal',
   ].filter(Boolean).join(' · ') || '—'
 
   return (
@@ -292,56 +444,79 @@ export default function Notificaciones() {
 
         {notifs.length > 0 && (
           <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
-            {notifs.map((n, i) => (
-              <button
-                key={n.id}
-                onClick={() => openEditForm(n)}
-                style={{
-                  width: '100%',
-                  padding: '13px 14px',
-                  borderBottom: i < notifs.length - 1 ? '1px solid var(--line)' : 'none',
-                  display: 'flex', alignItems: 'flex-start', gap: 12,
-                  background: 'none', border: 'none',
-                  borderBottomWidth: i < notifs.length - 1 ? 1 : 0,
-                  borderBottomColor: 'var(--line)',
-                  borderBottomStyle: 'solid',
-                  cursor: 'pointer', textAlign: 'left',
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--fg)' }}>{n.titulo}</div>
-                  {n.mensaje && (
-                    <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {n.mensaje}
-                    </div>
-                  )}
-                  <div style={{ marginTop: 4, display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span style={{ fontSize: 10.5, color: 'var(--amber)', fontFamily: 'var(--f-num)' }}>{fmtSendAt(n.send_at)}</span>
-                    {n.recurrente && n.recurrencia_dias && (
-                      <span style={{ fontSize: 10, color: 'var(--fg-mute)' }}>· cada {n.recurrencia_dias}d</span>
-                    )}
-                    <span style={{ fontSize: 10, color: 'var(--fg-mute)' }}>· {canals(n)}</span>
-                  </div>
-                </div>
+            {notifs.map((n, i) => {
+              const isExpanded = expandedId === n.id
+              const isLast     = i === notifs.length - 1
+              return (
                 <div
-                  role="button"
-                  aria-label="Eliminar"
-                  onClick={e => { e.stopPropagation(); void disableNotif(n.id) }}
-                  style={{ flexShrink: 0, width: 24, height: 24, borderRadius: 6, background: 'rgba(214,106,90,.1)', display: 'grid', placeItems: 'center', color: 'var(--neg)', fontSize: 14 }}
+                  key={n.id}
+                  style={{
+                    borderBottom: isLast && !isExpanded ? 'none' : '1px solid var(--line)',
+                  }}
                 >
-                  ×
+                  {/* Row */}
+                  <button
+                    onClick={() => handleRowTap(n)}
+                    style={{
+                      width: '100%',
+                      padding: '13px 14px',
+                      display: 'flex', alignItems: 'flex-start', gap: 12,
+                      background: isExpanded ? 'rgba(224,168,74,.04)' : 'none',
+                      border: 'none',
+                      cursor: 'pointer', textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--fg)' }}>{n.titulo}</div>
+                      {n.mensaje && (
+                        <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {n.mensaje}
+                        </div>
+                      )}
+                      <div style={{ marginTop: 4, display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <span style={{ fontSize: 10.5, color: 'var(--amber)', fontFamily: 'var(--f-num)' }}>{fmtSendAt(n.send_at)}</span>
+                        {n.recurrente && n.recurrencia_dias && (
+                          <span style={{ fontSize: 10, color: 'var(--fg-mute)' }}>· cada {n.recurrencia_dias}d</span>
+                        )}
+                        <span style={{ fontSize: 10, color: 'var(--fg-mute)' }}>· {canals(n)}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      {/* Expand chevron */}
+                      <span style={{
+                        fontSize: 10, color: 'var(--fg-mute)',
+                        transform: isExpanded ? 'rotate(180deg)' : 'none',
+                        transition: 'transform .2s', display: 'inline-block',
+                      }}>▼</span>
+                      <div
+                        role="button"
+                        aria-label="Eliminar"
+                        onClick={e => { e.stopPropagation(); void disableNotif(n.id) }}
+                        style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(214,106,90,.1)', display: 'grid', placeItems: 'center', color: 'var(--neg)', fontSize: 14 }}
+                      >
+                        ×
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Inline edit form */}
+                  {isExpanded && (
+                    <InlineEditForm
+                      notif={n}
+                      onSave={handleInlineSave}
+                      onCancel={() => setExpandedId(null)}
+                    />
+                  )}
                 </div>
-              </button>
-            ))}
+              )
+            })}
           </div>
         )}
 
         {/* ── New notification button / form ── */}
-        {showForm ? (
+        {showNewForm ? (
           <div style={{ background: 'var(--ink-2)', border: '1px solid var(--amber)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--amber)' }}>
-              {editingNotif ? 'Editar alerta' : 'Nueva alerta'}
-            </div>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--amber)' }}>Nueva alerta</div>
             <input type="text" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Título *" style={inpSt} />
             <input type="text" value={mensaje} onChange={e => setMensaje(e.target.value)} placeholder="Mensaje (opcional)" style={inpSt} />
             <div>
@@ -367,17 +542,17 @@ export default function Notificaciones() {
                 onClick={() => void saveNotif()} disabled={saving || !titulo.trim()}
                 style={{ flex: 1, padding: '9px', borderRadius: 10, background: 'var(--amber)', color: 'var(--ink-0)', border: 'none', fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}
               >
-                {saving ? 'Guardando…' : (editingNotif ? 'Guardar cambios' : 'Crear alerta')}
+                {saving ? 'Guardando…' : 'Crear alerta'}
               </button>
               <button
-                onClick={() => { setShowForm(false); setEditingNotif(null) }}
+                onClick={() => { setShowNewForm(false) }}
                 style={{ padding: '9px 14px', borderRadius: 10, background: 'var(--ink-3)', color: 'var(--fg-mute)', border: '1px solid var(--line)', cursor: 'pointer' }}
               >✕</button>
             </div>
           </div>
         ) : (
           <button
-            onClick={openNewForm}
+            onClick={() => setShowNewForm(true)}
             style={{
               background: 'var(--ink-2)', border: '1px dashed var(--ink-4)',
               borderRadius: 14, padding: '13px',

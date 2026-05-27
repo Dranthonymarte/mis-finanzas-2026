@@ -13,6 +13,8 @@
 html,
 body {
   height: 100%;
+  /* Disable pull-to-refresh — app manages its own data refresh */
+  overscroll-behavior-y: none;
 }
 
 body {

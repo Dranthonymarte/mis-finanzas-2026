@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase }     from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
 import { usePrefsStore } from '../store/prefs'
@@ -12,13 +12,38 @@ export interface Tasas {
 
 export const TASAS_DEFAULTS: Tasas = { bcv: 36.50, eur: 40.00 }
 
-const HOUSEHOLD_KEY = 'anthony-isabel-2026'
+const HOUSEHOLD_KEY   = 'anthony-isabel-2026'
+const BCV_AUTO_TS_KEY = 'mis_finanzas_bcv_auto_ts'
+const SIX_HOURS       = 6 * 60 * 60 * 1000
+let   sessionFetched  = false   // prevents duplicate fetches across hook instances
 
 export function useTasas() {
   const householdId = useAuthStore(s => s.householdId)
   const mesActivo   = usePrefsStore(s => s.mesActivo)
   const [tasas,   setTasas]   = useState<Tasas>(TASAS_DEFAULTS)
   const [loading, setLoading] = useState(true)
+  const tasasRef = useRef<Tasas>(TASAS_DEFAULTS)
+  tasasRef.current = tasas
+
+  // ── Auto-refresh BCV from ve.dolarapi.com (silent, max 1×/6h) ──
+  useEffect(() => {
+    if (!householdId || sessionFetched) return
+    const lsTs = parseInt(localStorage.getItem(BCV_AUTO_TS_KEY) ?? '0', 10)
+    if (Date.now() - lsTs < SIX_HOURS) return
+
+    sessionFetched = true
+    localStorage.setItem(BCV_AUTO_TS_KEY, String(Date.now()))
+
+    fetch('https://ve.dolarapi.com/v1/dolares/oficial')
+      .then(r => r.ok ? (r.json() as Promise<{ promedio?: number }>) : Promise.reject())
+      .then(data => {
+        const rate = data.promedio
+        if (!rate || rate <= 0) return
+        setTasas(prev => ({ ...prev, bcv: rate }))
+        void saveTasas(householdId, rate, tasasRef.current.eur, mesActivo)
+      })
+      .catch(() => { /* silent — user still gets DB rate */ })
+  }, [householdId, mesActivo])
 
   useEffect(() => {
     if (!householdId) { setLoading(false); return }

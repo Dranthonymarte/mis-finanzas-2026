@@ -341,13 +341,11 @@ export default function Recurrentes() {
             />
 
             {/* Notificación Telegram */}
-            {!isEditing && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                <input type="checkbox" checked={notifTg} onChange={e => setNotifTg(e.target.checked)} />
-                <span>📲 Recordatorio por Telegram</span>
-                {notifTg && <span style={{ fontSize: 11, color: 'var(--fg-mute)' }}>(también en Notificaciones)</span>}
-              </label>
-            )}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+              <input type="checkbox" checked={notifTg} onChange={e => setNotifTg(e.target.checked)} />
+              <span>📲 Recordatorio por Telegram</span>
+              {notifTg && !isEditing && <span style={{ fontSize: 11, color: 'var(--fg-mute)' }}>(se crea en Notificaciones)</span>}
+            </label>
 
             {/* Actions */}
             <div style={{ display: 'flex', gap: 8 }}>
@@ -401,7 +399,7 @@ export default function Recurrentes() {
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12.5, fontWeight: 600 }}>Google Calendar</div>
             <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 1 }}>
-              Sync automático próximamente — en desarrollo.
+              Ve a Calendario para sincronizar con Google Calendar.
             </div>
           </div>
         </div>

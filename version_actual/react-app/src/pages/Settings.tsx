@@ -3,7 +3,7 @@ import AppHeader from '../components/shell/AppHeader'
 import RowGroup from '../components/shell/RowGroup'
 import RowLink from '../components/shell/RowLink'
 import {
-  UserIcon, TagIcon, BudgetIcon, PaletteIcon, LockIcon, BellIcon, UsersIcon,
+  UserIcon, TagIcon, BudgetIcon, PaletteIcon, LockIcon, BellIcon, UsersIcon, TelegramIcon,
 } from '../components/icons/Icons'
 
 export default function Settings() {
@@ -59,6 +59,12 @@ export default function Settings() {
           label="Notificaciones"
           sub="Alertas, Telegram y reportes automáticos"
           onClick={() => navigate('/notificaciones')}
+        />
+        <RowLink
+          icon={<TelegramIcon />}
+          label="Bot de Telegram"
+          sub="Configura tu bot personal para notificaciones"
+          onClick={() => navigate('/settings/notifications')}
         />
         <RowLink
           icon={<UsersIcon />}

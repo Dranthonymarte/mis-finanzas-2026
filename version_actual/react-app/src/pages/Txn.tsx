@@ -112,8 +112,8 @@ function DateHeader({ date, txns }: { date: string; txns: Transaction[] }) {
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 4px 6px' }}>
       <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--fg-dim)' }}>{date}</span>
       <div style={{ display: 'flex', gap: 10, fontSize: 11 }}>
-        {inc > 0 && <span style={{ color: 'var(--pos)' }}>+{fmt(inc)}</span>}
-        {exp > 0 && <span style={{ color: 'var(--neg)' }}>−{fmt(exp)}</span>}
+        {inc > 0 && <span style={{ color: 'var(--pos)' }}>{fmt(inc)}</span>}
+        {exp > 0 && <span style={{ color: 'var(--neg)' }}>{fmt(exp)}</span>}
       </div>
     </div>
   )
@@ -242,6 +242,16 @@ export default function Txn() {
       spentByCat[t.cat] = (spentByCat[t.cat] ?? 0) + Math.abs(t.amount)
   }
   const budgetCats = Object.keys(config.presupuestos)
+
+  // Categories without a budget (for the picker)
+  const NON_BUDGET_TIPOS = new Set(['Ahorro en efectivo', 'Transferencia Interna', 'Prestamo pagado', 'Ajuste'])
+  const expenseCats = [...new Set([
+    ...config.tipos
+      .filter(t => !t.esIngreso && !NON_BUDGET_TIPOS.has(t.nombre))
+      .flatMap(t => config.categorias[t.nombre] ?? []),
+    ...Object.keys(spentByCat),
+  ])]
+  const noBudgetCats = expenseCats.filter(c => !config.presupuestos[c])
 
   const LABELS: Record<FilterType, string> = {
     all: 'Todos', gasto: 'Gastos', ingreso: 'Ingresos', ahorro: 'Ahorro',
@@ -474,7 +484,15 @@ export default function Txn() {
               </div>
               <button
                 onClick={() => setShowBudgetInfo(v => !v)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, color: 'var(--fg-mute)', fontSize: 12, opacity: .6 }}
+                style={{
+                  background: showBudgetInfo ? 'var(--amber)' : 'var(--ink-3)',
+                  border: '1px solid var(--line)', borderRadius: '50%',
+                  cursor: 'pointer', padding: 0, lineHeight: 1,
+                  color: showBudgetInfo ? 'var(--ink-0)' : 'var(--fg-dim)',
+                  fontSize: 10, fontWeight: 700,
+                  width: 16, height: 16,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                }}
                 aria-label="Info presupuesto"
               >ℹ</button>
             </div>
@@ -500,48 +518,77 @@ export default function Txn() {
           {addingBudget && (
             <div style={{ background: 'var(--ink-2)', border: '1px solid rgba(224,168,74,.3)', borderRadius: 14, padding: '12px 14px', marginBottom: 10 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--amber)', marginBottom: 8 }}>
-                Nuevo presupuesto
+                {budgetCat ? `Límite para ${budgetCat}` : 'Selecciona una categoría'}
               </div>
-              <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
-                <input
-                  type="text"
-                  placeholder="Categoría (ej. Comida, Transporte…)"
-                  value={budgetCat}
-                  onChange={e => setBudgetCat(e.target.value)}
-                  style={{ width: '100%', background: 'var(--ink-1)', border: '1px solid var(--line)', borderRadius: 10, padding: '9px 12px', fontSize: 13, color: 'var(--fg)', outline: 'none', boxSizing: 'border-box' as const }}
-                />
-                <div style={{ display: 'flex', gap: 8 }}>
+
+              {/* Step 1: Category picker */}
+              {!budgetCat && (
+                noBudgetCats.length === 0
+                  ? <div style={{ fontSize: 12, color: 'var(--fg-mute)', textAlign: 'center', padding: '12px 0' }}>
+                      Todas las categorías ya tienen presupuesto
+                    </div>
+                  : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {noBudgetCats.map(cat => (
+                        <button
+                          key={cat}
+                          onClick={() => { setBudgetCat(cat); setBudgetAmt('') }}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '7px 12px', borderRadius: 10, fontSize: 12.5, fontWeight: 500,
+                            background: 'var(--ink-3)', border: '1px solid var(--line)',
+                            color: 'var(--fg-dim)', cursor: 'pointer',
+                          }}
+                        >
+                          <CatIcon cat={cat} size={18} />
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+              )}
+
+              {/* Step 2: Amount input (after category selected) */}
+              {budgetCat && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button
+                    onClick={() => setBudgetCat('')}
+                    style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--ink-3)', border: '1px solid var(--line)', color: 'var(--fg-mute)', fontSize: 11, cursor: 'pointer' }}
+                  >← Volver</button>
                   <div style={{ position: 'relative', flex: 1 }}>
                     <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--fg-mute)' }}>$</span>
                     <input
-                      type="number" min="0" step="0.01"
+                      autoFocus type="number" min="0" step="0.01"
                       placeholder="Límite mensual"
                       value={budgetAmt}
                       onChange={e => setBudgetAmt(e.target.value)}
+                      onKeyDown={async e => {
+                        if (e.key === 'Enter') {
+                          const amt = parseFloat(budgetAmt)
+                          if (!isNaN(amt) && amt > 0) {
+                            await updateConfig('presupuestos', { ...config.presupuestos, [budgetCat]: amt })
+                            setBudgetCat(''); setBudgetAmt(''); setAddingBudget(false)
+                          }
+                        }
+                      }}
                       style={{ width: '100%', background: 'var(--ink-1)', border: '1px solid var(--line)', borderRadius: 10, padding: '9px 12px 9px 22px', fontSize: 13, color: 'var(--fg)', outline: 'none', boxSizing: 'border-box' as const }}
                     />
                   </div>
                   <button
                     onClick={async () => {
-                      const cat = budgetCat.trim()
                       const amt = parseFloat(budgetAmt)
-                      if (!cat || isNaN(amt) || amt <= 0) return
-                      const newBudgets = { ...config.presupuestos, [cat]: amt }
-                      await updateConfig('presupuestos', newBudgets)
-                      setBudgetCat('')
-                      setBudgetAmt('')
-                      setAddingBudget(false)
+                      if (isNaN(amt) || amt <= 0) return
+                      await updateConfig('presupuestos', { ...config.presupuestos, [budgetCat]: amt })
+                      setBudgetCat(''); setBudgetAmt(''); setAddingBudget(false)
                     }}
-                    disabled={!budgetCat.trim() || !budgetAmt}
+                    disabled={!budgetAmt}
                     style={{
                       flexShrink: 0, padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                      background: budgetCat.trim() && budgetAmt ? 'var(--amber)' : 'var(--ink-3)',
-                      color: budgetCat.trim() && budgetAmt ? 'var(--ink-0)' : 'var(--fg-mute)',
-                      border: 'none', cursor: budgetCat.trim() && budgetAmt ? 'pointer' : 'default',
+                      background: budgetAmt ? 'var(--amber)' : 'var(--ink-3)',
+                      color: budgetAmt ? 'var(--ink-0)' : 'var(--fg-mute)',
+                      border: 'none', cursor: budgetAmt ? 'pointer' : 'default',
                     }}
                   >Guardar</button>
                 </div>
-              </div>
+              )}
             </div>
           )}
           <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>

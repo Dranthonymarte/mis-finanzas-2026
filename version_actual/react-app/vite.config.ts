@@ -13,6 +13,11 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      // injectManifest: use our custom src/sw.ts so we can add push handlers.
+      // Workbox precaching is still handled via precacheAndRoute(self.__WB_MANIFEST).
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png'],
       manifest: {
@@ -35,11 +40,8 @@ export default defineConfig({
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        navigateFallback: '/index.html',
-        cleanupOutdatedCaches: true,
-        clientsClaim: true,
       },
     }),
   ],

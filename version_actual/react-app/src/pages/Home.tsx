@@ -5,12 +5,13 @@
 // fondo emergencia, top gastos, pronóstico, IA, txns
 // ═══════════════════════════════════════════════════
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import Sparkline          from '../components/ui/Sparkline'
 import Pill               from '../components/ui/Pill'
 import CatIcon, { catColor } from '../components/ui/CatIcon'
+import Sheet              from '../components/ui/Sheet'
 import { MOCK_BALANCE_SERIES, MOCK_KPIS, txnGroup, type Transaction } from '../data/mock'
 import { useAccounts }     from '../hooks/useAccounts'
 import { useTransactions } from '../hooks/useTransactions'
@@ -24,6 +25,26 @@ import { supabase }        from '../lib/supabase'
 import { generateMeses, mesLabel, dateToMesId } from '../lib/mes'
 import { DEFAULTS } from '../hooks/useConfig'
 import { BellIcon } from '../components/icons/Icons'
+
+// ── Shortcuts config ──────────────────────────────────────────
+const SC_KEY = 'finanzas_shortcuts_v1'
+const ALL_SC = [
+  { id: 'analisis',    label: 'Análisis',    emoji: '📊', path: '/analisis' },
+  { id: 'transfer',    label: 'Transferir',  emoji: '⇄',  path: '/transfer' },
+  { id: 'calc',        label: 'Calcular',    emoji: '🧮', path: '/calculadora' },
+  { id: 'recurrentes', label: 'Recurrentes', emoji: '🔁', path: '/recurrentes' },
+  { id: 'pareja',      label: 'Pareja',      emoji: '💑', path: '/pareja' },
+  { id: 'tasas',       label: 'Tasas',       emoji: '💱', path: '/monedas' },
+  { id: 'escanear',    label: 'Escanear',    emoji: '📷', path: '/escanear' },
+  { id: 'voz',         label: 'Voz',         emoji: '🎤', path: '/voz' },
+  { id: 'buscar',      label: 'Buscar',      emoji: '🔍', path: '/buscar' },
+  { id: 'ia',          label: 'IA',          emoji: '✦',  path: '/ia' },
+]
+const DEFAULT_SC = ['analisis', 'transfer', 'calc', 'recurrentes', 'pareja']
+function loadSC(): string[] {
+  try { return JSON.parse(localStorage.getItem(SC_KEY) ?? 'null') ?? DEFAULT_SC }
+  catch { return DEFAULT_SC }
+}
 
 const MONTHS_6 = generateMeses(6)
 
@@ -244,7 +265,14 @@ export default function Home() {
     return [...base, { month: cur, ingresos: kpiData.ingresos, gastos: kpiData.gastos }]
   }, [histKPIs, kpiData.ingresos, kpiData.gastos, mesActivo])
 
-  const [showEfInfo, setShowEfInfo] = useState(false)
+  const [showEfInfo,   setShowEfInfo]   = useState(false)
+  const [shortcuts,    setShortcuts]    = useState<string[]>(loadSC)
+  const [showScEditor, setShowScEditor] = useState(false)
+
+  const saveSC = useCallback((ids: string[]) => {
+    setShortcuts(ids)
+    localStorage.setItem(SC_KEY, JSON.stringify(ids))
+  }, [])
 
   // ── Fondo emergencia ──────────────────────────────────────────────
   // Lógica: alcancía de emergencia. Meta = 30% de ingresos del MES ACTUAL.
@@ -440,29 +468,88 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ─── 4. QUICK ACTIONS ─── */}
-      <div style={{ padding: '4px 16px 4px', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
-        {[
-          { emoji: '＋', l: 'Añadir',     c: 'var(--amber)', onClick: () => navigate('/new-txn')  },
-          { emoji: '⇄',  l: 'Transferir', c: 'var(--teal)',  onClick: () => navigate('/transfer') },
-          { emoji: '⊡',  l: 'Escanear',  c: 'var(--info)',  onClick: () => {}                    },
-          { emoji: '✦',  l: 'IA',         c: '#b0a3c7',     onClick: () => navigate('/ia')        },
-        ].map(a => (
-          <button
-            key={a.l}
-            onClick={a.onClick}
-            style={{
-              background: 'var(--ink-2)', border: '1px solid var(--line)',
-              borderRadius: 14, padding: '12px 6px',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-              cursor: 'pointer',
-            }}
-          >
-            <span style={{ fontSize: 20, color: a.c, lineHeight: 1 }}>{a.emoji}</span>
-            <span style={{ fontSize: 11, color: 'var(--fg-dim)', fontWeight: 500 }}>{a.l}</span>
-          </button>
-        ))}
+      {/* ─── 4. ACCESOS DIRECTOS (horizontal scroll) ─── */}
+      <div style={{
+        display: 'flex', gap: 8, padding: '4px 16px',
+        overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none',
+      }}>
+        {shortcuts.map(id => {
+          const sc = ALL_SC.find(s => s.id === id)
+          if (!sc) return null
+          return (
+            <button
+              key={sc.id}
+              onClick={() => navigate(sc.path)}
+              style={{
+                flexShrink: 0, width: 64, background: 'var(--ink-2)',
+                border: '1px solid var(--line)', borderRadius: 14, padding: '10px 6px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{ fontSize: 20, lineHeight: 1 }}>{sc.emoji}</span>
+              <span style={{ fontSize: 10, color: 'var(--fg-dim)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                {sc.label}
+              </span>
+            </button>
+          )
+        })}
+
+        {/* Gear — abre editor de accesos */}
+        <button
+          onClick={() => setShowScEditor(true)}
+          style={{
+            flexShrink: 0, width: 64, background: 'var(--ink-2)',
+            border: '1px dashed var(--ink-4)', borderRadius: 14, padding: '10px 6px',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+            cursor: 'pointer',
+          }}
+        >
+          <span style={{ fontSize: 18, lineHeight: 1, color: 'var(--fg-mute)' }}>⚙</span>
+          <span style={{ fontSize: 10, color: 'var(--fg-mute)', fontWeight: 500 }}>Ajustar</span>
+        </button>
       </div>
+
+      {/* Sheet — editor de accesos directos */}
+      <Sheet open={showScEditor} onClose={() => setShowScEditor(false)}>
+        <div style={{ paddingBottom: 8 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Accesos directos</div>
+          <div style={{ fontSize: 12, color: 'var(--fg-mute)', marginBottom: 16 }}>
+            Selecciona hasta 8 accesos para tu dashboard
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {ALL_SC.map(sc => {
+              const active = shortcuts.includes(sc.id)
+              return (
+                <button
+                  key={sc.id}
+                  onClick={() => {
+                    if (active) saveSC(shortcuts.filter(s => s !== sc.id))
+                    else if (shortcuts.length < 8) saveSC([...shortcuts, sc.id])
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '10px 12px', borderRadius: 12,
+                    background: active ? 'rgba(224,168,74,.12)' : 'var(--ink-3)',
+                    border: active ? '1px solid rgba(224,168,74,.35)' : '1px solid var(--line)',
+                    cursor: 'pointer', textAlign: 'left',
+                  }}
+                >
+                  <span style={{ fontSize: 20, width: 28, textAlign: 'center' }}>{sc.emoji}</span>
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{sc.label}</span>
+                  <span style={{
+                    width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                    background: active ? 'var(--amber)' : 'var(--ink-4)',
+                    border: active ? 'none' : '1px solid var(--line)',
+                    display: 'grid', placeItems: 'center',
+                    fontSize: 12, color: active ? 'var(--ink-0)' : 'transparent',
+                  }}>✓</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </Sheet>
 
       {/* ─── 5. KPI CARDS 2×2 ─── */}
       {(() => {
@@ -506,7 +593,7 @@ export default function Home() {
                       </span>
                       <button
                         onClick={() => setOpenKpiInfo(infoOpen ? null : k.id)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-mute)', fontSize: 11, padding: '0 2px', lineHeight: 1, opacity: 0.65 }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--info)', fontSize: 12, padding: '0 2px', lineHeight: 1 }}
                         aria-label={`Qué es ${k.label}`}
                       >ℹ</button>
                     </div>

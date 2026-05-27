@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════
 // FAB — floating action button  (BLOQUE 6)
-// 5 actions: Buscar · CSV · Voz · Transferir · Movimiento
+// 4 actions: Buscar · Movimiento · Por voz · Escáner
 // Portal rendering breaks TabBar stacking context (z-index fix)
 // ═══════════════════════════════════════════════════
 
@@ -8,17 +8,16 @@ import { useEffect }    from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate }  from 'react-router-dom'
 import {
-  PlusIcon, TxnIcon, TransferIcon,
-  SearchIcon, MicIcon, UploadIcon,
+  PlusIcon, TxnIcon,
+  SearchIcon, MicIcon, ScanIcon,
 } from '../icons/Icons'
 import { useAppStore } from '../../store/app'
 
 const FAB_ACTIONS = [
-  { id: 'search',   label: 'Buscar',       Icon: SearchIcon,   color: '#6a94c4' },
-  { id: 'csv',      label: 'Importar CSV', Icon: UploadIcon,   color: '#3d8b82' },
-  { id: 'voice',    label: 'Por voz',      Icon: MicIcon,      color: '#b0a3c7' },
-  { id: 'transfer', label: 'Transferir',   Icon: TransferIcon, color: '#4a9eda' },
-  { id: 'txn',      label: 'Movimiento',   Icon: TxnIcon,      color: '#e0a84a' },
+  { id: 'search', label: 'Buscar',     Icon: SearchIcon, color: '#6a94c4' },
+  { id: 'txn',    label: 'Movimiento', Icon: TxnIcon,    color: '#e0a84a' },
+  { id: 'voice',  label: 'Por voz',    Icon: MicIcon,    color: '#b0a3c7' },
+  { id: 'scan',   label: 'Escáner',    Icon: ScanIcon,   color: '#3d8b82' },
 ]
 
 export default function FAB() {
@@ -36,11 +35,10 @@ export default function FAB() {
 
   function handleAction(id: string) {
     close()
-    if (id === 'txn')      navigate('/new-txn')
-    if (id === 'transfer') navigate('/transfer')
-    if (id === 'search')   navigate('/buscar')
-    if (id === 'voice')    navigate('/voz')
-    if (id === 'csv')      navigate('/csv-import')
+    if (id === 'txn')    navigate('/new-txn')
+    if (id === 'search') navigate('/buscar')
+    if (id === 'voice')  navigate('/voz')
+    if (id === 'scan')   navigate('/escanear')
   }
 
   return (

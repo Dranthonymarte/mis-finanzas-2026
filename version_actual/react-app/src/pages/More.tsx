@@ -17,37 +17,6 @@ import { supabase }     from '../lib/supabase'
 import Sheet            from '../components/ui/Sheet'
 import { usePwaInstall } from '../hooks/usePwaInstall'
 
-// ── Quick-access grid item ──────────────────────────
-interface GridItem {
-  emoji:  string
-  label:  string
-  path:   string
-  color:  string   // accent bg
-}
-
-const GRID_ITEMS: GridItem[] = [
-  // Row 1
-  { emoji: '🧮', label: 'Calculadora',  path: '/calculadora',   color: '#2a1f0a' },
-  { emoji: '💳', label: 'Cuentas',      path: '/accounts',      color: '#1a2a1a' },
-  { emoji: '🔍', label: 'Buscar',       path: '/buscar',        color: '#1a1a3a' },
-  { emoji: '✦',  label: 'IA',           path: '/ia',            color: '#2a1f0a' },
-  // Row 2
-  { emoji: '💸', label: 'Dinero fuera', path: '/dinero-fuera',  color: '#3a1a1a' },
-  { emoji: '📊', label: 'Análisis',     path: '/analisis',      color: '#1a2d1a' },
-  { emoji: '↕️', label: 'Transferir',   path: '/transfer',      color: '#1a2a3a' },
-  { emoji: '🔁', label: 'Recurrentes',  path: '/recurrentes',   color: '#2a1a3a' },
-  // Row 3
-  { emoji: '💑', label: 'Pareja',       path: '/pareja',        color: '#2d1a3d' },
-  { emoji: '💱', label: 'Tasas BCV',    path: '/monedas',       color: '#1a2416' },
-  { emoji: '📷', label: 'Escanear',     path: '/escanear',      color: '#1a2a1a' },
-  { emoji: '📂', label: 'Importar CSV', path: '/csv-import',    color: '#1a3428' },
-  // Row 4
-  { emoji: '🎤', label: 'Voz',          path: '/voz',           color: '#2a1a2a' },
-  { emoji: '📋', label: 'Presupuestos', path: '/settings/budgets', color: '#1e4f3a' },
-  { emoji: '🛒', label: 'Lista compras',path: '/lista-compras', color: '#3a2d0a' },
-  { emoji: '🔔', label: 'Alertas',      path: '/notificaciones',color: '#1a1a2a' },
-]
-
 // ── Icon with colored bg ─────────────────────────────
 function IcoBg({ children, color }: { children: ReactNode; color: string }) {
   return (
@@ -130,55 +99,6 @@ export default function More() {
           >
             Editar
           </button>
-        </div>
-      </div>
-
-      {/* ── Quick-access grid 4×4 ── */}
-      <div style={{ padding: '0 16px 4px' }}>
-        <div style={{
-          fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em',
-          textTransform: 'uppercase', color: 'var(--fg-mute)',
-          marginBottom: 10,
-        }}>
-          Accesos rápidos
-        </div>
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8,
-        }}>
-          {GRID_ITEMS.map(item => (
-            <button
-              key={item.path + item.label}
-              onClick={() => navigate(item.path)}
-              style={{
-                background: 'var(--ink-2)', border: '1px solid var(--line)',
-                borderRadius: 14, padding: '12px 6px',
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', gap: 6,
-                cursor: 'pointer',
-                transition: 'background .12s',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--ink-3)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'var(--ink-2)')}
-            >
-              <div style={{
-                width: 38, height: 38, borderRadius: 10,
-                background: item.color,
-                display: 'grid', placeItems: 'center',
-                fontSize: item.emoji.length > 1 ? 12 : 18,
-                color: 'var(--amber)',
-              }}>
-                {item.emoji}
-              </div>
-              <span style={{
-                fontSize: 10, fontWeight: 600, color: 'var(--fg-dim)',
-                textAlign: 'center', lineHeight: 1.2,
-                overflow: 'hidden', display: '-webkit-box',
-                WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-              }}>
-                {item.label}
-              </span>
-            </button>
-          ))}
         </div>
       </div>
 

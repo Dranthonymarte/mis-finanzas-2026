@@ -16,6 +16,33 @@ Guía para Claude Code. Reglas vinculantes. Español latino siempre.
 ## GUARDIÁN DE CALIDAD — REGLA CRÍTICA
 Si una decisión se desvía del estándar top 3 → **interrumpe, explica, propón alternativa, espera confirmación**. Aplica para naming, estructura, errores, auth, performance, seguridad, deuda técnica, atajos dañinos.
 
+## DESARROLLO EFICIENTE — REGLAS PERMANENTES CLAUDE CODE
+
+### Modo cave-man (SIEMPRE activo)
+- Silencio total: no narrar pasos, no re-diagnosticar lo ya conocido
+- Ir a ejecución directa usando contexto de sesión sin releer código
+- Grep antes que Read — leer solo el bloque exacto necesario
+- Subagentes en paralelo para tareas independientes (máximo ahorro de tokens)
+- Un commit atómico por feature completo, no commits parciales
+
+### Método oficial Claude Code (prioridad token)
+1. Contexto en sesión → usar directamente
+2. Grep/Glob específico → si necesito buscar
+3. Read offset+limit → si necesito leer sección concreta
+4. Subagente Explore → solo si búsqueda es open-ended > 3 queries
+5. Agent general → último recurso
+
+### Patrón top-3 (validado estadísticamente)
+Antes de implementar cualquier feature/cambio, verificar si el patrón ya existe en apps top-3 (Revolut, Linear, Notion, Stripe). Si existe → implementar ese patrón. Si no → alertar a Anthony y proponer la alternativa más cercana validada. NO improvisar patterns propios.
+
+### Ejemplos de patterns top-3 ya aplicados
+- Accesos directos: scroll horizontal + gear al final (Revolut, N26)
+- FAB: 4 acciones verticales con label izquierda (Linear, Notion)  
+- Password strength: 5 segmentos semáforo (Google, Auth0, Stripe)
+- Forgot password: link "¿Olvidaste?" junto al label campo (universal)
+- Magic link: botón secundario post-separador (Slack, Notion, Linear)
+- Shortcuts personalizables: localStorage hasta sync DB (Notion, Linear)
+
 ## STACK
 
 ### Vanilla JS (producción)
@@ -25,7 +52,7 @@ Supabase: jcgoccaisemrfsuwwrrl | Cloudflare Pages: finanzasprueba.pages.dev
 Proyecto Cloudflare: finanzasapp | Dual-currency USD/VES | RLS activo
 ```
 
-### React App (nueva UIX — FASE 3.2, HEAD 85e856f, 2026-05-18)
+### React App (producción activa — HEAD a38defe, 2026-05-27)
 ```
 React 19 + TypeScript strict + Vite + Zustand v5 + recharts + vite-plugin-pwa
 Branch: develop → push también a react-preview (CF Pages auto-build)

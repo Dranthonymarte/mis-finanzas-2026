@@ -88,7 +88,8 @@ export default function NewTransaction() {
 
   const { accounts: liveAccounts }       = useAccounts()
   const { config, updateConfig }         = useConfig()
-  const { tasas }                        = useTasas()
+  // BUG-7: destructure loading flag to know when tasas has loaded from DB
+  const { tasas, loading: tasasLoading }  = useTasas()
 
   const accounts = liveAccounts ?? []
   const tipos    = config.tipos
@@ -108,8 +109,9 @@ export default function NewTransaction() {
   const [recurrente, setRecurrente] = useState(false)
   const [recDia,     setRecDia]     = useState(1)
   const [notes,      setNotes]      = useState('')
-  const [rateBCV,       setRateBCV]       = useState(tasas.bcv)
-  const [rateStr,       setRateStr]       = useState(String(tasas.bcv))  // raw text — lets user type freely
+  // BUG-7: initialize rateStr as '' so we don't flash the 36.50 default while DB loads
+  const [rateBCV,        setRateBCV]        = useState(tasas.bcv)
+  const [rateStr,        setRateStr]        = useState('')   // set once tasas loads from DB
   const [userEditedRate, setUserEditedRate] = useState(false)
   const [saved,         setSaved]         = useState(false)
   const [confirm,       setConfirm]       = useState(false)  // confirmation sheet
@@ -117,8 +119,11 @@ export default function NewTransaction() {
 
   // Sync BCV rate when tasas loads FROM DB — but not if user already edited it manually
   useEffect(() => {
-    if (!userEditedRate) { setRateBCV(tasas.bcv); setRateStr(String(tasas.bcv)) }
-  }, [tasas.bcv, userEditedRate])
+    if (!userEditedRate && !tasasLoading) {
+      setRateBCV(tasas.bcv)
+      setRateStr(String(tasas.bcv))
+    }
+  }, [tasas.bcv, tasasLoading, userEditedRate])
 
   // Read voice prefill from VozTxn (/voz page)
   useEffect(() => {

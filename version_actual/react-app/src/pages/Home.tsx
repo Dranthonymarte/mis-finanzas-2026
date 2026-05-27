@@ -21,7 +21,7 @@ import { useFormat }       from '../hooks/useFormat'
 import { usePrefsStore, type Moneda } from '../store/prefs'
 import { useAuthStore }    from '../store/auth'
 import { supabase }        from '../lib/supabase'
-import { generateMeses, mesLabel, mesIdToDbKey, dateToMesId } from '../lib/mes'
+import { generateMeses, mesLabel, dateToMesId } from '../lib/mes'
 import { DEFAULTS } from '../hooks/useConfig'
 import { BellIcon } from '../components/icons/Icons'
 
@@ -178,11 +178,10 @@ export default function Home() {
   const { fmt, fmtShort }           = useFormat()
   const { meDebenActivo }           = useDineroFuera()
 
-  // ── Stats consolidadas: 5M historial + ahorro + ingresos históricos (1 RPC) ──
+  // ── Stats consolidadas: 5M historial + ahorro (1 RPC) ──
   interface MonthKPI { month: string; ingresos: number; gastos: number }
-  const [histKPIs,          setHistKPIs]          = useState<MonthKPI[]>([])
-  const [ahorroAcumulado,   setAhorroAcumulado]   = useState<number>(0)
-  const [ingresosHistoricos, setIngresosHistoricos] = useState<number>(0)
+  const [histKPIs,        setHistKPIs]        = useState<MonthKPI[]>([])
+  const [ahorroAcumulado, setAhorroAcumulado] = useState<number>(0)
 
   useEffect(() => {
     if (!householdId) return
@@ -195,7 +194,6 @@ export default function Home() {
     }).then(({ data }) => {
       if (!data) return
       setAhorroAcumulado(parseFloat(String(data.ahorro_acumulado)) || 0)
-      setIngresosHistoricos(parseFloat(String(data.ingresos_historicos)) || 0)
       const dbKeyToLabel = Object.fromEntries(months5.map(m => [m.dbKey, m.label.split(' ')[0]]))
       const rows = (data.hist_kpis ?? []) as Array<{ mes: string; ingresos: number; gastos: number }>
       setHistKPIs(months5.map(m => {
@@ -204,22 +202,6 @@ export default function Home() {
       }))
     })
   }, [householdId])
-
-  // ── Fondo emergencia desde tabla fondo_emergencia ──
-  const [efDbBalance, setEfDbBalance] = useState<number | null>(null)
-  useEffect(() => {
-    if (!householdId) return
-    const dbKey = mesIdToDbKey(mesActivo)
-    supabase
-      .from('fondo_emergencia')
-      .select('monto')
-      .eq('user_id', householdId)
-      .eq('mes', dbKey)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.monto != null) setEfDbBalance(parseFloat(String(data.monto)))
-      })
-  }, [householdId, mesActivo])
 
   // ── Saldo disponible = cuentas líquidas (excluye AHORRO) ──
   // (fmt() luego convierte USD → moneda activa: USD/BS/EUR)
@@ -264,13 +246,22 @@ export default function Home() {
 
   const [showEfInfo, setShowEfInfo] = useState(false)
 
-  // ── Fondo emergencia = 30% de ingresos históricos acumulados ──
-  // No asociado a cuentas. Reserva automática calculada sobre ingresos.
-  const fondoEmergenciaTotal = ingresosHistoricos * 0.30
-  const fondoEmergenciaMes   = kpiData.ingresos   * 0.30
-  const emergencyBalance     = fondoEmergenciaTotal
-  const emergencyTarget      = efDbBalance ?? (kpiData.gastos > 0 ? kpiData.gastos * 3 : 3000)
-  const efContribMes         = fondoEmergenciaMes
+  // ── Fondo emergencia ──────────────────────────────────────────────
+  // Balance: suma acumulada real de ahorros (ahorro-tipo txns) all-time.
+  // Meta: promedio mensual ingresos últimos 3 meses × 3 (fondo para 3 meses de vida).
+  // Aporte sugerido mes: promedio mensual × 30% (regla 30%-ingresos fijos).
+  // BUG-5 FIX: usar promedio de histKPIs (últimos meses cargados) en vez de ingresosHistoricos all-time.
+  const mesesConIngresos = histKPIs.filter(m => m.ingresos > 0)
+  const ingresosMensualesPromedio = mesesConIngresos.length > 0
+    ? mesesConIngresos.reduce((s, m) => s + m.ingresos, 0) / mesesConIngresos.length
+    : kpiData.ingresos   // fallback: mes activo
+
+  const emergencyBalance = ahorroAcumulado   // real: txns tipo ahorro acumuladas all-time
+  // Meta: 3 meses de ingresos promedio (fondo de emergencia estándar)
+  const emergencyTarget  = ingresosMensualesPromedio > 0
+    ? ingresosMensualesPromedio * 3
+    : kpiData.gastos * 3
+  const efContribMes     = ingresosMensualesPromedio * 0.30  // 30% del ingreso mensual promedio
   // ── Meta editable (persisted in localStorage) ──
   const [efMeta, setEfMeta] = useState<number>(() => {
     try { return parseFloat(localStorage.getItem('mf-ef-meta') || '') || 0 } catch { return 0 }
@@ -626,12 +617,12 @@ export default function Home() {
               </div>
               {showEfInfo && (
                 <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginBottom: 6, lineHeight: 1.5, maxWidth: 220 }}>
-                  Meta: cubrir 3–6 meses de gastos ({fmt(kpiData.gastos * 4)} aprox). Calcula: tus ingresos acumulados × 30% = {fmt(fondoEmergenciaTotal)}. Toca la meta arriba para ajustarla.
+                  Meta: cubrir 3 meses de ingresos ({fmt(emergencyTarget)} aprox). Basado en promedio mensual de ingresos. Toca la meta arriba para ajustarla.
                 </div>
               )}
               <div className="num" style={{ fontSize: 20, fontWeight: 700 }}>{fmt(emergencyBalance)}</div>
               <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 2 }}>
-                Acumulado histórico · Aporte sugerido este mes: {fmt(fondoEmergenciaMes)}
+                Acumulado histórico · Aporte sugerido este mes: {fmt(efContribMes)}
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>

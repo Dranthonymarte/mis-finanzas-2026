@@ -3,6 +3,38 @@
 
 ---
 
+## SESIÓN — 26 May 2026 (Arquitectura limpiada + A+B+C+D fixes + multi-usuario)
+
+📊 **Modelo: Sonnet 4.6**
+
+### Hecho esta sesión
+```
+ce01f95 refactor(arch): deprecar vanilla JS — mover a versiones_anteriores (repo raíz)
+f1f7f23 fix(pareja): invite flow real — household_members pending + signInWithOtp + toast
+6988e96 fix(pwa): Web Push SW completo (push/notificationclick/subscriptionchange)
+822197b feat(calendar): Google Calendar sync UI — /calendar con status, sync, eventos
+```
+
+### Detalles técnicos
+- Vanilla JS: 51 archivos movidos a `versiones_anteriores/vanilla-js-backup/`
+- `version_actual/` = solo `react-app/` + `fonts/` + `.wrangler/`
+- Backfill household_id: confirmado 0 NULLs (ya aplicado sesiones anteriores)
+- Trigger `on_auth_user_created_provision_household`: aplicado en DB (DDL migration)
+- VitePWA: cambiado de generateSW a injectManifest → `src/sw.ts` con push handlers
+- workbox-precaching instalado como devDependency
+- WebWorker añadido a tsconfig.app.json libs
+- Build: VERDE (0 errores TypeScript strict)
+
+### PENDIENTE — próxima sesión. 📊 Modelo: Sonnet 4.6
+1. **Anthony ejecuta push**: develop → react-preview → main (comandos en MORNING_BRIEF)
+2. **Anthony verifica móvil**: PWA en Chrome Android + datos correctos
+3. **Anthony**: VITE_GROQ_API_KEY en CF Pages environment variables
+4. **P1.2 Patrimonio Neto**: `Home.tsx` fórmula correcta con meDebenActivo
+5. **P1.3 Presupuesto**: identificar error exacto en BUGS.md, corregir de raíz
+6. **Auditoría 28 bugs**: uno por uno desde BUGS.md
+
+---
+
 ## SESIÓN — 18 May 2026 (FASE 4 — PWA instalable + modelo household REAL + RLS + P1.1)
 
 📊 **Modelo: Opus** (arquitectura datos/RLS, decisiones top-3)

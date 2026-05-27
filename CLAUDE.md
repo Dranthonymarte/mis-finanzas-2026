@@ -116,25 +116,30 @@ src/
 ---
 
 ## FUENTE DE VERDAD
-- `version_actual/` — fuente única desde 13 Abr 2026
+- `version_actual/react-app/` — **ÚNICA fuente desde 2026-05-26** (React App)
+- `version_actual/` contiene SOLO: `react-app/` + `fonts/` + `.wrangler/`
+- `versiones_anteriores/vanilla-js-backup/` — vanilla JS deprecated (2026-05-26), ignorar
 - `versiones_anteriores/` — ignorar salvo restauración explícita
 - Supabase — solo tablas de la app, no dev management
 
-## ARCHIVOS CLAVE
-| Archivo | Tamaño | Nota |
-|---|---|---|
-| app-core.js | 318KB ~76K tokens | **NUNCA leer completo** — rangos específicos |
-| index.html | 200KB | SPA principal |
-| app-features.js | 106KB | Telegram UI |
-| app-analytics.js | 148KB | KPIs, Chart.js, FIRE |
-| app-smart.js | 98KB | Groq IA, OCR |
-| app-cuentas.js | 53KB | Cuentas CRUD, transferencias |
-| styles.css | 132KB | — |
-| service-worker.js | 6.4KB | CACHE_VERSION actual: `finanzas-v59-batch56` |
-| sw-loader.js | 3.6KB | SW_EXPECTED_VERSION actual: `finanzas-v59-batch56` |
-| dashboard.css | ~8KB | F3 batch56 — dashboard redesign 2026 |
+## ARCHIVOS CLAVE (React App — version_actual/react-app/)
+| Archivo | Nota |
+|---|---|
+| `src/App.tsx` | Router — 32 rutas lazy |
+| `src/main.tsx` | Entry, registerSW, tema |
+| `src/sw.ts` | Service Worker custom (injectManifest) — push/click/subscriptionchange |
+| `vite.config.ts` | VitePWA injectManifest mode |
+| `src/store/auth.ts` | Auth store (Zustand persist) |
+| `src/store/prefs.ts` | Prefs store (mesActivo, moneda) |
+| `src/hooks/useAuth.ts` | cache-first auth + resolveHouseholdId (NO causa loops) |
+| `src/hooks/useTransactions.ts` | Reads by household_id |
+| `src/hooks/useAccounts.ts` | 2 queries paralelas |
+| `src/pages/Home.tsx` | Dashboard principal (KPIs, recharts) |
+| `src/pages/Pareja.tsx` | Invite flow: signInWithOtp + household_members |
+| `src/pages/Calendar.tsx` | Google Calendar sync UI |
+| `src/pages/NewTransaction.tsx` | Form nueva transacción |
 
-Detalle de módulos split → tabla completa al final.
+**NUNCA** leer `versiones_anteriores/vanilla-js-backup/` — son archivos deprecated de 50KB+ sin relevancia.
 
 ---
 
@@ -282,23 +287,42 @@ Recomendaciones: [acciones]
 
 ---
 
-## MÓDULOS JS (version_actual/)
-| Archivo | Tamaño | Contenido |
-|---|---|---|
-| app-core.js | 318KB | Auth, sesión, loadFromSupabase, dashboard, estado global |
-| app-features.js | 106KB | Telegram UI, chat interface |
-| app-analytics.js | 148KB | KPIs, Chart.js, FIRE |
-| app-smart.js | 98KB | Groq IA, OCR, categorización |
-| app-cuentas.js | 53KB | Cuentas CRUD, transferencias |
-| app-budget.js | — | Presupuestos, recurring, travel mode |
-| app-export.js | — | XLSX/PDF export, email backup |
-| app-pwa.js | — | WebAuthn, PIN lock, offline queue |
-| gcal-integration.js | 7KB | Google Calendar sync |
-| init.js | — | Bootstrap auth + onAuthStateChange |
-| globals-init.js | — | Declaración globals (`var`) |
-| notificaciones-panel.js | — | Panel notifs |
+## MÓDULOS REACT APP (version_actual/react-app/src/)
+> Vanilla JS DEPRECATED 2026-05-26 — movido a versiones_anteriores/vanilla-js-backup/
 
-**Regla de scope:** globals compartidos entre módulos DEBEN ser `var` top-level (no `let`, que es script-scoped).
+### Pages (32 rutas)
+| Página | Ruta | Descripción |
+|---|---|---|
+| Home | / | Dashboard, KPIs, recharts |
+| Txn | /txn | Lista movimientos |
+| Accounts | /accounts | Lista cuentas |
+| AI | /ia | Asistente IA (Groq) |
+| More | /more | Menú más |
+| Settings | /settings | Configuración general |
+| NewTransaction | /new-txn | Formulario nueva transacción |
+| AccountDetail | /accounts/:id | Detalle cuenta |
+| TxnDetail | /txn/:id | Detalle transacción |
+| NewAccount | /new-account | Crear cuenta |
+| Transfer | /transfer | Transferencia entre cuentas |
+| Pareja | /pareja | Invite flow + household members |
+| Calendar | /calendar | Google Calendar sync UI |
+| DineroFuera | /dinero-fuera | Me deben / Yo debo |
+| Notificaciones | /notificaciones | Alertas programadas |
+| Analisis | /analisis | Gráficas y análisis |
+| Fire | /fire | Calculadora FIRE |
+| Metas | /metas | Objetivos financieros |
+| Monedas | /monedas | Tasas de cambio |
+| Calculadora | /calculadora | Calculadora |
+| Escanear | /escanear | OCR recibo (Groq) |
+| VozTxn | /voz | Transacción por voz |
+| Buscar | /buscar | Búsqueda transacciones |
+| CsvImport | /csv-import | Importar CSV |
+| Exportar | /exportar | Exportar datos |
+| Recurrentes | /recurrentes | Gastos recurrentes |
+| ListaCompras | /lista-compras | Lista de compras |
+| Onboarding | /onboarding | Registro/primer uso |
+| Login | /login | PIN keypad |
+| settings/* | /settings/* | Profile, Categories, Budgets, Appearance, Security, Tipos, Subcategorias |
 
 ## ARQUITECTURA EDGE / BACKEND
 ```

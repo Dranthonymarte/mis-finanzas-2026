@@ -1,7 +1,7 @@
 # PENDIENTES — Mis Finanzas 2026
 
 Orden estricto. Actualizar al completar.
-**Última actualización:** 2026-05-18 FASE 3.2 — rama `develop` = `react-preview`, HEAD `85e856f`
+**Última actualización:** 2026-05-26 — arch cleanup + fixes A+B+C+D, HEAD `822197b`
 
 ---
 
@@ -57,15 +57,24 @@ Orden estricto. Actualizar al completar.
 
 ## 🟡 React App — Features
 
-6. **Pareja** — invite real por email (Supabase auth.admin.inviteUserByEmail, actualmente: compartir household_id manual)
+6. ✅ **Pareja** — invite real por email: `signInWithOtp` + `household_members pending` (commit `f1f7f23`, 2026-05-26)
 7. **NewAccount** — conectar a Supabase (actualmente: Checkpoint B — TODO comentado en código)
 8. **useAuth.ts** — `onAuthStateChange` también puede beneficiarse de cache (actualmente: siempre llama resolveHousehold)
 
-## 🟡 Vanilla JS — Seguridad (sin cambios en sprint React)
+## ✅ Vanilla JS — Deprecado (2026-05-26)
 
-9. **hCaptcha BUG-SEC2** — Supabase Dashboard → Auth → Attack Protection → pegar secret key
-10. **Google OAuth** — Cloud Console → anthonymarte12@gmail.com como test user aprobado
-11. **Push SW BUG-3** — agregar `self.addEventListener('push', ...)` en `service-worker.js`
+~~9. hCaptcha BUG-SEC2~~
+~~10. Google OAuth test user~~
+~~11. Push SW BUG-3~~ — ✅ Corregido en React App SW (`src/sw.ts`, commit `6988e96`)
+
+## ✅ Completados en sesión 2026-05-26
+
+- ✅ **Backfill household_id**: 0 NULLs en movimientos/cuentas/dinero_fuera
+- ✅ **Trigger onboarding DB**: `on_auth_user_created_provision_household` aplicado — nuevos usuarios reciben household automáticamente
+- ✅ **Invite flow Pareja**: `signInWithOtp` + `household_members pending` (commit `f1f7f23`)
+- ✅ **Web Push SW handlers**: push/notificationclick/subscriptionchange en `src/sw.ts` (commit `6988e96`)
+- ✅ **Google Calendar UI**: `/calendar` con status, sync, eventos (commit `822197b`)
+- ✅ **Vanilla JS deprecado**: 51 archivos → `versiones_anteriores/vanilla-js-backup/`
 
 ## ⚪ Estratégico
 

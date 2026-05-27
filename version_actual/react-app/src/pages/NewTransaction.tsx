@@ -416,11 +416,6 @@ export default function NewTransaction() {
             />
             <span style={{ fontSize: 10, color: 'var(--fg-mute)' }}>@ {rateBCV.toFixed(2)}</span>
           </div>
-          {tipo === 'Ahorro en efectivo' && usdNum > 0 && (
-            <div style={{ marginTop: 8, fontSize: 11, color: 'var(--info)', background: 'rgba(106,148,196,.1)', borderRadius: 8, padding: '4px 12px', display: 'inline-block' }}>
-              🛡️ 30% → fondo emergencia (${(usdNum * 0.30).toFixed(2)})
-            </div>
-          )}
           {tipo === 'Ajuste' && (
             <div style={{ marginTop: 8, fontSize: 11, color: 'var(--amber)', background: 'var(--amber-d)', borderRadius: 8, padding: '4px 12px', display: 'inline-block' }}>
               ⚡ Ajuste de saldo — no afecta ingresos/gastos

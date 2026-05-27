@@ -247,21 +247,12 @@ export default function Home() {
   const [showEfInfo, setShowEfInfo] = useState(false)
 
   // ── Fondo emergencia ──────────────────────────────────────────────
-  // Balance: suma acumulada real de ahorros (ahorro-tipo txns) all-time.
-  // Meta: promedio mensual ingresos últimos 3 meses × 3 (fondo para 3 meses de vida).
-  // Aporte sugerido mes: promedio mensual × 30% (regla 30%-ingresos fijos).
-  // BUG-5 FIX: usar promedio de histKPIs (últimos meses cargados) en vez de ingresosHistoricos all-time.
-  const mesesConIngresos = histKPIs.filter(m => m.ingresos > 0)
-  const ingresosMensualesPromedio = mesesConIngresos.length > 0
-    ? mesesConIngresos.reduce((s, m) => s + m.ingresos, 0) / mesesConIngresos.length
-    : kpiData.ingresos   // fallback: mes activo
-
-  const emergencyBalance = ahorroAcumulado   // real: txns tipo ahorro acumuladas all-time
-  // Meta: 3 meses de ingresos promedio (fondo de emergencia estándar)
-  const emergencyTarget  = ingresosMensualesPromedio > 0
-    ? ingresosMensualesPromedio * 3
-    : kpiData.gastos * 3
-  const efContribMes     = ingresosMensualesPromedio * 0.30  // 30% del ingreso mensual promedio
+  // Lógica: alcancía de emergencia. Meta = 30% de ingresos del MES ACTUAL.
+  // No retroactivo — muestra progreso desde que el usuario empieza a ahorrar.
+  // Balance = ahorros acumulados en la app (tipo ahorro).
+  const emergencyBalance = ahorroAcumulado
+  const emergencyTarget  = kpiData.ingresos > 0 ? kpiData.ingresos * 0.30 : 0
+  const efContribMes     = emergencyTarget  // aporte sugerido = la meta del mes
   // ── Meta editable (persisted in localStorage) ──
   const [efMeta, setEfMeta] = useState<number>(() => {
     try { return parseFloat(localStorage.getItem('mf-ef-meta') || '') || 0 } catch { return 0 }

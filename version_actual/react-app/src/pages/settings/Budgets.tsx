@@ -58,7 +58,22 @@ export default function Budgets() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
-      <AppHeader title="Presupuestos" back />
+      <AppHeader
+        title="Presupuestos"
+        back
+        right={
+          <button
+            onClick={() => setChipFilter('sin')}
+            title="Agregar presupuesto a una categoría"
+            style={{
+              width: 32, height: 32, borderRadius: 10, border: 'none',
+              background: 'var(--ink-3)', color: 'var(--amber)',
+              fontSize: 20, fontWeight: 300, cursor: 'pointer',
+              display: 'grid', placeItems: 'center', lineHeight: 1,
+            }}
+          >+</button>
+        }
+      />
 
       {/* Filter chips */}
       <div style={{ display: 'flex', gap: 6, padding: '8px 16px 4px', overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>

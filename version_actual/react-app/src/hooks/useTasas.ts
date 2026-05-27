@@ -14,7 +14,7 @@ export const TASAS_DEFAULTS: Tasas = { bcv: 36.50, eur: 40.00 }
 
 const HOUSEHOLD_KEY   = 'anthony-isabel-2026'
 const BCV_AUTO_TS_KEY = 'mis_finanzas_bcv_auto_ts'
-const SIX_HOURS       = 6 * 60 * 60 * 1000
+const THIRTY_MIN      = 30 * 60 * 1000
 let   sessionFetched  = false   // prevents duplicate fetches across hook instances
 
 export function useTasas() {
@@ -25,11 +25,11 @@ export function useTasas() {
   const tasasRef = useRef<Tasas>(TASAS_DEFAULTS)
   tasasRef.current = tasas
 
-  // ── Auto-refresh BCV from ve.dolarapi.com (silent, max 1×/6h) ──
+  // ── Auto-refresh BCV from ve.dolarapi.com (silent, max 1×/30min) ──
   useEffect(() => {
     if (!householdId || sessionFetched) return
     const lsTs = parseInt(localStorage.getItem(BCV_AUTO_TS_KEY) ?? '0', 10)
-    if (Date.now() - lsTs < SIX_HOURS) return
+    if (Date.now() - lsTs < THIRTY_MIN) return
 
     sessionFetched = true
     localStorage.setItem(BCV_AUTO_TS_KEY, String(Date.now()))

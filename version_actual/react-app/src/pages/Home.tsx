@@ -296,7 +296,7 @@ export default function Home() {
   const [metaInput,   setMetaInput]   = useState('')
   const displayTarget = efMeta > 0 ? efMeta : emergencyTarget
   const emergencyPct      = displayTarget > 0 ? Math.min(100, (emergencyBalance / displayTarget) * 100) : 0
-  const emergencyMonths   = kpiData.gastos > 0 ? (emergencyBalance / kpiData.gastos).toFixed(1) : '0'
+  // emergencyMonths reserved for future "X meses de reserva" display
 
   // ── Top 4 categorías de gasto ──
   const topGastos = useMemo(() => {

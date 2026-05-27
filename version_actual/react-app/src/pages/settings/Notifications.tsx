@@ -142,7 +142,7 @@ export default function NotificationsSettings() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', paddingBottom: 32 }}>
-      <AppHeader title="Notificaciones" back="/settings" />
+      <AppHeader title="Notificaciones" back />
 
       <div style={{ maxWidth: 540, margin: '0 auto', padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 24 }}>
 

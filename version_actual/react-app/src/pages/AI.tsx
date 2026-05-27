@@ -3,10 +3,10 @@
 // Sistema prompt idéntico al vanilla + contexto real
 // ═══════════════════════════════════════════════════
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sparkline from '../components/ui/Sparkline'
-import { type ChatMsg, MOCK_CHAT, txnGroup } from '../data/mock'
+import { type ChatMsg, txnGroup } from '../data/mock'
 import { currentMes, mesLabel } from '../lib/mes'
 import { useTransactions } from '../hooks/useTransactions'
 import { useAccounts } from '../hooks/useAccounts'
@@ -165,15 +165,41 @@ function Bubble({ msg }: { msg: ChatMsg }) {
 export default function AI() {
   const navigate   = useNavigate()
   const [input,    setInput]    = useState('')
-  const [messages, setMessages] = useState<ChatMsg[]>(MOCK_CHAT)
+  const [messages, setMessages] = useState<ChatMsg[]>([])
   const [typing,   setTyping]   = useState(false)
   const [showInfo, setShowInfo] = useState(false)
+  const [welcomed, setWelcomed] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const mesActivo = usePrefsStore(s => s.mesActivo)
   const { fmt: fmtMoney } = useFormat()
   const { accounts } = useAccounts()
   const { transactions } = useTransactions(mesActivo || currentMes())
+
+  // KPIs for welcome message
+  const kpis = useMemo(() => {
+    const txList = transactions ?? []
+    const income   = txList.filter(t => txnGroup(t.tipo) === 'ingreso').reduce((s, t) => s + Math.abs(t.amount), 0)
+    const expenses = txList.filter(t => txnGroup(t.tipo) === 'gasto').reduce((s, t) => s + Math.abs(t.amount), 0)
+    const balance  = accounts ? accounts.reduce((s, a) => s + (a.balanceUSD ?? a.balance), 0) : 0
+    return { income, expenses, neto: income - expenses, balance }
+  }, [transactions, accounts])
+
+  // Generate real welcome message once data loads
+  useEffect(() => {
+    if (welcomed || !transactions || messages.length > 0) return
+    const now = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })
+    const mes = mesLabel(mesActivo || currentMes())
+    const welcome: ChatMsg = {
+      role: 'bot',
+      time: now,
+      text: transactions.length === 0
+        ? `¡Hola! 👋 Soy tu asistente financiero. No hay movimientos registrados en ${mes} aún. ¿En qué te puedo ayudar?`
+        : `¡Hola! 👋 Aquí tu resumen de **${mes}**:\n\n💰 Ingresos: **${fmtMoney(kpis.income)}**\n💸 Gastos: **${fmtMoney(kpis.expenses)}**\n📊 Neto: **${kpis.neto >= 0 ? '+' : ''}${fmtMoney(kpis.neto)}**\n\n¿Qué quieres analizar?`,
+    }
+    setMessages([welcome])
+    setWelcomed(true)
+  }, [transactions, welcomed, mesActivo, fmtMoney, kpis, messages.length])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

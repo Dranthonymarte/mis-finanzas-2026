@@ -67,7 +67,7 @@ export default function Calendar() {
           Authorization: `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ action: 'status' }),
+        body: JSON.stringify({ action: 'check_status' }),
       })
 
       if (resp.ok) {
@@ -101,7 +101,7 @@ export default function Calendar() {
           Authorization: `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ action: 'sync' }),
+        body: JSON.stringify({ action: 'sync_all' }),
       })
 
       const data = await resp.json() as SyncResult

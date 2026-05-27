@@ -51,6 +51,7 @@ const DineroFuera    = lazy(() => import('./pages/DineroFuera'))
 const Buscar         = lazy(() => import('./pages/Buscar'))
 const VozTxn         = lazy(() => import('./pages/VozTxn'))
 const CsvImport      = lazy(() => import('./pages/CsvImport'))
+const Calendar       = lazy(() => import('./pages/Calendar'))
 
 // ── BLOQUE 9 pages (lazy so they can be added incrementally) ──
 const Analisis       = lazy(() => import('./pages/Analisis'))
@@ -106,6 +107,7 @@ export default function App() {
             <Route path="/buscar"          element={<Buscar />}          />
             <Route path="/voz"             element={<VozTxn />}          />
             <Route path="/csv-import"      element={<CsvImport />}       />
+            <Route path="/calendar"        element={<Calendar />}        />
             <Route path="/analisis"        element={<Analisis />}        />
             <Route path="/recurrentes"     element={<Recurrentes />}     />
             <Route path="/lista-compras"   element={<ListaCompras />}    />

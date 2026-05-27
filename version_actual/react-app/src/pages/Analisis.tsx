@@ -290,10 +290,16 @@ export default function Analisis() {
                     transition: 'border-color .15s',
                   }}
                 >
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     {k.label}
                     {(isIng || isGas) && (
-                      <span style={{ fontSize: 9, opacity: 0.5, color: k.color }}>{expanded ? '▲' : '▼'}</span>
+                      <span style={{
+                        fontSize: 10, color: k.color, fontWeight: 700,
+                        background: expanded ? k.color + '22' : 'var(--ink-3)',
+                        borderRadius: 4, padding: '1px 4px', lineHeight: 1.4,
+                      }}>
+                        {expanded ? '▲' : '▼'}
+                      </span>
                     )}
                   </div>
                   <div className="num" style={{ fontSize: 13, fontWeight: 700, color: k.color, marginBottom: 4 }}>

@@ -17,6 +17,7 @@ type Status = 'idle' | 'processing' | 'done' | 'error'
 
 interface ParsedRecibo {
   monto:       number
+  moneda:      'USD' | 'VES'
   fecha:       string
   descripcion: string
   cat:         string
@@ -26,12 +27,16 @@ const GROQ_ENDPOINT = '/api/groq'
 const GROQ_MODEL    = 'llama-3.2-11b-vision-preview'
 
 const PROMPT =
-  'Analiza este recibo o factura y extrae la información en formato JSON estricto con estos campos exactos:\n' +
-  '{"monto": <número total en la moneda del recibo, sin símbolo>, ' +
-  '"fecha": "<YYYY-MM-DD>", ' +
-  '"descripcion": "<nombre del negocio o descripción breve>", ' +
-  '"cat": "<una de: Alimentación|Restaurantes|Transporte|Entretenimiento|Salud|Hogar|Servicios|Suscripciones|Ropa|Ocio|Otro>"}\n' +
-  'Responde SOLO con el JSON. Sin texto adicional, sin markdown.'
+  'Eres un experto en facturas venezolanas y latinoamericanas. Analiza este recibo o factura.\n\n' +
+  'REGLAS CRÍTICAS:\n' +
+  '1. MONTO: extrae el TOTAL final (post-IVA/impuesto). NUNCA el subtotal ni el IVA por separado.\n' +
+  '2. MONEDA: si hay monto en USD ($) úsalo. Si solo hay Bs./BsF/VES usa "VES". Si hay ambos, prioriza USD.\n' +
+  '3. SEPARADORES VENEZOLANOS: en Bs. el punto es miles y la coma es decimal (ej: 1.500,00 = 1500). Para USD el punto es decimal.\n' +
+  '4. FECHA: convierte CUALQUIER formato a ISO YYYY-MM-DD. DD/MM/YYYY es común en Venezuela.\n' +
+  '5. DESCRIPCION: nombre del negocio, institución o emisor. Conoce: Banesco, Mercantil, BNC, Banco de Venezuela, CANTV, Movilnet, Digitel, Tigo, Cashea, ZeepMobile, Plataforma Bicentenaria, Bodegón, Farmatodo, Locatel.\n' +
+  '6. CAT: clasifica según el negocio/servicio.\n\n' +
+  'Responde SOLO con este JSON exacto (sin markdown, sin texto extra):\n' +
+  '{"monto":<número usando punto como decimal>,"moneda":"<USD|VES>","fecha":"<YYYY-MM-DD>","descripcion":"<negocio>","cat":"<Alimentación|Restaurantes|Transporte|Entretenimiento|Salud|Hogar|Servicios|Telecomunicaciones|Suscripciones|Ropa|Ocio|Financiero|Otro>"}'
 
 const inputSt: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box',
@@ -57,6 +62,7 @@ export default function Escanear() {
   // Pre-filled result fields (editable before saving)
   const [result,  setResult]  = useState<ParsedRecibo | null>(null)
   const [monto,   setMonto]   = useState('')
+  const [moneda,  setMoneda]  = useState<'USD' | 'VES'>('USD')
   const [fecha,   setFecha]   = useState('')
   const [desc,    setDesc]    = useState('')
   const [cat,     setCat]     = useState('')
@@ -126,14 +132,29 @@ export default function Escanear() {
       const parsed = JSON.parse(match[0]) as Partial<ParsedRecibo>
 
       const today = new Date().toISOString().split('T')[0]
+
+      // Normalize Venezuelan decimal separator: "1.500,00" → 1500.00
+      const rawMonto  = String(parsed.monto ?? '0')
+      const normMonto = rawMonto.includes(',')
+        ? rawMonto.replace(/\./g, '').replace(',', '.')
+        : rawMonto
+
+      // Normalize date: DD/MM/YYYY → YYYY-MM-DD
+      const rawFecha = String(parsed.fecha || today)
+      const fechaNorm = /^\d{2}\/\d{2}\/\d{4}$/.test(rawFecha)
+        ? rawFecha.split('/').reverse().join('-')
+        : rawFecha
+
       const r: ParsedRecibo = {
-        monto:       Number(parsed.monto)       || 0,
-        fecha:       String(parsed.fecha        || today),
+        monto:       Number(normMonto)          || 0,
+        moneda:      (parsed as {moneda?:string}).moneda === 'VES' ? 'VES' : 'USD',
+        fecha:       fechaNorm,
         descripcion: String(parsed.descripcion  || 'Gasto'),
         cat:         String(parsed.cat          || 'Otro'),
       }
       setResult(r)
       setMonto(String(r.monto))
+      setMoneda(r.moneda)
       setFecha(r.fecha)
       setDesc(r.descripcion)
       setCat(gastoCats.includes(r.cat) ? r.cat : 'Otro')
@@ -148,22 +169,36 @@ export default function Escanear() {
 
   async function handleSave() {
     if (!result || !householdId) return
-    const parsed = parseFloat(monto)
-    if (!parsed || isNaN(parsed)) return
+    const parsedNum = parseFloat(monto)
+    if (!parsedNum || isNaN(parsedNum)) return
     setSaving(true)
+
+    // Resolve authenticated user_id (creator) — NEVER householdId
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setSaving(false); setErrMsg('Sin sesión activa.'); return }
+
+    // BCV rate for VES→USD conversion (localStorage cache)
+    const bcv: number = (() => {
+      try { return parseFloat(JSON.parse(localStorage.getItem('mis_finanzas_tasas') || '{}').bcv) || 36.50 }
+      catch { return 36.50 }
+    })()
+
+    const isVES   = moneda === 'VES'
+    const amountUSD = isVES ? -(parsedNum / bcv) : -Math.abs(parsedNum)
+    const amountBs  = isVES ? -parsedNum : -(parsedNum * bcv)
 
     const dbKey = mesIdToDbKey(mesActivo)
     const { error } = await supabase.from('movimientos').insert({
       id:           crypto.randomUUID(),
-      user_id:      householdId,
+      user_id:      user.id,
       household_id: householdId,
       mes:          dbKey,
       descripcion:  desc.trim() || 'Gasto',
       tipo:         'Gasto',
       cat:          cat,
       subcat:       '',
-      amount:       -Math.abs(parsed),
-      amount_bs:    0,
+      amount:       amountUSD,
+      amount_bs:    amountBs,
       method:       '',
       fecha:        fecha,
       author:       null,
@@ -264,16 +299,34 @@ export default function Escanear() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '6px 14px 14px' }}>
-              {/* Monto */}
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginBottom: 4 }}>Monto (USD)</div>
-                <input
-                  type="number" min="0" step="0.01"
-                  value={monto}
-                  onChange={e => setMonto(e.target.value)}
-                  style={inputSt}
-                />
+              {/* Monto + Moneda */}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginBottom: 4 }}>Monto</div>
+                  <input
+                    type="number" min="0" step="0.01"
+                    value={monto}
+                    onChange={e => setMonto(e.target.value)}
+                    style={inputSt}
+                  />
+                </div>
+                <div style={{ width: 80 }}>
+                  <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginBottom: 4 }}>Moneda</div>
+                  <select
+                    value={moneda}
+                    onChange={e => setMoneda(e.target.value as 'USD' | 'VES')}
+                    style={{ ...inputSt, cursor: 'pointer' }}
+                  >
+                    <option value="USD">USD $</option>
+                    <option value="VES">Bs. VES</option>
+                  </select>
+                </div>
               </div>
+              {moneda === 'VES' && (
+                <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', background: 'var(--ink-3)', borderRadius: 8, padding: '5px 8px' }}>
+                  Se convertirá a USD usando tasa BCV del caché local.
+                </div>
+              )}
 
               {/* Descripción */}
               <div>

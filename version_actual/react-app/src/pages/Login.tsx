@@ -32,7 +32,26 @@ const btnSt: CSSProperties = {
   transition: 'opacity .15s',
 }
 
-type Mode = 'login' | 'register'
+type Mode = 'login' | 'register' | 'forgot'
+
+function pwStrength(p: string): number {
+  if (!p) return 0
+  let s = 0
+  if (p.length >= 8)           s++
+  if (p.length >= 12)          s++
+  if (/[A-Z]/.test(p))         s++
+  if (/[0-9]/.test(p))         s++
+  if (/[^A-Za-z0-9]/.test(p)) s++
+  return s
+}
+
+const PW_LEVELS = [
+  { label: 'Muy débil', color: '#d66a5a' },
+  { label: 'Débil',     color: '#d66a5a' },
+  { label: 'Regular',   color: '#e0a84a' },
+  { label: 'Fuerte',    color: '#58b26a' },
+  { label: 'Muy fuerte',color: '#58b26a' },
+]
 
 export default function Login() {
   const [mode,          setMode]          = useState<Mode>('login')
@@ -68,6 +87,33 @@ export default function Login() {
     setSuccess(null)
     setPass('')
     setConfirm('')
+  }
+
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault()
+    if (!email) return setError('Ingresa tu email.')
+    setLoading(true)
+    setError(null)
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: window.location.origin + '/reset-password',
+    })
+    setLoading(false)
+    if (err) setError(err.message)
+    else setSuccess('Revisa tu email — te enviamos un enlace para restablecer tu contraseña.')
+  }
+
+  async function handleMagicLink(e: React.MouseEvent) {
+    e.preventDefault()
+    if (!email) return setError('Ingresa tu email primero.')
+    setLoading(true)
+    setError(null)
+    const { error: err } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { shouldCreateUser: true, emailRedirectTo: window.location.origin },
+    })
+    setLoading(false)
+    if (err) setError(err.message)
+    else setSuccess('¡Listo! Revisa tu email — te enviamos un enlace de acceso.')
   }
 
   async function handleGoogleLogin() {
@@ -116,8 +162,11 @@ export default function Login() {
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
     if (!email || !pass) return setError('Ingresa email y contraseña.')
-    if (pass.length < 6)  return setError('La contraseña debe tener al menos 6 caracteres.')
-    if (pass !== confirm)  return setError('Las contraseñas no coinciden.')
+    if (pass.length < 8)              return setError('La contraseña debe tener al menos 8 caracteres.')
+    if (!/[A-Z]/.test(pass))          return setError('La contraseña debe incluir al menos una mayúscula.')
+    if (!/[0-9]/.test(pass))          return setError('La contraseña debe incluir al menos un número.')
+    if (!/[^A-Za-z0-9]/.test(pass))  return setError('La contraseña debe incluir al menos un símbolo (ej: !@#$).')
+    if (pass !== confirm)             return setError('Las contraseñas no coinciden.')
     setLoading(true)
     setError(null)
 
@@ -148,6 +197,8 @@ export default function Login() {
   }
 
   const isLogin = mode === 'login'
+  const strength = pwStrength(pass)
+  const pwLevel  = PW_LEVELS[Math.max(0, Math.min(4, strength - 1))]
 
   return (
     <div style={{
@@ -169,27 +220,29 @@ export default function Login() {
         </div>
 
         {/* Mode tabs */}
-        <div style={{
-          display: 'flex', background: 'rgba(255,255,255,.06)',
-          borderRadius: 12, padding: 4, marginBottom: 28,
-          border: '1px solid rgba(255,255,255,.08)',
-        }}>
-          {(['login', 'register'] as Mode[]).map(m => (
-            <button
-              key={m}
-              onClick={() => switchMode(m)}
-              style={{
-                flex: 1, padding: '9px 0', borderRadius: 9,
-                border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 600,
-                transition: 'all .15s',
-                background: mode === m ? '#e0a84a' : 'transparent',
-                color:      mode === m ? '#0a0b0d' : 'rgba(255,255,255,.45)',
-              }}
-            >
-              {m === 'login' ? 'Iniciar sesión' : 'Registrarse'}
-            </button>
-          ))}
-        </div>
+        {mode !== 'forgot' && (
+          <div style={{
+            display: 'flex', background: 'rgba(255,255,255,.06)',
+            borderRadius: 12, padding: 4, marginBottom: 28,
+            border: '1px solid rgba(255,255,255,.08)',
+          }}>
+            {(['login', 'register'] as const).map(m => (
+              <button
+                key={m}
+                onClick={() => switchMode(m)}
+                style={{
+                  flex: 1, padding: '9px 0', borderRadius: 9,
+                  border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 600,
+                  transition: 'all .15s',
+                  background: mode === m ? '#e0a84a' : 'transparent',
+                  color:      mode === m ? '#0a0b0d' : 'rgba(255,255,255,.45)',
+                }}
+              >
+                {m === 'login' ? 'Iniciar sesión' : 'Registrarse'}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Success banner */}
         {success && (
@@ -201,6 +254,51 @@ export default function Login() {
           }}>
             {success}
           </div>
+        )}
+
+        {/* Forgot password form */}
+        {mode === 'forgot' && (
+          <form onSubmit={handleForgotPassword} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ textAlign: 'center', marginBottom: 4 }}>
+              <div style={{ fontSize: 18, marginBottom: 6 }}>🔑</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 6 }}>Restablecer contraseña</div>
+              <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,.45)', lineHeight: 1.5 }}>
+                Te enviaremos un enlace para crear una nueva contraseña.
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.5)', marginBottom: 7, letterSpacing: '.04em' }}>EMAIL</div>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="tu@email.com"
+                autoComplete="email"
+                autoFocus
+                style={inputSt}
+              />
+            </div>
+            {error   && <ErrorBox msg={error} />}
+            {success && (
+              <div style={{ padding: '12px 14px', background: 'rgba(63,185,80,.15)', border: '1px solid rgba(63,185,80,.3)', borderRadius: 10, fontSize: 13, color: '#3fb950' }}>
+                {success}
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={loading}
+              style={{ ...btnSt, opacity: loading ? .65 : 1 }}
+            >
+              {loading ? 'Enviando…' : 'Enviar enlace'}
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode('login')}
+              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.4)', fontSize: 13, cursor: 'pointer', padding: '4px 0' }}
+            >
+              ← Volver al inicio de sesión
+            </button>
+          </form>
         )}
 
         {/* Login form */}
@@ -218,7 +316,16 @@ export default function Login() {
               />
             </div>
             <div>
-              <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.5)', marginBottom: 7, letterSpacing: '.04em' }}>CONTRASEÑA</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
+                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.5)', letterSpacing: '.04em' }}>CONTRASEÑA</div>
+                <button
+                  type="button"
+                  onClick={() => switchMode('forgot')}
+                  style={{ background: 'none', border: 'none', fontSize: 11, color: 'rgba(224,168,74,.7)', cursor: 'pointer', padding: 0 }}
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
               <input
                 type="password"
                 value={pass}
@@ -262,6 +369,20 @@ export default function Login() {
               </svg>
               Continuar con Google
             </button>
+            <button
+              type="button"
+              onClick={handleMagicLink}
+              disabled={loading}
+              style={{
+                width: '100%', padding: '12px',
+                background: 'transparent', color: 'rgba(255,255,255,.5)',
+                border: '1px solid rgba(255,255,255,.1)', borderRadius: 14,
+                fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                opacity: loading ? .65 : 1,
+              }}
+            >
+              ✉ Acceder con enlace mágico
+            </button>
           </form>
         )}
 
@@ -296,10 +417,26 @@ export default function Login() {
                 type="password"
                 value={pass}
                 onChange={e => setPass(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
+                placeholder="Mín. 8 car., mayúscula, número, símbolo"
                 autoComplete="new-password"
                 style={inputSt}
               />
+              {pass.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ display: 'flex', gap: 3, marginBottom: 4 }}>
+                    {[1,2,3,4,5].map(i => (
+                      <div key={i} style={{
+                        flex: 1, height: 3, borderRadius: 2,
+                        background: i <= strength ? pwLevel.color : 'rgba(255,255,255,.1)',
+                        transition: 'background .2s',
+                      }} />
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 10.5, color: pwLevel.color }}>
+                    {pwLevel.label} · 8+ car., mayúscula, número, símbolo
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.5)', marginBottom: 7, letterSpacing: '.04em' }}>CONFIRMAR CONTRASEÑA</div>

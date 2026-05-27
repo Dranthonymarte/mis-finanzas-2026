@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
 import { type Transaction } from '../data/mock'
@@ -34,10 +34,6 @@ function mapAuthor(raw: string | null): 'anthony' | 'isabel' {
   return v === 'i' || v === 'isabel' ? 'isabel' : 'anthony'
 }
 
-/**
- * @param mesId — "may-26" format (prefs store) OR "Mayo" (legacy).
- *                Internally converted to DB key via mesIdToDbKey.
- */
 export function useTransactions(mesId: string) {
   const userId      = useAuthStore(s => s.userId)
   const householdId = useAuthStore(s => s.householdId)
@@ -46,53 +42,65 @@ export function useTransactions(mesId: string) {
   const [loading,      setLoading]      = useState(true)
   const [error,        setError]        = useState<string | null>(null)
 
-  // Convert "may-26" → "Mayo" for DB; if already "Mayo" style, pass through
   const dbKey = mesIdToDbKey(mesId)
+
+  const fetchData = useCallback(() => {
+    if (!userId || !householdId) { setLoading(false); return }
+    supabase
+      .from('movimientos')
+      .select('id,descripcion,tipo,cat,subcat,amount,fecha,author,mes,cuenta_id')
+      .eq('household_id', householdId)
+      .eq('mes', dbKey)
+      .is('deleted_at', null)
+      .order('fecha', { ascending: false })
+      .then(({ data, error: err }) => {
+        if (err) { handleError(err); setError(err.message); setLoading(false); return }
+        setTransactions(
+          (data as SupaMov[] ?? []).map(r => ({
+            id:        r.id,
+            desc:      r.descripcion,
+            cat:       r.cat,
+            subcat:    r.subcat,
+            tipo:      r.tipo,
+            amount:    r.amount,
+            date:      relativeDate(r.fecha),
+            isoDate:   r.fecha,
+            time:      '',
+            author:    mapAuthor(r.author),
+            accountId: r.cuenta_id ?? '',
+            mes:       r.mes,
+          }))
+        )
+        setLoading(false)
+      })
+  }, [userId, householdId, dbKey])
 
   useEffect(() => {
     if (!userId || !householdId) { setLoading(false); return }
-
-    function fetchData() {
-      setLoading(true)
-      setTransactions(null)
-      supabase
-        .from('movimientos')
-        .select('id,descripcion,tipo,cat,subcat,amount,fecha,author,mes,cuenta_id')
-        .eq('household_id', householdId!)
-        .eq('mes', dbKey)
-        .is('deleted_at', null)
-        .order('fecha', { ascending: false })
-        .then(({ data, error: err }) => {
-          if (err) { handleError(err); setError(err.message); setLoading(false); return }
-          setTransactions(
-            (data as SupaMov[] ?? []).map(r => ({
-              id:        r.id,
-              desc:      r.descripcion,
-              cat:       r.cat,
-              subcat:    r.subcat,
-              tipo:      r.tipo,
-              amount:    r.amount,
-              date:      relativeDate(r.fecha),
-              isoDate:   r.fecha,
-              time:      '—',
-              author:    mapAuthor(r.author),
-              accountId: r.cuenta_id ?? '',
-              mes:       r.mes,
-            }))
-          )
-          setLoading(false)
-        })
-    }
-
+    setLoading(true)
+    setTransactions(null)
     fetchData()
 
-    // Refetch when user returns to tab (app switching on mobile)
+    // Supabase Realtime — refresca sin loader cuando hay cambio en el household
+    const channel = supabase
+      .channel(`movimientos:${householdId}:${dbKey}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'movimientos', filter: `household_id=eq.${householdId}` },
+        () => { fetchData() },
+      )
+      .subscribe()
+
     function onVisibilityChange() {
       if (document.visibilityState === 'visible') fetchData()
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
-  }, [userId, householdId, dbKey])
 
-  return { transactions, loading, error }
+    return () => {
+      supabase.removeChannel(channel)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [userId, householdId, dbKey, fetchData])
+
+  return { transactions, loading, error, refetch: fetchData }
 }

@@ -3,7 +3,7 @@ import AppHeader from '../components/shell/AppHeader'
 import RowGroup from '../components/shell/RowGroup'
 import RowLink from '../components/shell/RowLink'
 import {
-  UserIcon, TagIcon, BudgetIcon, PaletteIcon, LockIcon,
+  UserIcon, TagIcon, BudgetIcon, PaletteIcon, LockIcon, BellIcon, UsersIcon,
 } from '../components/icons/Icons'
 
 export default function Settings() {
@@ -50,6 +50,22 @@ export default function Settings() {
           sub="Tema y colores"
           last
           onClick={() => navigate('/settings/appearance')}
+        />
+      </RowGroup>
+
+      <RowGroup title="Automatización">
+        <RowLink
+          icon={<BellIcon />}
+          label="Notificaciones"
+          sub="Alertas, Telegram y reportes automáticos"
+          onClick={() => navigate('/notificaciones')}
+        />
+        <RowLink
+          icon={<UsersIcon />}
+          label="Pareja / Hogar"
+          sub="Invitar, compartir y gestionar acceso"
+          last
+          onClick={() => navigate('/pareja')}
         />
       </RowGroup>
     </div>

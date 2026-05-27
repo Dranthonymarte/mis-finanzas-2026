@@ -1,25 +1,34 @@
 // ═══════════════════════════════════════════════════
 // Recurrentes — /recurrentes
-// Gestión de movimientos recurrentes del config
+// Lista + crear + editar recurrentes con notificación
 // ═══════════════════════════════════════════════════
 
 import { useState } from 'react'
 import AppHeader from '../components/shell/AppHeader'
 import { useConfig } from '../hooks/useConfig'
 import { useFormat } from '../hooks/useFormat'
+import { useAuthStore } from '../store/auth'
+import { supabase } from '../lib/supabase'
 
-// ── Local shape for recurrent items ─────────────────
 interface RecurrenteItem {
   id:               string
   descripcion:      string
   monto:            number
-  recurrencia_dias: number    // period in days (30 = monthly)
-  recDia?:          number    // day of month (1-28)
+  recurrencia_dias: number
+  recDia?:          number
   tipo:             string
   cat:              string
+  notif_telegram?:  boolean
 }
 
 const TIPOS = ['Gasto', 'Ingreso Fijo', 'Ingreso Variable', 'Ahorro en efectivo']
+
+const FREQ_OPTS = [
+  { label: 'Semanal',      dias: 7  },
+  { label: 'Quincenal',    dias: 15 },
+  { label: 'Mensual',      dias: 30 },
+  { label: 'Personalizado', dias: 0 },
+]
 
 function tipoColor(tipo: string): string {
   if (tipo.startsWith('Ingreso')) return 'var(--pos)'
@@ -27,57 +36,123 @@ function tipoColor(tipo: string): string {
   return 'var(--neg)'
 }
 
+function freqLabel(dias: number, recDia?: number): string {
+  if (dias === 7)  return 'Semanal'
+  if (dias === 15) return 'Quincenal'
+  if (dias === 30) return recDia ? `Mensual · día ${recDia}` : 'Mensual'
+  return `Cada ${dias} días${recDia ? ` · día ${recDia}` : ''}`
+}
+
 const inputSt: React.CSSProperties = {
   width: '100%', background: 'var(--ink-3)', border: '1px solid var(--line)',
   borderRadius: 10, padding: '9px 12px', fontSize: 13,
-  color: 'var(--fg)', outline: 'none', fontFamily: 'inherit',
-  boxSizing: 'border-box',
+  color: 'var(--fg)', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
+}
+
+const BLANK = {
+  desc: '', monto: '', freqIdx: 2, diasCustom: '30', diaNum: 1,
+  tipo: TIPOS[0], cat: '', notifTg: false,
 }
 
 export default function Recurrentes() {
-  const { fmt }                        = useFormat()
-  const { config, updateConfig }       = useConfig()
+  const { fmt }              = useFormat()
+  const { config, updateConfig } = useConfig()
+  const userId               = useAuthStore(s => s.userId)
 
   const items = (config.recurrentes as RecurrenteItem[])
 
-  // ── Form state ──────────────────────────────────
-  const [open,     setOpen]     = useState(false)
-  const [desc,     setDesc]     = useState('')
-  const [monto,    setMonto]    = useState('')
-  const [dias,     setDias]     = useState('30')
-  const [diaNum,   setDiaNum]   = useState(1)     // day of month
-  const [tipo,     setTipo]     = useState(TIPOS[0])
-  const [cat,      setCat]      = useState('')
-  const [saving,   setSaving]   = useState(false)
+  const [open,       setOpen]       = useState(false)
+  const [editId,     setEditId]     = useState<string | null>(null)
+  const [saving,     setSaving]     = useState(false)
 
-  function resetForm() {
-    setDesc(''); setMonto(''); setDias('30'); setDiaNum(1); setTipo(TIPOS[0]); setCat('')
+  // Form state
+  const [desc,       setDesc]       = useState(BLANK.desc)
+  const [monto,      setMonto]      = useState(BLANK.monto)
+  const [freqIdx,    setFreqIdx]    = useState(BLANK.freqIdx)   // index in FREQ_OPTS
+  const [diasCustom, setDiasCustom] = useState(BLANK.diasCustom)
+  const [diaNum,     setDiaNum]     = useState(BLANK.diaNum)
+  const [tipo,       setTipo]       = useState(BLANK.tipo)
+  const [cat,        setCat]        = useState(BLANK.cat)
+  const [notifTg,    setNotifTg]    = useState(BLANK.notifTg)
+
+  const isMonthly = FREQ_OPTS[freqIdx]?.dias === 30 || (freqIdx === 3 && parseInt(diasCustom) >= 28)
+  const diasFinal = freqIdx === 3 ? (parseInt(diasCustom) || 30) : FREQ_OPTS[freqIdx].dias
+
+  function loadIntoForm(r: RecurrenteItem) {
+    setDesc(r.descripcion)
+    setMonto(String(r.monto))
+    const presetIdx = FREQ_OPTS.findIndex(f => f.dias === r.recurrencia_dias && f.dias !== 0)
+    if (presetIdx >= 0) { setFreqIdx(presetIdx) } else { setFreqIdx(3); setDiasCustom(String(r.recurrencia_dias)) }
+    setDiaNum(r.recDia ?? 1)
+    setTipo(r.tipo)
+    setCat(r.cat)
+    setNotifTg(!!r.notif_telegram)
   }
 
-  async function handleAdd() {
+  function resetForm() {
+    setDesc(BLANK.desc); setMonto(BLANK.monto); setFreqIdx(BLANK.freqIdx)
+    setDiasCustom(BLANK.diasCustom); setDiaNum(BLANK.diaNum)
+    setTipo(BLANK.tipo); setCat(BLANK.cat); setNotifTg(BLANK.notifTg)
+  }
+
+  function openAdd() { resetForm(); setEditId(null); setOpen(true) }
+
+  function openEdit(r: RecurrenteItem) { loadIntoForm(r); setEditId(r.id); setOpen(true) }
+
+  async function createNotif(r: RecurrenteItem) {
+    if (!userId || !notifTg) return
+    const sendAt = new Date()
+    sendAt.setDate(r.recDia ?? 1)
+    sendAt.setHours(8, 0, 0, 0)
+    if (sendAt < new Date()) sendAt.setMonth(sendAt.getMonth() + 1)
+    await supabase.from('scheduled_notifications').insert({
+      user_id:          userId,
+      titulo:           `🔁 ${r.descripcion}`,
+      mensaje:          `Recurrente de $${r.monto.toFixed(2)} — ${r.tipo}`,
+      send_at:          sendAt.toISOString(),
+      tipo:             'recurrente',
+      canal_push:       true,
+      canal_telegram:   true,
+      recurrente:       true,
+      recurrencia_dias: r.recurrencia_dias,
+      activo:           true,
+    })
+  }
+
+  async function handleSave() {
     const montoNum = parseFloat(monto)
     if (!desc.trim() || !montoNum || montoNum <= 0) return
     setSaving(true)
+
     const newItem: RecurrenteItem = {
-      id:               Date.now().toString(),
+      id:               editId ?? Date.now().toString(),
       descripcion:      desc.trim(),
       monto:            montoNum,
-      recurrencia_dias: parseInt(dias) || 30,
-      recDia:           diaNum,
+      recurrencia_dias: diasFinal,
+      recDia:           isMonthly ? diaNum : undefined,
       tipo,
       cat:              cat.trim() || tipo,
+      notif_telegram:   notifTg,
     }
-    const updated = [...items, newItem]
+
+    let updated: RecurrenteItem[]
+    if (editId) {
+      updated = items.map(r => r.id === editId ? newItem : r)
+    } else {
+      updated = [...items, newItem]
+      await createNotif(newItem)
+    }
+
     await updateConfig('recurrentes', updated)
-    resetForm()
-    setOpen(false)
+    resetForm(); setOpen(false); setEditId(null)
     setSaving(false)
   }
 
   async function handleDelete(id: string) {
-    const updated = items.filter(r => r.id !== id)
-    await updateConfig('recurrentes', updated)
+    await updateConfig('recurrentes', items.filter(r => r.id !== id))
   }
+
+  const isEditing = !!editId
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', paddingBottom: 40 }}>
@@ -95,19 +170,17 @@ export default function Recurrentes() {
             <span style={{ fontSize: 36, lineHeight: 1 }}>🔁</span>
             <div style={{ fontSize: 13.5, fontWeight: 500 }}>Sin recurrentes</div>
             <div style={{ fontSize: 12, color: 'var(--fg-mute)', lineHeight: 1.6 }}>
-              Agrega pagos o ingresos que se repiten periódicamente.
+              Agrega pagos o ingresos que se repiten periódicamente.<br />
+              Puedes activar recordatorios por Telegram al crearlos.
             </div>
           </div>
         )}
 
         {/* ── List ── */}
-        {items.length > 0 && (
-          <div style={{
-            background: 'var(--ink-2)', border: '1px solid var(--line)',
-            borderRadius: 14, overflow: 'hidden',
-          }}>
+        {items.length > 0 && !open && (
+          <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
             {items.map((r, i) => {
-              const color = tipoColor(r.tipo)
+              const color  = tipoColor(r.tipo)
               const isLast = i === items.length - 1
               return (
                 <div
@@ -120,15 +193,19 @@ export default function Recurrentes() {
                   }}
                 >
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
                       <span style={{
                         fontSize: 10, fontWeight: 700, padding: '2px 7px',
                         borderRadius: 999, background: `${color}18`,
-                        color, border: `1px solid ${color}40`,
-                        whiteSpace: 'nowrap',
+                        color, border: `1px solid ${color}40`, whiteSpace: 'nowrap',
                       }}>
                         {r.tipo.length > 14 ? r.tipo.slice(0, 14) + '…' : r.tipo}
                       </span>
+                      {r.notif_telegram && (
+                        <span style={{ fontSize: 10, color: 'var(--info)', background: 'rgba(41,182,246,.1)', border: '1px solid rgba(41,182,246,.25)', borderRadius: 999, padding: '2px 6px' }}>
+                          📲 Telegram
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontSize: 13.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {r.descripcion}
@@ -136,16 +213,25 @@ export default function Recurrentes() {
                     <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 2, display: 'flex', gap: 5 }}>
                       <span>{r.cat}</span>
                       <span>·</span>
-                      <span>
-                        {r.recurrencia_dias === 30 ? 'Mensual' : `cada ${r.recurrencia_dias} días`}
-                        {r.recDia ? ` · día ${r.recDia}` : ''}
-                      </span>
+                      <span>{freqLabel(r.recurrencia_dias, r.recDia)}</span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div className="num" style={{ fontSize: 14, fontWeight: 700, color, whiteSpace: 'nowrap' }}>
                       {fmt(r.monto)}
                     </div>
+                    <button
+                      onClick={() => openEdit(r)}
+                      aria-label="Editar"
+                      style={{
+                        width: 28, height: 28, borderRadius: 8,
+                        background: 'rgba(224,168,74,.1)', border: '1px solid rgba(224,168,74,.25)',
+                        color: 'var(--amber)', fontSize: 13, display: 'grid', placeItems: 'center',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ✏️
+                    </button>
                     <button
                       onClick={() => handleDelete(r.id)}
                       aria-label="Eliminar"
@@ -165,15 +251,15 @@ export default function Recurrentes() {
           </div>
         )}
 
-        {/* ── Inline form ── */}
+        {/* ── Form (create / edit) ── */}
         {open && (
           <div style={{
-            background: 'var(--ink-2)', border: '1px solid var(--line)',
+            background: 'var(--ink-2)', border: `1px solid ${isEditing ? 'rgba(224,168,74,.4)' : 'var(--line)'}`,
             borderRadius: 14, padding: 16,
             display: 'flex', flexDirection: 'column', gap: 12,
           }}>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--fg-mute)' }}>
-              Nuevo recurrente
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: isEditing ? 'var(--amber)' : 'var(--fg-mute)' }}>
+              {isEditing ? '✏️ Editar recurrente' : 'Nuevo recurrente'}
             </div>
 
             {/* Tipo chips */}
@@ -182,57 +268,69 @@ export default function Recurrentes() {
                 const color = tipoColor(t)
                 const sel   = t === tipo
                 return (
-                  <button
-                    key={t}
-                    onClick={() => setTipo(t)}
-                    style={{
-                      padding: '5px 11px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
-                      background: sel ? `${color}18` : 'var(--ink-3)',
-                      color:      sel ? color : 'var(--fg-mute)',
-                      border:     sel ? `1.5px solid ${color}50` : '1px solid var(--line)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {t}
-                  </button>
+                  <button key={t} onClick={() => setTipo(t)} style={{
+                    padding: '5px 11px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
+                    background: sel ? `${color}18` : 'var(--ink-3)',
+                    color:      sel ? color : 'var(--fg-mute)',
+                    border:     sel ? `1.5px solid ${color}50` : '1px solid var(--line)',
+                    cursor: 'pointer',
+                  }}>{t}</button>
                 )
               })}
             </div>
 
-            {/* Descripcion */}
+            {/* Descripción */}
             <input
               type="text" value={desc} onChange={e => setDesc(e.target.value)}
               placeholder="Descripción (ej. Netflix, Salario…)"
               style={inputSt} maxLength={100}
             />
 
-            {/* Monto + Días + Día del mes */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-              <div>
-                <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginBottom: 4 }}>Monto (USD)</div>
-                <input
-                  type="number" inputMode="decimal" min="0" step="0.01"
-                  value={monto} onChange={e => setMonto(e.target.value)}
-                  placeholder="0.00"
-                  style={inputSt}
-                />
+            {/* Monto */}
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginBottom: 4 }}>Monto (USD)</div>
+              <input
+                type="number" inputMode="decimal" min="0" step="0.01"
+                value={monto} onChange={e => setMonto(e.target.value)}
+                placeholder="0.00" style={inputSt}
+              />
+            </div>
+
+            {/* Frecuencia */}
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginBottom: 6 }}>Frecuencia</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {FREQ_OPTS.map((f, idx) => (
+                  <button key={f.label} onClick={() => setFreqIdx(idx)} style={{
+                    padding: '5px 11px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
+                    background: freqIdx === idx ? 'rgba(224,168,74,.15)' : 'var(--ink-3)',
+                    color:      freqIdx === idx ? 'var(--amber)' : 'var(--fg-mute)',
+                    border:     freqIdx === idx ? '1.5px solid rgba(224,168,74,.4)' : '1px solid var(--line)',
+                    cursor: 'pointer',
+                  }}>{f.label}</button>
+                ))}
               </div>
-              <div>
-                <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginBottom: 4 }}>Cada N días</div>
-                <input
-                  type="number" inputMode="numeric" min="1" max="365"
-                  value={dias} onChange={e => setDias(e.target.value)}
-                  style={inputSt}
-                />
-              </div>
-              <div>
-                <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginBottom: 4 }}>Día del mes</div>
-                <input
-                  type="number" inputMode="numeric" min="1" max="28"
-                  value={diaNum} onChange={e => setDiaNum(parseInt(e.target.value) || 1)}
-                  style={inputSt}
-                />
-              </div>
+              {freqIdx === 3 && (
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, color: 'var(--fg-mute)' }}>Cada</span>
+                  <input
+                    type="number" inputMode="numeric" min="1" max="365"
+                    value={diasCustom} onChange={e => setDiasCustom(e.target.value)}
+                    style={{ ...inputSt, width: 70 }}
+                  />
+                  <span style={{ fontSize: 12, color: 'var(--fg-mute)' }}>días</span>
+                </div>
+              )}
+              {(FREQ_OPTS[freqIdx]?.dias === 30 || freqIdx === 3) && (
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, color: 'var(--fg-mute)' }}>Día del mes</span>
+                  <input
+                    type="number" inputMode="numeric" min="1" max="28"
+                    value={diaNum} onChange={e => setDiaNum(parseInt(e.target.value) || 1)}
+                    style={{ ...inputSt, width: 70 }}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Categoría */}
@@ -242,23 +340,31 @@ export default function Recurrentes() {
               style={inputSt} maxLength={60}
             />
 
+            {/* Notificación Telegram */}
+            {!isEditing && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" checked={notifTg} onChange={e => setNotifTg(e.target.checked)} />
+                <span>📲 Recordatorio por Telegram</span>
+                {notifTg && <span style={{ fontSize: 11, color: 'var(--fg-mute)' }}>(también en Notificaciones)</span>}
+              </label>
+            )}
+
             {/* Actions */}
             <div style={{ display: 'flex', gap: 8 }}>
               <button
-                onClick={handleAdd}
+                onClick={handleSave}
                 disabled={saving || !desc.trim() || !parseFloat(monto)}
                 style={{
                   flex: 1, padding: '11px', borderRadius: 12, fontSize: 13.5, fontWeight: 700,
                   background: saving || !desc.trim() || !parseFloat(monto) ? 'var(--ink-3)' : 'var(--amber)',
                   color:      saving || !desc.trim() || !parseFloat(monto) ? 'var(--fg-mute)' : 'var(--ink-0)',
                   border: 'none', cursor: 'pointer',
-                  transition: 'background .15s',
                 }}
               >
-                {saving ? 'Guardando…' : 'Guardar'}
+                {saving ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Crear'}
               </button>
               <button
-                onClick={() => { setOpen(false); resetForm() }}
+                onClick={() => { setOpen(false); setEditId(null); resetForm() }}
                 style={{
                   padding: '11px 18px', borderRadius: 12, fontSize: 13.5, fontWeight: 600,
                   background: 'var(--ink-3)', border: '1px solid var(--line)',
@@ -274,16 +380,31 @@ export default function Recurrentes() {
         {/* ── Add button ── */}
         {!open && (
           <button
-            onClick={() => setOpen(true)}
+            onClick={openAdd}
             style={{
               width: '100%', padding: '13px', borderRadius: 14, fontSize: 14, fontWeight: 700,
               background: 'var(--ink-2)', border: '1px dashed var(--line)',
-              color: 'var(--amber)', cursor: 'pointer', letterSpacing: '.01em',
+              color: 'var(--amber)', cursor: 'pointer',
             }}
           >
             + Nuevo recurrente
           </button>
         )}
+
+        {/* ── Google Calendar note ── */}
+        <div style={{
+          background: 'var(--ink-2)', border: '1px solid var(--line)',
+          borderRadius: 12, padding: '11px 14px',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <span style={{ fontSize: 20 }}>📅</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 600 }}>Google Calendar</div>
+            <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 1 }}>
+              Sync automático próximamente — en desarrollo.
+            </div>
+          </div>
+        </div>
 
       </div>
     </div>

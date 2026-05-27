@@ -5,17 +5,11 @@
 // ═══════════════════════════════════════════════════
 
 import { Outlet, useLocation } from 'react-router-dom'
-import { useAppStore } from '../../store/app'
 import TabBar from './TabBar'
 import Toast  from './Toast'
 
 export default function AppShell() {
-  const location     = useLocation()
-  const navDirection = useAppStore((s) => s.navDirection)
-
-  const slideClass = navDirection === 'back'
-    ? 'page-slide-back'
-    : 'page-slide-forward'
+  const location = useLocation()
 
   return (
     <div
@@ -30,7 +24,6 @@ export default function AppShell() {
       {/* ── Scrollable page area ── */}
       <div
         key={location.key}
-        className={slideClass}
         style={{
           flex:                    1,
           display:                 'flex',

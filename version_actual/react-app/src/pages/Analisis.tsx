@@ -105,7 +105,9 @@ export default function Analisis() {
   const { transactions: liveTxns, loading }  = useTransactions(mesActivo)
   const { transactions: prevTxns }           = useTransactions(prevId)
 
-  const [openCat, setOpenCat] = useState<string | null>(null)
+  const [openCat,       setOpenCat]       = useState<string | null>(null)
+  const [ingresosOpen,  setIngresosOpen]  = useState(false)
+  const [gastosOpen,    setGastosOpen]    = useState(false)
 
   // ── Helpers ─────────────────────────────────────
   const txns     = liveTxns ?? []
@@ -159,8 +161,7 @@ export default function Analisis() {
     )
   }, [txns])
 
-  // ── Ingresos: total + desglose por persona (Anthony / Isabel) ──────
-  // Fijos mensuales agrupados por autor; el resto como "Otros ingresos".
+  // ── Ingresos: total + desglose por tipo y por persona ──
   const ingresosTotal = useMemo(
     () => txns.reduce((s, t) => txnGroup(t.tipo) === 'ingreso' ? s + Math.abs(t.amount) : s, 0),
     [txns],
@@ -173,6 +174,20 @@ export default function Analisis() {
     }
     return Object.entries(map)
       .sort(([, a], [, b]) => b - a)
+      .map(([label, value]) => ({ label, value }))
+  }, [txns])
+
+  // ── Ingresos por descripción (salarios individuales) ──
+  const ingresosPorDesc = useMemo<BarEntry[]>(() => {
+    const map: Record<string, number> = {}
+    for (const t of txns) {
+      if (txnGroup(t.tipo) !== 'ingreso') continue
+      const key = t.desc || t.cat
+      map[key] = (map[key] ?? 0) + Math.abs(t.amount)
+    }
+    return Object.entries(map)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 8)
       .map(([label, value]) => ({ label, value }))
   }, [txns])
 
@@ -238,24 +253,76 @@ export default function Analisis() {
           {/* ── KPIs + comparativa ── */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
             {([
-              { label: 'Ingresos', cur: kpis.ingresos, prev: prevKpis.ingresos, color: 'var(--pos)' },
-              { label: 'Gastos',   cur: kpis.gastos,   prev: prevKpis.gastos,   color: 'var(--neg)' },
-              { label: 'Balance',  cur: kpis.balance,  prev: prevKpis.balance,  color: kpis.balance >= 0 ? 'var(--pos)' : 'var(--neg)' },
-            ]).map(k => (
-              <div key={k.label} style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 10px 8px' }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 5 }}>
-                  {k.label}
+              { label: 'Ingresos', cur: kpis.ingresos, prev: prevKpis.ingresos, color: 'var(--pos)',                                      key: 'ing' },
+              { label: 'Gastos',   cur: kpis.gastos,   prev: prevKpis.gastos,   color: 'var(--neg)',                                      key: 'gas' },
+              { label: 'Balance',  cur: kpis.balance,  prev: prevKpis.balance,  color: kpis.balance >= 0 ? 'var(--pos)' : 'var(--neg)',   key: 'bal' },
+            ]).map(k => {
+              const isIng     = k.key === 'ing'
+              const isGas     = k.key === 'gas'
+              const expanded  = isIng ? ingresosOpen : isGas ? gastosOpen : false
+              const toggle    = isIng ? () => setIngresosOpen(v => !v) : isGas ? () => setGastosOpen(v => !v) : undefined
+              return (
+                <div
+                  key={k.label}
+                  onClick={toggle}
+                  style={{
+                    background: 'var(--ink-2)', border: `1px solid ${expanded ? k.color + '50' : 'var(--line)'}`,
+                    borderRadius: 12, padding: '10px 10px 8px',
+                    cursor: toggle ? 'pointer' : 'default',
+                    transition: 'border-color .15s',
+                  }}
+                >
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 3 }}>
+                    {k.label}
+                    {(isIng || isGas) && (
+                      <span style={{ fontSize: 9, opacity: 0.5, color: k.color }}>{expanded ? '▲' : '▼'}</span>
+                    )}
+                  </div>
+                  <div className="num" style={{ fontSize: 13, fontWeight: 700, color: k.color, marginBottom: 4 }}>
+                    {k.label === 'Balance' && k.cur >= 0 ? '+' : ''}{fmt(k.cur)}
+                  </div>
+                  <Delta cur={k.cur} prev={k.prev} />
+                  {k.prev > 0 && (
+                    <div style={{ fontSize: 9, color: 'var(--fg-mute)', marginTop: 3 }}>vs {prevLabel}</div>
+                  )}
                 </div>
-                <div className="num" style={{ fontSize: 13, fontWeight: 700, color: k.color, marginBottom: 4 }}>
-                  {k.label === 'Balance' && k.cur >= 0 ? '+' : ''}{fmt(k.cur)}
-                </div>
-                <Delta cur={k.cur} prev={k.prev} />
-                {k.prev > 0 && (
-                  <div style={{ fontSize: 9, color: 'var(--fg-mute)', marginTop: 3 }}>vs {prevLabel}</div>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
+
+          {/* ── Desglose gastos (expandible) ── */}
+          {gastosOpen && gastosPorCat.length > 0 && (
+            <div style={{ background: 'var(--ink-2)', border: '1px solid rgba(214,106,90,.3)', borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neg)', marginBottom: 10 }}>
+                  Gastos por categoría
+                </div>
+                <HBar data={gastosPorCat} color="var(--neg)" />
+              </div>
+            </div>
+          )}
+
+          {/* ── Desglose ingresos (expandible) ── */}
+          {ingresosOpen && (ingresosPorTipo.length > 0 || ingresosPorDesc.length > 0) && (
+            <div style={{ background: 'var(--ink-2)', border: '1px solid rgba(88,178,106,.3)', borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {ingresosPorDesc.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--pos)', marginBottom: 10 }}>
+                    Por salario / fuente
+                  </div>
+                  <HBar data={ingresosPorDesc} color="var(--pos)" />
+                </div>
+              )}
+              {ingresosPorTipo.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 10 }}>
+                    Por tipo de ingreso
+                  </div>
+                  <HBar data={ingresosPorTipo} color="var(--pos)" />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ── Gastos por categoría: donut + lista ── */}
           <Card>

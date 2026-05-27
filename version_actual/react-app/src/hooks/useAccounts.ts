@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase }      from '../lib/supabase'
 import { useAuthStore }  from '../store/auth'
 import { type Account }  from '../data/mock'
@@ -29,27 +29,31 @@ function inferType(nombre: string | null, moneda: string): string {
   return 'CORRIENTE'
 }
 
-function mapCuenta(r: SupaCuenta, allMovs: MovSum[], bcv: number): Account {
+function mapCuenta(r: SupaCuenta, allMovs: MovSum[], bcv: number, prevMovs: MovSum[]): Account {
   let balance: number
 
   if (r.balance_override != null && r.balance_override_date != null) {
-    // Sum only movements on or after the override date
     const movAfter = allMovs.filter(
       m => m.cuenta_id === r.id && m.fecha >= r.balance_override_date!,
     )
     const delta = movAfter.reduce((s, m) => s + (parseFloat(String(m.amount)) || 0), 0)
     balance = r.balance_override + delta
   } else {
-    // Original logic: saldo_inicial + all movements (or plain override with no date)
     const movTotal = allMovs
       .filter(m => m.cuenta_id === r.id)
       .reduce((s, m) => s + (parseFloat(String(m.amount)) || 0), 0)
     balance = r.balance_override ?? ((r.saldo_inicial ?? 0) + movTotal)
   }
 
-  // Normalize to USD so patrimonio/saldo aggregates are currency-coherent.
-  // VES balances are divided by the BCV rate; USD stays as-is.
   const balanceUSD = r.moneda === 'VES' && bcv > 0 ? balance / bcv : balance
+
+  // Trend: variación porcentual vs mes anterior
+  const prevBalance = prevMovs
+    .filter(m => m.cuenta_id === r.id)
+    .reduce((s, m) => s + (parseFloat(String(m.amount)) || 0), 0) + (r.saldo_inicial ?? 0)
+  const trend = prevBalance !== 0
+    ? Math.round(((balance - prevBalance) / Math.abs(prevBalance)) * 100)
+    : 0
 
   return {
     id:              r.id,
@@ -60,7 +64,7 @@ function mapCuenta(r: SupaCuenta, allMovs: MovSum[], bcv: number): Account {
     balanceUSD,
     saldoInicial:    r.saldo_inicial ?? 0,
     balanceOverride: r.balance_override ?? null,
-    trend:           0,
+    trend,
     color:           r.color ?? '#58b26a',
     spark:           [],
   }
@@ -73,48 +77,67 @@ export function useAccounts() {
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState<string | null>(null)
 
+  const fetchData = useCallback(() => {
+    if (!householdId) { setLoading(false); return }
+    const now = new Date()
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10)
+
+    Promise.all([
+      supabase
+        .from('cuentas')
+        .select('id,nombre,color,moneda,saldo_inicial,balance_override,balance_override_date,activa,owner')
+        .eq('household_id', householdId)
+        .eq('activa', true)
+        .order('created_at'),
+      supabase
+        .from('movimientos')
+        .select('cuenta_id,amount,fecha')
+        .eq('household_id', householdId)
+        .is('deleted_at', null),
+      supabase
+        .from('movimientos')
+        .select('cuenta_id,amount,fecha')
+        .eq('household_id', householdId)
+        .lt('fecha', thisMonthStart)
+        .gte('fecha', prevMonthStart)
+        .is('deleted_at', null),
+    ]).then(([cuentasRes, movRes, prevMovRes]) => {
+      if (cuentasRes.error) { handleError(cuentasRes.error); setError(cuentasRes.error.message); setLoading(false); return }
+      const movData     = (movRes.data     ?? []) as MovSum[]
+      const prevMovData = (prevMovRes.data ?? []) as MovSum[]
+      const cuentas     = (cuentasRes.data as SupaCuenta[] ?? [])
+      setAccounts(cuentas.map(r => mapCuenta(r, movData, tasas.bcv, prevMovData)))
+      setLoading(false)
+    })
+  }, [householdId, tasas.bcv])
+
   useEffect(() => {
     if (!householdId) { setLoading(false); return }
-
-    function fetchData() {
-      // Run both queries in parallel — cuentas + movimientos SUM per account
-      Promise.all([
-        supabase
-          .from('cuentas')
-          .select('id,nombre,color,moneda,saldo_inicial,balance_override,balance_override_date,activa,owner')
-          .eq('household_id', householdId!)
-          .eq('activa', true)
-          .order('created_at'),
-
-        supabase
-          .from('movimientos')
-          .select('cuenta_id,amount,fecha')
-          .eq('household_id', householdId!)
-          .is('deleted_at', null),
-      ]).then(([cuentasRes, movRes]) => {
-        if (cuentasRes.error) {
-          handleError(cuentasRes.error)
-          setError(cuentasRes.error.message)
-          setLoading(false)
-          return
-        }
-
-        const movData = (movRes.data ?? []) as MovSum[]
-        const cuentas = (cuentasRes.data as SupaCuenta[] ?? [])
-        setAccounts(cuentas.map(r => mapCuenta(r, movData, tasas.bcv)))
-        setLoading(false)
-      })
-    }
-
     fetchData()
 
-    // Refetch when user returns to tab (app switching on mobile)
+    // Realtime: refresca cuando cambian cuentas o movimientos del household
+    const ch1 = supabase
+      .channel(`cuentas:${householdId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cuentas', filter: `household_id=eq.${householdId}` }, () => fetchData())
+      .subscribe()
+
+    const ch2 = supabase
+      .channel(`movimientos-accounts:${householdId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'movimientos', filter: `household_id=eq.${householdId}` }, () => fetchData())
+      .subscribe()
+
     function onVisibilityChange() {
       if (document.visibilityState === 'visible') fetchData()
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
-  }, [householdId, tasas.bcv])
 
-  return { accounts, loading, error }
+    return () => {
+      supabase.removeChannel(ch1)
+      supabase.removeChannel(ch2)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [householdId, fetchData])
+
+  return { accounts, loading, error, refetch: fetchData }
 }

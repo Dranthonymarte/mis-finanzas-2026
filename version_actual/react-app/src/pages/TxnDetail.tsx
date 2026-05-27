@@ -23,9 +23,21 @@ interface SupaMovimiento {
   mes:         string
   cuenta_id:   string | null
   created_at:  string
-  rate_bcv?:   number
-  notas?:      string | null
-  method?:     string | null
+  rate_bcv:    number | null
+  notas:       string | null
+  method:      string | null
+}
+
+const METHODS_EDIT = ['Pago móvil','Transferencia','Zelle','Efectivo en dólares','Efectivo en bolívares','Tarjeta de débito','Binance']
+
+function chipEdit(active: boolean): CSSProperties {
+  return {
+    padding: '7px 13px', borderRadius: 999, fontSize: 12, fontWeight: 600, flexShrink: 0,
+    whiteSpace: 'nowrap' as const, cursor: 'pointer',
+    background: active ? 'var(--amber)' : 'var(--ink-3)',
+    color:      active ? 'var(--ink-0)' : 'var(--fg-dim)',
+    border:     active ? 'none' : '1px solid var(--line)',
+  }
 }
 
 function txnColor(tipo: string, esIngreso: boolean): string {
@@ -33,10 +45,6 @@ function txnColor(tipo: string, esIngreso: boolean): string {
   if (tipo.includes('Ahorro'))   return 'var(--info)'
   if (tipo.includes('Transfer')) return 'var(--teal)'
   return 'var(--neg)'
-}
-
-function txnSign(esIngreso: boolean): '+' | '−' {
-  return esIngreso ? '+' : '−'
 }
 
 function fmtAuthor(raw: string | null): string {
@@ -64,24 +72,6 @@ function DetailRow({ label, value, last }: { label: string; value: string; last?
   )
 }
 
-/* ── Edit field row ── */
-function EditRow({ label, children, last }: { label: string; children: React.ReactNode; last?: boolean }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
-      borderBottom: last ? 'none' : '1px solid var(--line)',
-    }}>
-      <span style={{ fontSize: 12, color: 'var(--fg-mute)', width: 80, flexShrink: 0 }}>{label}</span>
-      {children}
-    </div>
-  )
-}
-
-const inputSt: CSSProperties = {
-  flex: 1, background: 'var(--ink-3)', border: '1px solid var(--line)',
-  borderRadius: 8, padding: '7px 10px', fontSize: 13, color: 'var(--fg)',
-  outline: 'none',
-}
 
 const labelSt: CSSProperties = {
   fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em',
@@ -105,17 +95,20 @@ export default function TxnDetail() {
 
   const [editDesc,   setEditDesc]   = useState('')
   const [editCat,    setEditCat]    = useState('')
+  const [editSubcat, setEditSubcat] = useState('')
   const [editTipo,   setEditTipo]   = useState('')
   const [editAmount, setEditAmount] = useState('')
   const [editFecha,  setEditFecha]  = useState('')
   const [editMethod, setEditMethod] = useState('')
   const [editRate,   setEditRate]   = useState('')
+  const [editNotas,  setEditNotas]  = useState('')
+  const [editAuthor, setEditAuthor] = useState<'anthony' | 'isabel'>('anthony')
 
   useEffect(() => {
     if (!id) return
     supabase
       .from('movimientos')
-      .select('id,descripcion,tipo,cat,subcat,amount,amount_bs,fecha,author,mes,cuenta_id,created_at')
+      .select('id,descripcion,tipo,cat,subcat,amount,amount_bs,fecha,author,mes,cuenta_id,created_at,notas,method,rate_bcv')
       .eq('id', id)
       .single()
       .then(({ data, error }) => {
@@ -124,11 +117,14 @@ export default function TxnDetail() {
         setTxn(row)
         setEditDesc(row.descripcion)
         setEditCat(row.cat)
+        setEditSubcat(row.subcat ?? '')
         setEditTipo(row.tipo)
         setEditAmount(String(Math.abs(row.amount)))
         setEditFecha(row.fecha)
         setEditMethod(row.method ?? '')
         setEditRate(String(row.rate_bcv ?? ''))
+        setEditNotas(row.notas ?? '')
+        setEditAuthor((row.author === 'isabel' ? 'isabel' : 'anthony') as 'anthony' | 'isabel')
         setLoadingTxn(false)
       })
   }, [id, navigate])
@@ -148,7 +144,6 @@ export default function TxnDetail() {
   const tipoObj   = (config.tipos ?? []).find(t => t.nombre === txn.tipo) ?? { nombre: txn.tipo, esIngreso: false }
   const esIngreso = tipoObj.esIngreso
   const color     = txnColor(txn.tipo, esIngreso)
-  const sign      = txnSign(esIngreso)
   const catC      = catColor(editMode ? editCat : txn.cat)
   const acc       = accounts?.find(a => a.id === txn.cuenta_id)
   const allCats   = config.categorias[editTipo || txn.tipo] ?? config.categorias[txn.tipo] ?? [txn.cat]
@@ -163,30 +158,32 @@ export default function TxnDetail() {
     if (delErr) { console.error('[TxnDetail] soft-delete:', delErr.message); return }
 
     // Re-create with updated fields (new UUID = new row)
-    const newId     = crypto.randomUUID()
-    const tipoObj   = (config.tipos ?? []).find(t => t.nombre === editTipo) ?? { esIngreso: false }
-    const sign      = tipoObj.esIngreso ? 1 : -1
-    const parsedAmt = parseFloat(editAmount)
+    const newId      = crypto.randomUUID()
+    const tipoEdObj  = (config.tipos ?? []).find(t => t.nombre === (editTipo || txn.tipo)) ?? { esIngreso: false }
+    const esAhorroEd = (editTipo || txn.tipo).includes('Ahorro')
+    const parsedAmt  = parseFloat(editAmount)
     const parsedRate = parseFloat(editRate)
+    const signEd     = tipoEdObj.esIngreso ? 1 : esAhorroEd ? (parsedAmt > 0 ? 1 : -1) : -1
     const { error: insErr } = await supabase
       .from('movimientos')
       .insert({
         id:           newId,
-        user_id:      householdId,   // RLS: user_id = active_household_id()
+        user_id:      householdId,
         household_id: householdId,
         mes:          txn.mes,
-        descripcion:  editDesc,
+        descripcion:  editDesc || txn.descripcion,
         tipo:         editTipo || txn.tipo,
-        cat:          editCat,
-        subcat:       txn.subcat ?? '',
-        amount:       !isNaN(parsedAmt) ? sign * parsedAmt : txn.amount,
-        amount_bs:    !isNaN(parsedAmt) ? (parsedAmt * (!isNaN(parsedRate) && parsedRate > 0 ? parsedRate : (txn.rate_bcv ?? 1))) : (txn.amount_bs ?? 0),
-        method:       editMethod || (txn.method ?? ''),
-        fecha:        editFecha || txn.fecha,
-        author:       txn.author,
+        cat:          editCat  || txn.cat,
+        subcat:       editSubcat || txn.subcat || '',
+        amount:       !isNaN(parsedAmt) ? signEd * Math.abs(parsedAmt) : txn.amount,
+        amount_bs:    !isNaN(parsedAmt) ? (Math.abs(parsedAmt) * (!isNaN(parsedRate) && parsedRate > 0 ? parsedRate : (txn.rate_bcv ?? 1))) : (txn.amount_bs ?? 0),
+        method:       editMethod || txn.method || '',
+        fecha:        editFecha  || txn.fecha,
+        author:       editAuthor,
         rate_type:    'bcv',
         rate_bcv:     !isNaN(parsedRate) && parsedRate > 0 ? parsedRate : txn.rate_bcv,
         cuenta_id:    txn.cuenta_id,
+        notas:        editNotas || null,
       })
     if (insErr) { console.error('[TxnDetail] recreate:', insErr.message); return }
 
@@ -274,7 +271,7 @@ export default function TxnDetail() {
           </div>
           <div style={{ textAlign: 'center' }}>
             <div className="num" style={{ fontSize: 42, fontWeight: 700, color, letterSpacing: '-.02em', lineHeight: 1 }}>
-              {sign}{fmt(Math.abs(txn.amount))}
+              {fmt(Math.abs(txn.amount))}
             </div>
             <div style={{ fontSize: 15, fontWeight: 500, marginTop: 6 }}>
               {editMode ? editDesc : txn.descripcion}
@@ -297,54 +294,119 @@ export default function TxnDetail() {
           </span>
         </div>
 
-        {/* ── EDIT MODE ── */}
+        {/* ── EDIT MODE — mismo flujo que registro ── */}
         {editMode ? (
           <>
-            <div style={labelSt}>Editar detalles</div>
-            <div style={{ margin: '0 16px', background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
-              <EditRow label="Descripción">
-                <input
-                  type="text" value={editDesc}
-                  onChange={e => setEditDesc(e.target.value)}
-                  style={inputSt}
-                />
-              </EditRow>
-              <EditRow label="Tipo">
-                <select value={editTipo} onChange={e => { setEditTipo(e.target.value); setEditCat('') }} style={{ ...inputSt, cursor: 'pointer' }}>
-                  {(config.tipos ?? []).map(t => <option key={t.nombre} value={t.nombre}>{t.nombre}</option>)}
-                </select>
-              </EditRow>
-              <EditRow label="Categoría">
-                <select
-                  value={editCat}
-                  onChange={e => setEditCat(e.target.value)}
-                  style={{ ...inputSt, cursor: 'pointer' }}
-                >
-                  {allCats.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </EditRow>
-              <EditRow label="Monto (USD)">
-                <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} style={inputSt} />
-              </EditRow>
-              <EditRow label="Fecha">
-                <input type="date" value={editFecha} onChange={e => setEditFecha(e.target.value)} style={{ ...inputSt, colorScheme: 'dark' }} />
-              </EditRow>
-              <EditRow label="Método">
-                <input type="text" value={editMethod} onChange={e => setEditMethod(e.target.value)} placeholder="Efectivo, Transferencia…" style={inputSt} />
-              </EditRow>
-              <EditRow label="Tasa BCV" last>
-                <input type="number" value={editRate} onChange={e => setEditRate(e.target.value)} style={inputSt} />
-              </EditRow>
+            {/* Tipo */}
+            <div style={labelSt}>Tipo</div>
+            <div style={{ padding: '0 16px 4px', display: 'flex', gap: 6, overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+              {(config.tipos ?? []).map(t => (
+                <button key={t.nombre} onClick={() => { setEditTipo(t.nombre); setEditCat(''); setEditSubcat('') }} style={chipEdit(editTipo === t.nombre || (!editTipo && t.nombre === txn.tipo))}>
+                  {t.nombre}
+                </button>
+              ))}
             </div>
-            <div style={{ margin: '12px 16px' }}>
-              <button
-                onClick={saveEdit}
-                style={{
-                  width: '100%', padding: '14px', borderRadius: 14,
-                  background: 'var(--amber)', border: 'none',
-                  fontSize: 15, fontWeight: 700, color: 'var(--ink-0)', cursor: 'pointer',
-                }}
-              >
+
+            {/* Categoría */}
+            {allCats.length > 0 && (
+              <>
+                <div style={labelSt}>Categoría</div>
+                <div style={{ padding: '0 16px 4px', display: 'flex', gap: 6, overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+                  {allCats.map(c => (
+                    <button key={c} onClick={() => { setEditCat(c); setEditSubcat('') }} style={chipEdit(editCat === c)}>
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Subcategoría */}
+            {(() => {
+              const subs = config.subcategorias?.[editCat || txn.cat] ?? []
+              return subs.length > 0 ? (
+                <>
+                  <div style={labelSt}>Subcategoría</div>
+                  <div style={{ padding: '0 16px 4px', display: 'flex', gap: 6, overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+                    {subs.map(s => (
+                      <button key={s} onClick={() => setEditSubcat(s)} style={chipEdit(editSubcat === s)}>
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : null
+            })()}
+
+            {/* Monto */}
+            <div style={labelSt}>Monto (USD)</div>
+            <div style={{ padding: '0 16px 4px', textAlign: 'center' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, padding: '10px 16px' }}>
+                <span style={{ fontFamily: 'var(--f-display)', fontSize: 28, color, opacity: 0.7, marginRight: 4 }}>$</span>
+                <input
+                  type="number" inputMode="decimal" min="0" step="0.01"
+                  value={editAmount}
+                  onChange={e => setEditAmount(e.target.value)}
+                  style={{ fontFamily: 'var(--f-display)', fontSize: 36, lineHeight: 1, color, background: 'transparent', border: 'none', outline: 'none', width: '8ch', letterSpacing: '-.02em' }}
+                />
+              </div>
+            </div>
+
+            {/* Descripción */}
+            <div style={labelSt}>Descripción</div>
+            <div style={{ padding: '0 16px 4px' }}>
+              <input type="text" value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="Descripción del movimiento…"
+                style={{ width: '100%', background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '11px 14px', fontSize: 14, color: 'var(--fg)', outline: 'none', fontFamily: 'var(--f-ui)' }}
+              />
+            </div>
+
+            {/* Fecha */}
+            <div style={labelSt}>Fecha</div>
+            <div style={{ padding: '0 16px 4px' }}>
+              <input type="date" value={editFecha} onChange={e => setEditFecha(e.target.value)}
+                style={{ width: '100%', background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '11px 14px', fontSize: 14, color: 'var(--fg)', outline: 'none', colorScheme: 'dark' } as CSSProperties}
+              />
+            </div>
+
+            {/* Método */}
+            <div style={labelSt}>Método de pago</div>
+            <div style={{ padding: '0 16px 4px', display: 'flex', gap: 6, overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+              {METHODS_EDIT.map(m => (
+                <button key={m} onClick={() => setEditMethod(m)} style={chipEdit(editMethod === m)}>
+                  {m}
+                </button>
+              ))}
+            </div>
+
+            {/* Autor */}
+            <div style={labelSt}>Registrado por</div>
+            <div style={{ padding: '0 16px 4px', display: 'flex', gap: 6 }}>
+              {(['anthony', 'isabel'] as const).map(a => (
+                <button key={a} onClick={() => setEditAuthor(a)} style={chipEdit(editAuthor === a)}>
+                  {a === 'anthony' ? 'Anthony' : 'Isabel'}
+                </button>
+              ))}
+            </div>
+
+            {/* Tasa BCV */}
+            <div style={labelSt}>Tasa BCV (Bs/$)</div>
+            <div style={{ padding: '0 16px 4px' }}>
+              <input type="number" value={editRate} onChange={e => setEditRate(e.target.value)} placeholder="Tasa BCV"
+                style={{ width: '100%', background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '11px 14px', fontSize: 14, color: 'var(--fg)', outline: 'none', fontFamily: 'var(--f-ui)' }}
+              />
+            </div>
+
+            {/* Notas */}
+            <div style={labelSt}>Notas</div>
+            <div style={{ padding: '0 16px 4px' }}>
+              <textarea value={editNotas} onChange={e => setEditNotas(e.target.value)} placeholder="Notas adicionales (opcional)…" rows={2}
+                style={{ width: '100%', background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '11px 14px', fontSize: 14, color: 'var(--fg)', outline: 'none', fontFamily: 'var(--f-ui)', resize: 'none', lineHeight: 1.5 }}
+              />
+            </div>
+
+            {/* Guardar */}
+            <div style={{ margin: '16px 16px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}>
+              <button onClick={saveEdit} style={{ width: '100%', padding: '15px', borderRadius: 14, background: 'var(--amber)', border: 'none', fontSize: 15, fontWeight: 700, color: 'var(--ink-0)', cursor: 'pointer' }}>
                 Guardar cambios
               </button>
             </div>

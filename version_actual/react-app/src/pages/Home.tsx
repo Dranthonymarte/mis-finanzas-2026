@@ -102,10 +102,11 @@ function PillBtn({
 function TxnRowPreview({ t, last }: { t: Transaction; last: boolean }) {
   const { fmt }  = useFormat()
   const navigate = useNavigate()
-  const isInc = txnGroup(t.tipo) === 'ingreso'
-  const isSav = txnGroup(t.tipo) === 'ahorro'
-  const color = isInc ? 'var(--pos)' : isSav ? 'var(--info)' : 'var(--fg)'
-  const sign  = isInc ? '+' : '−'
+  const group = txnGroup(t.tipo)
+  const isInc = group === 'ingreso'
+  const isSav = group === 'ahorro'
+  const isTrf = t.tipo === 'Transferencia Interna'
+  const color = isInc ? 'var(--pos)' : isSav || isTrf ? 'var(--info)' : 'var(--neg)'
   return (
     <div
       onClick={() => navigate(`/txn/${t.id}`)}
@@ -121,9 +122,9 @@ function TxnRowPreview({ t, last }: { t: Transaction; last: boolean }) {
           {t.desc}
         </div>
         <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 2, display: 'flex', gap: 5, alignItems: 'center' }}>
-          <span>{t.cat}</span>
-          <span>·</span>
-          <span>{t.time}</span>
+          {t.cat && <span>{t.cat}</span>}
+          {t.cat && t.time && <span>·</span>}
+          {t.time && <span>{t.time}</span>}
           {t.author && (
             <>
               <span>·</span>
@@ -140,7 +141,7 @@ function TxnRowPreview({ t, last }: { t: Transaction; last: boolean }) {
         </div>
       </div>
       <div style={{ fontSize: 13, fontWeight: 600, color, whiteSpace: 'nowrap' }}>
-        {sign}{fmt(Math.abs(t.amount))}
+        {fmt(Math.abs(t.amount))}
       </div>
     </div>
   )
@@ -161,11 +162,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 export default function Home() {
   const navigate  = useNavigate()
-  const [dismissedInsights, setDismissedInsights] = useState<Set<string>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('mf-insights-dismissed') || '[]') as string[]) }
-    catch { return new Set() }
-  })
-
   const mesActivo      = usePrefsStore(s => s.mesActivo)
   const setMesActivo   = usePrefsStore(s => s.setMesActivo)
   const ocultarMontos  = usePrefsStore(s => s.ocultarMontos)
@@ -182,68 +178,31 @@ export default function Home() {
   const { fmt, fmtShort }           = useFormat()
   const { meDebenActivo }           = useDineroFuera()
 
-  // ── Bar chart 6M: real data for prior 5 months ──
+  // ── Stats consolidadas: 5M historial + ahorro + ingresos históricos (1 RPC) ──
   interface MonthKPI { month: string; ingresos: number; gastos: number }
-  const [histKPIs, setHistKPIs] = useState<MonthKPI[]>([])
-  useEffect(() => {
-    if (!householdId) return
-    const MONTHS_5 = generateMeses(6).slice(0, 5)   // last 5 months (exclude current)
-    const incomeTipos = new Set(DEFAULTS.tipos.filter(t => t.esIngreso).map(t => t.nombre))
-
-    Promise.all(
-      MONTHS_5.map(m =>
-        supabase
-          .from('movimientos')
-          .select('tipo,amount')
-          .eq('household_id', householdId)
-          .eq('mes', m.dbKey)
-          .is('deleted_at', null)
-          .then(({ data }) => {
-            let ing = 0, gas = 0
-            for (const r of data ?? []) {
-              const v = Math.abs(parseFloat(String(r.amount)) || 0)
-              if (incomeTipos.has(r.tipo)) ing += v
-              else gas += v
-            }
-            return { month: m.label.split('.')[0], ingresos: ing, gastos: gas } as MonthKPI
-          })
-      )
-    ).then(setHistKPIs)
-  }, [householdId])
-
-  // ── Ahorro acumulado all-time (tipo "Ahorro en efectivo") ──
-  const [ahorroAcumulado, setAhorroAcumulado] = useState<number>(0)
-  useEffect(() => {
-    if (!householdId) return
-    supabase
-      .from('movimientos')
-      .select('amount')
-      .eq('household_id', householdId)
-      .eq('tipo', 'Ahorro en efectivo')
-      .is('deleted_at', null)
-      .then(({ data }) => {
-        const total = (data ?? []).reduce((s: number, r: { amount: number | string }) =>
-          s + (parseFloat(String(r.amount)) || 0), 0)
-        setAhorroAcumulado(total)
-      })
-  }, [householdId])
-
-  // ── Ingresos históricos acumulados all-time (para meta fondo emergencia) ──
+  const [histKPIs,          setHistKPIs]          = useState<MonthKPI[]>([])
+  const [ahorroAcumulado,   setAhorroAcumulado]   = useState<number>(0)
   const [ingresosHistoricos, setIngresosHistoricos] = useState<number>(0)
+
   useEffect(() => {
     if (!householdId) return
-    const incomeTipos = new Set(DEFAULTS.tipos.filter(t => t.esIngreso).map(t => t.nombre))
-    supabase
-      .from('movimientos')
-      .select('tipo,amount')
-      .eq('household_id', householdId)
-      .is('deleted_at', null)
-      .then(({ data }) => {
-        const total = (data ?? [])
-          .filter((r: { tipo: string }) => incomeTipos.has(r.tipo))
-          .reduce((s: number, r: { amount: number | string }) => s + Math.abs(parseFloat(String(r.amount)) || 0), 0)
-        setIngresosHistoricos(total)
-      })
+    const months5     = generateMeses(6).slice(0, 5)
+    const incomeTipos = DEFAULTS.tipos.filter(t => t.esIngreso).map(t => t.nombre)
+    supabase.rpc('get_home_stats', {
+      p_household_id: householdId,
+      p_income_tipos: incomeTipos,
+      p_months:       months5.map(m => m.dbKey),
+    }).then(({ data }) => {
+      if (!data) return
+      setAhorroAcumulado(parseFloat(String(data.ahorro_acumulado)) || 0)
+      setIngresosHistoricos(parseFloat(String(data.ingresos_historicos)) || 0)
+      const dbKeyToLabel = Object.fromEntries(months5.map(m => [m.dbKey, m.label.split(' ')[0]]))
+      const rows = (data.hist_kpis ?? []) as Array<{ mes: string; ingresos: number; gastos: number }>
+      setHistKPIs(months5.map(m => {
+        const row = rows.find(r => r.mes === m.dbKey)
+        return { month: dbKeyToLabel[m.dbKey] ?? m.dbKey, ingresos: row?.ingresos ?? 0, gastos: row?.gastos ?? 0 }
+      }))
+    })
   }, [householdId])
 
   // ── Fondo emergencia desde tabla fondo_emergencia ──
@@ -268,8 +227,10 @@ export default function Home() {
     .filter(a => !a.type.toUpperCase().includes('AHORRO'))
     .reduce((s, a) => s + (a.balanceUSD ?? a.balance), 0)
 
-  // ── Patrimonio = activos líquidos + ahorro acumulado + me deben activo ──
-  const patrimony = saldoDisponible + ahorroAcumulado + meDebenActivo
+  // ── Patrimonio = TODAS las cuentas (incl. ahorro) + me deben ──
+  const totalActivos = (liveAccounts ?? [])
+    .reduce((s, a) => s + (a.balanceUSD ?? a.balance), 0)
+  const patrimony = totalActivos + meDebenActivo
 
   // ── Tasa ahorro = ahorro del mes / ingresos ──
   const savingsRate = kpiData.ingresos > 0
@@ -301,14 +262,15 @@ export default function Home() {
     return [...base, { month: cur, ingresos: kpiData.ingresos, gastos: kpiData.gastos }]
   }, [histKPIs, kpiData.ingresos, kpiData.gastos, mesActivo])
 
-  // ── Fondo emergencia — leer de fondo_emergencia DB; fallback a cuentas AHORRO ──
-  const efAccountsBalance = (liveAccounts ?? [])
-    .filter(a => a.type.toUpperCase().includes('AHORRO'))
-    .reduce((s, a) => s + a.balance, 0)
-  // Use cumulative ahorro transactions (same logic as savings) as primary fallback
-  const emergencyBalance  = efDbBalance ?? (ahorroAcumulado || efAccountsBalance)
-  const emergencyTarget   = ingresosHistoricos > 0 ? ingresosHistoricos * 0.30 : kpiData.gastos * 3
-  const efContribMes      = kpiData.ingresos * 0.30
+  const [showEfInfo, setShowEfInfo] = useState(false)
+
+  // ── Fondo emergencia = 30% de ingresos históricos acumulados ──
+  // No asociado a cuentas. Reserva automática calculada sobre ingresos.
+  const fondoEmergenciaTotal = ingresosHistoricos * 0.30
+  const fondoEmergenciaMes   = kpiData.ingresos   * 0.30
+  const emergencyBalance     = fondoEmergenciaTotal
+  const emergencyTarget      = efDbBalance ?? (kpiData.gastos > 0 ? kpiData.gastos * 3 : 3000)
+  const efContribMes         = fondoEmergenciaMes
   // ── Meta editable (persisted in localStorage) ──
   const [efMeta, setEfMeta] = useState<number>(() => {
     try { return parseFloat(localStorage.getItem('mf-ef-meta') || '') || 0 } catch { return 0 }
@@ -354,6 +316,7 @@ export default function Home() {
   const savedByEOM   = (kpiData.ingresos + recIngresoPend) - (dailySpend * daysInMonth + recGastoPend)
 
   const recentTxns = (liveTxns ?? []).slice(0, 5)
+  const [openKpiInfo, setOpenKpiInfo] = useState<string | null>(null)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -377,6 +340,12 @@ export default function Home() {
             position: 'absolute', top: 7, right: 7,
             width: 6, height: 6, borderRadius: '50%', background: 'var(--amber)',
           }} />
+        </button>
+        <button
+          onClick={() => navigate('/settings')}
+          style={iBtn} aria-label="Configuración"
+        >
+          <span style={{ fontSize: 17, lineHeight: 1 }}>⚙</span>
         </button>
       </div>
 
@@ -514,77 +483,77 @@ export default function Home() {
       </div>
 
       {/* ─── 5. KPI CARDS 2×2 ─── */}
-      <div style={{ padding: '12px 16px 4px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        {kpis.map(k => {
-          const good = k.neg ? k.delta < 0 : k.delta > 0
-          // ── NETO: signo explícito + color rojo/verde ──
-          if (k.id === 'neto') {
-            const isPos   = kpiData.balance >= 0
-            const netoStr = isPos ? '+' + fmt(kpiData.balance) : fmt(kpiData.balance)
-            return (
-              <div key="neto" style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ fontSize: 9.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
-                    Neto
-                  </span>
-                  <Pill tone={isPos ? 'pos' : 'neg'} size="xs">
-                    {isPos ? '+' : ''}{k.delta}%
-                  </Pill>
+      {(() => {
+        const KPI_INFO: Record<string, string> = {
+          ingresos: 'Todo el dinero que entró este mes: salarios, ventas, transferencias recibidas, etc.',
+          gastos:   'Todo lo que gastaste este mes en compras, servicios, facturas y pagos.',
+          neto:     'Ingresos menos gastos. Positivo = ahorraste. Negativo = gastaste más de lo que ingresaste.',
+          ahorro:   'Movimientos registrados como "Ahorro en efectivo". La tasa es ahorro ÷ ingresos del mes.',
+        }
+        return (
+          <div style={{ padding: '12px 16px 4px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {kpis.map(k => {
+              const good     = k.neg ? k.delta < 0 : k.delta > 0
+              const infoOpen = openKpiInfo === k.id
+
+              let value: React.ReactNode
+              let color = 'inherit'
+              let extraRow: React.ReactNode = null
+
+              if (k.id === 'neto') {
+                const isPos = kpiData.balance >= 0
+                color = isPos ? 'var(--pos)' : 'var(--neg)'
+                value = (isPos ? '+' : '') + fmt(kpiData.balance)
+              } else if (k.id === 'ahorro') {
+                value = fmt(kpiData.ahorro)
+                extraRow = (
+                  <div style={{ fontSize: 9.5, color: 'var(--fg-mute)', marginTop: 4 }}>
+                    {savingsRate.toFixed(1)}% de ingresos
+                  </div>
+                )
+              } else {
+                value = k.suffix ? `${k.value}${k.suffix}` : fmt(k.value)
+              }
+
+              return (
+                <div key={k.id} style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 9.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
+                        {k.label}
+                      </span>
+                      <button
+                        onClick={() => setOpenKpiInfo(infoOpen ? null : k.id)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-mute)', fontSize: 11, padding: '0 2px', lineHeight: 1, opacity: 0.65 }}
+                        aria-label={`Qué es ${k.label}`}
+                      >ℹ</button>
+                    </div>
+                    <Pill tone={good ? 'pos' : 'neg'} size="xs">
+                      {k.delta > 0 ? '+' : ''}{k.delta}%
+                    </Pill>
+                  </div>
+                  {infoOpen && (
+                    <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginBottom: 6, lineHeight: 1.5, background: 'var(--ink-3)', borderRadius: 8, padding: '6px 8px' }}>
+                      {KPI_INFO[k.id]}
+                    </div>
+                  )}
+                  <div className="num" style={{ fontSize: 17, fontWeight: 600, color }}>
+                    {value}
+                  </div>
+                  <div style={{ marginTop: 5 }}>
+                    <Sparkline
+                      data={k.spark}
+                      color={k.id === 'neto' ? color : k.id === 'ahorro' ? 'var(--amber)' : k.neg ? 'var(--neg)' : 'var(--amber)'}
+                      w={140} h={18} fill stroke={1.4}
+                    />
+                  </div>
+                  {extraRow}
                 </div>
-                <div className="num" style={{ fontSize: 17, fontWeight: 600, color: isPos ? 'var(--pos)' : 'var(--neg)' }}>
-                  {netoStr}
-                </div>
-                <div style={{ marginTop: 5 }}>
-                  <Sparkline data={k.spark} color={isPos ? 'var(--pos)' : 'var(--neg)'} w={140} h={18} fill stroke={1.4} />
-                </div>
-              </div>
-            )
-          }
-          // ── AHORRO: monto del mes + tasa fusionada en subtexto ──
-          if (k.id === 'ahorro') {
-            return (
-              <div key="ahorro" style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ fontSize: 9.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
-                    Ahorro
-                  </span>
-                  <Pill tone={good ? 'pos' : 'neg'} size="xs">
-                    {k.delta > 0 ? '+' : ''}{k.delta}%
-                  </Pill>
-                </div>
-                <div className="num" style={{ fontSize: 17, fontWeight: 600 }}>
-                  {fmt(kpiData.ahorro)}
-                </div>
-                <div style={{ marginTop: 5 }}>
-                  <Sparkline data={k.spark} color="var(--amber)" w={140} h={18} fill stroke={1.4} />
-                </div>
-                <div style={{ fontSize: 9.5, color: 'var(--fg-mute)', marginTop: 4 }}>
-                  {savingsRate.toFixed(1)}% de ingresos
-                </div>
-              </div>
-            )
-          }
-          // ── Genérico: Ingresos / Gastos ──
-          return (
-            <div key={k.id} style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <span style={{ fontSize: 9.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
-                  {k.label}
-                </span>
-                <Pill tone={good ? 'pos' : 'neg'} size="xs">
-                  {k.delta > 0 ? '+' : ''}{k.delta}%
-                </Pill>
-              </div>
-              <div className="num" style={{ fontSize: 17, fontWeight: 600 }}>
-                {k.suffix ? `${k.value}${k.suffix}` : fmt(k.value)}
-              </div>
-              <div style={{ marginTop: 5 }}>
-                <Sparkline data={k.spark} color={k.neg ? 'var(--neg)' : 'var(--amber)'} w={140} h={18} fill stroke={1.4} />
-              </div>
-            </div>
-          )
-        })}
-      </div>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {/* ─── 5b. AHORRO ACUMULADO ─── */}
       {ahorroAcumulado > 0 && (
@@ -651,10 +620,19 @@ export default function Home() {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
             <div>
-              <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 4 }}>
                 Fondo de emergencia
+                <button onClick={() => setShowEfInfo(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-mute)', fontSize: 11, padding: '0 2px', lineHeight: 1 }} aria-label="Qué es esto">ℹ</button>
               </div>
+              {showEfInfo && (
+                <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginBottom: 6, lineHeight: 1.5, maxWidth: 220 }}>
+                  Meta: cubrir 3–6 meses de gastos ({fmt(kpiData.gastos * 4)} aprox). Calcula: tus ingresos acumulados × 30% = {fmt(fondoEmergenciaTotal)}. Toca la meta arriba para ajustarla.
+                </div>
+              )}
               <div className="num" style={{ fontSize: 20, fontWeight: 700 }}>{fmt(emergencyBalance)}</div>
+              <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 2 }}>
+                Acumulado histórico · Aporte sugerido este mes: {fmt(fondoEmergenciaMes)}
+              </div>
             </div>
             <div style={{ textAlign: 'right' }}>
               {editingMeta ? (
@@ -799,46 +777,111 @@ export default function Home() {
         </div>
       )}
 
-      {/* ─── 10. ANÁLISIS IA ─── */}
-      {!dismissedInsights.has(mesActivo) && (
-        <div style={{ padding: '12px 16px 4px' }}>
-          <div style={{
-            padding: 14, borderRadius: 14,
-            background: 'linear-gradient(135deg, var(--amber-d) 0%, transparent 75%), var(--ink-2)',
-            border: '1px solid var(--line)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <div style={{
-                width: 20, height: 20, borderRadius: 6,
-                background: 'var(--amber)', color: 'var(--ink-0)',
-                display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700,
-              }}>✦</div>
-              <span style={{ fontSize: 9.5, letterSpacing: '.12em', color: 'var(--amber)', textTransform: 'uppercase', fontWeight: 600 }}>
-                Análisis IA
-              </span>
-              <span style={{ fontSize: 10, color: 'var(--fg-mute)', marginLeft: 'auto' }}>en vivo</span>
-            </div>
-            <div className="font-display" style={{ fontSize: 15, lineHeight: 1.45 }}>
-              {kpiData.gastos > kpiData.ingresos
-                ? <>Tus gastos superan los ingresos este mes.{' '}
-                    <span style={{ color: 'var(--neg)' }}>Revisa tu presupuesto.</span></>
-                : <>Tasa de ahorro{' '}
-                    <span style={{ color: 'var(--pos)' }}>{savingsRate.toFixed(0)}%</span>
-                    {' '}en {mesLabel(mesActivo)}. {savingsRate >= 20 ? '🎯 Excelente.' : '¡Sigue así!'}</>
-              }
-            </div>
-            <div style={{ marginTop: 10, display: 'flex', gap: 6 }}>
-              <PillBtn primary onClick={() => navigate('/ia')}>Preguntar IA</PillBtn>
-              <PillBtn onClick={() => {
-                const next = new Set(dismissedInsights)
-                next.add(mesActivo)
-                setDismissedInsights(next)
-                localStorage.setItem('mf-insights-dismissed', JSON.stringify([...next]))
-              }}>Descartar</PillBtn>
+      {/* ─── 9b. KPI INSIGHTS ─── */}
+      {liveTxns && liveTxns.length > 0 && (() => {
+        const superavit    = kpiData.ingresos - kpiData.gastos
+        const savRate      = kpiData.ingresos > 0 ? (kpiData.ahorro / kpiData.ingresos) * 100 : 0
+        const efPct        = emergencyTarget > 0 ? Math.min(100, (emergencyBalance / emergencyTarget) * 100) : 0
+        const topCat       = topGastos[0]
+        const topPct       = topCat && kpiData.gastos > 0 ? (topCat.value / kpiData.gastos) * 100 : 0
+
+        // savProxy: máx entre ahorro directo y superávit positivo del mes
+        const savProxy = Math.max(kpiData.ahorro, Math.max(0, kpiData.balance))
+        const savRateScore = kpiData.ingresos > 0 ? (savProxy / kpiData.ingresos) * 100 : 0
+        // Score: superávit(25) + ahorro≥20%(25) + ef≥20%(25) + gastos<ingresos(25)
+        const score = Math.round(
+          (superavit > 0 ? 25 : 0) +
+          (savRateScore >= 20 ? 25 : savRateScore > 0 ? savRateScore / 20 * 25 : 0) +
+          (efPct >= 100 ? 25 : efPct / 100 * 25) +
+          (kpiData.gastos < kpiData.ingresos ? 25 : 0)
+        )
+
+        const insights: Array<{ icon: string; text: string; color?: string }> = []
+        if (superavit > 0) insights.push({ icon: '✅', text: `Superávit de ${fmt(superavit)} — excelente gestión este mes.`, color: 'var(--pos)' })
+        else insights.push({ icon: '⚠️', text: `Déficit de ${fmt(Math.abs(superavit))} — gastos superan ingresos.`, color: 'var(--neg)' })
+        if (kpiData.ingresos > 0) {
+          insights.push({
+            icon: savRate >= 20 ? '✅' : '⚠️',
+            text: `Tasa de ahorro: ${savRate.toFixed(0)}%${savRate < 20 ? '. Meta recomendada: 20%.' : ' — dentro de la meta.'}`,
+            color: savRate >= 20 ? 'var(--pos)' : 'var(--amber)',
+          })
+        }
+        if (efPct < 100 && emergencyBalance > 0) {
+          insights.push({ icon: '🆘', text: `Fondo de emergencia al ${efPct.toFixed(0)}%. Meta: ${fmt(emergencyTarget)}. Considera reforzarlo.`, color: 'var(--amber)' })
+        }
+        if (topCat) {
+          insights.push({ icon: '📊', text: `Top gasto: "${topCat.cat}" — ${fmt(topCat.value)} (${topPct.toFixed(0)}% del total).` })
+        }
+
+        return (
+          <div style={{ padding: '12px 16px 4px' }}>
+            <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, padding: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)' }}>
+                  Score financiero
+                </div>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999,
+                  background: score >= 75 ? 'rgba(88,178,106,.15)' : score >= 50 ? 'rgba(224,168,74,.15)' : 'rgba(214,106,90,.15)',
+                  color:      score >= 75 ? 'var(--pos)'           : score >= 50 ? 'var(--amber)'          : 'var(--neg)',
+                }}>
+                  {score}/100
+                </div>
+              </div>
+              <div style={{ height: 5, background: 'var(--ink-3)', borderRadius: 3, overflow: 'hidden', marginBottom: 12 }}>
+                <div style={{
+                  height: '100%', borderRadius: 3, transition: 'width .5s',
+                  width: `${score}%`,
+                  background: score >= 75 ? 'var(--pos)' : score >= 50 ? 'var(--amber)' : 'var(--neg)',
+                }} />
+              </div>
+              {insights.map((ins, i) => (
+                <div key={i} style={{
+                  display: 'flex', gap: 8, alignItems: 'flex-start',
+                  padding: '5px 0',
+                  borderBottom: i < insights.length - 1 ? '1px solid var(--ink-3)' : 'none',
+                }}>
+                  <span style={{ fontSize: 13, flexShrink: 0 }}>{ins.icon}</span>
+                  <span style={{ fontSize: 12, lineHeight: 1.4, color: ins.color ?? 'var(--fg-dim)' }}>{ins.text}</span>
+                </div>
+              ))}
             </div>
           </div>
+        )
+      })()}
+
+      {/* ─── 10. ANÁLISIS IA ─── */}
+      <div style={{ padding: '12px 16px 4px' }}>
+        <div style={{
+          padding: 14, borderRadius: 14,
+          background: 'linear-gradient(135deg, var(--amber-d) 0%, transparent 75%), var(--ink-2)',
+          border: '1px solid var(--line)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <div style={{
+              width: 20, height: 20, borderRadius: 6,
+              background: 'var(--amber)', color: 'var(--ink-0)',
+              display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700,
+            }}>✦</div>
+            <span style={{ fontSize: 9.5, letterSpacing: '.12em', color: 'var(--amber)', textTransform: 'uppercase', fontWeight: 600 }}>
+              Análisis IA
+            </span>
+            <span style={{ fontSize: 10, color: 'var(--fg-mute)', marginLeft: 'auto' }}>en vivo</span>
+          </div>
+          <div className="font-display" style={{ fontSize: 15, lineHeight: 1.45 }}>
+            {kpiData.gastos > kpiData.ingresos
+              ? <>Tus gastos superan los ingresos este mes.{' '}
+                  <span style={{ color: 'var(--neg)' }}>Revisa tu presupuesto.</span></>
+              : <>Tasa de ahorro{' '}
+                  <span style={{ color: 'var(--pos)' }}>{savingsRate.toFixed(0)}%</span>
+                  {' '}en {mesLabel(mesActivo)}. {savingsRate >= 20 ? '🎯 Excelente.' : '¡Sigue así!'}</>
+            }
+          </div>
+          <div style={{ marginTop: 10, display: 'flex', gap: 6 }}>
+            <PillBtn primary onClick={() => navigate('/ia')}>Preguntar IA</PillBtn>
+          </div>
         </div>
-      )}
+      </div>
 
       {/* ─── 11. ÚLTIMAS TRANSACCIONES ─── */}
       <div style={{ padding: '14px 16px 24px' }}>

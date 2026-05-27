@@ -13,10 +13,10 @@ import { useAuthStore } from '../store/auth'
 
 /* ── Types ─────────────────────────────────────── */
 type AccountType = 'CORRIENTE' | 'AHORRO' | 'CASH'
-type Currency    = 'USD' | 'VES'
+type Currency    = 'USD' | 'BS'
 
 const ACCOUNT_TYPES: AccountType[] = ['CORRIENTE', 'AHORRO', 'CASH']
-const CURRENCIES:   Currency[]    = ['USD', 'VES']
+const CURRENCIES:   Currency[]    = ['USD', 'BS']
 
 const COLORS = [
   { label: 'Verde', value: '#58b26a' },   // --pos
@@ -43,6 +43,7 @@ function SLabel({ children }: { children: ReactNode }) {
 /* ════════════════════════════════════════════════ */
 export default function NewAccount() {
   const navigate = useNavigate()
+  const userId      = useAuthStore(s => s.userId)
   const householdId = useAuthStore(s => s.householdId)
 
   const [name,     setName]     = useState('')
@@ -57,17 +58,20 @@ export default function NewAccount() {
   const trimmed = name.trim()
 
   async function handleSave() {
-    if (!trimmed || !householdId) return
+    if (!trimmed || !householdId || !userId) return
     setSaving(true)
     const initialBalance = parseFloat(balance) || 0
     const { error } = await supabase.from('cuentas').insert({
-      nombre:       trimmed,
-      moneda:       currency,
+      id:            crypto.randomUUID(),
+      user_id:       userId,
+      nombre:        trimmed,
+      moneda:        currency,
       saldo_inicial: initialBalance,
       color,
-      activa:       true,
-      household_id: householdId,
-      owner:        householdId,
+      activa:        true,
+      household_id:  householdId,
+      owner:         householdId,
+      notas:         notes || null,
     })
     setSaving(false)
     if (error) { console.error('[NewAccount]', error.message); return }
@@ -203,7 +207,7 @@ export default function NewAccount() {
           }}>
             {CURRENCIES.map((c) => (
               <button key={c} onClick={() => setCurrency(c)} style={segSt(currency === c)}>
-                {c === 'USD' ? '🇺🇸  USD' : '🇻🇪  VES'}
+                {c === 'USD' ? '🇺🇸  USD' : '🇻🇪  BS'}
               </button>
             ))}
           </div>

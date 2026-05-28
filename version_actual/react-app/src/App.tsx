@@ -41,7 +41,6 @@ const NewAccount     = lazy(() => import('./pages/NewAccount'))
 const Transfer       = lazy(() => import('./pages/Transfer'))
 const Monedas        = lazy(() => import('./pages/Monedas'))
 const Calculadora    = lazy(() => import('./pages/Calculadora'))
-const Fire           = lazy(() => import('./pages/Fire'))
 const Metas          = lazy(() => import('./pages/Metas'))
 const Pareja         = lazy(() => import('./pages/Pareja'))
 const Exportar       = lazy(() => import('./pages/Exportar'))
@@ -52,6 +51,11 @@ const Buscar         = lazy(() => import('./pages/Buscar'))
 const VozTxn         = lazy(() => import('./pages/VozTxn'))
 const CsvImport      = lazy(() => import('./pages/CsvImport'))
 const Calendar       = lazy(() => import('./pages/Calendar'))
+
+// ── Soporte pages ──────────────────────────────────
+const SoporteFAQ            = lazy(() => import('./pages/soporte/FAQ'))
+const SoporteConsentimiento = lazy(() => import('./pages/soporte/Consentimiento'))
+const SoporteSugerencias    = lazy(() => import('./pages/soporte/Sugerencias'))
 
 // ── BLOQUE 9 pages (lazy so they can be added incrementally) ──
 const Analisis       = lazy(() => import('./pages/Analisis'))
@@ -98,7 +102,6 @@ export default function App() {
             <Route path="/transfer"        element={<Transfer />}         />
             <Route path="/monedas"         element={<Monedas />}         />
             <Route path="/calculadora"     element={<Calculadora />}     />
-            <Route path="/fire"            element={<Fire />}            />
             <Route path="/metas"           element={<Metas />}           />
             <Route path="/pareja"          element={<Pareja />}          />
             <Route path="/exportar"        element={<Exportar />}        />
@@ -112,6 +115,9 @@ export default function App() {
             <Route path="/analisis"        element={<Analisis />}        />
             <Route path="/recurrentes"     element={<Recurrentes />}     />
             <Route path="/lista-compras"   element={<ListaCompras />}    />
+            <Route path="/soporte/faq"            element={<SoporteFAQ />}           />
+            <Route path="/soporte/consentimiento" element={<SoporteConsentimiento />} />
+            <Route path="/soporte/sugerencias"    element={<SoporteSugerencias />}   />
 
             <Route element={<AppShell />}>
               <Route index                             element={<Home />}        />

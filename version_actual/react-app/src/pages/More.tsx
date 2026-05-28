@@ -175,13 +175,6 @@ export default function More() {
             onClick={() => navigate('/settings/budgets')}
           />
           <RowLink
-            icon={<IcoBg color="#3a1a1a"><span style={{ fontSize: 14 }}>🔥</span></IcoBg>}
-            iconBg="transparent"
-            label="FIRE / Jubilación"
-            sub="Proyección de independencia"
-            onClick={() => navigate('/fire')}
-          />
-          <RowLink
             icon={<IcoBg color="#1a2a3a"><span style={{ fontSize: 14 }}>🎯</span></IcoBg>}
             iconBg="transparent"
             label="Metas de ahorro"
@@ -285,19 +278,26 @@ export default function More() {
 
         <RowGroup title="Soporte">
           <RowLink
-            icon={<IcoBg color="#1a2a1a"><span style={{ fontSize: 14 }}>💬</span></IcoBg>}
+            icon={<IcoBg color="#1a1f2e"><span style={{ fontSize: 14 }}>💬</span></IcoBg>}
+            iconBg="transparent"
+            label="Preguntas frecuentes"
+            sub="Respuestas a dudas comunes"
+            onClick={() => navigate('/soporte/faq')}
+          />
+          <RowLink
+            icon={<IcoBg color="#1a2a1a"><span style={{ fontSize: 14 }}>✉️</span></IcoBg>}
             iconBg="transparent"
             label="Sugerencias"
             sub="Envía tu feedback al equipo"
-            onClick={() => {}}
+            onClick={() => navigate('/soporte/sugerencias')}
           />
           <RowLink
-            icon={<IcoBg color="#1a1a2a"><span style={{ fontSize: 14 }}>📋</span></IcoBg>}
+            icon={<IcoBg color="#1a1a1a"><span style={{ fontSize: 14 }}>📋</span></IcoBg>}
             iconBg="transparent"
             label="Consentimiento de datos"
             sub="Privacidad y permisos"
             last
-            onClick={() => {}}
+            onClick={() => navigate('/soporte/consentimiento')}
           />
         </RowGroup>
 

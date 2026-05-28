@@ -5,6 +5,7 @@
 // ═══════════════════════════════════════════════════
 
 import { useMemo, useState }  from 'react'
+import { useNavigate }        from 'react-router-dom'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import AppHeader              from '../components/shell/AppHeader'
 import CatIcon                from '../components/ui/CatIcon'
@@ -97,6 +98,7 @@ function Delta({ cur, prev }: { cur: number; prev: number }) {
 }
 
 export default function Analisis() {
+  const navigate     = useNavigate()
   const { fmt }      = useFormat()
   const mesActivo    = usePrefsStore(s => s.mesActivo)
   const setMesActivo = usePrefsStore(s => s.setMesActivo)
@@ -514,10 +516,18 @@ export default function Analisis() {
                         {isOpen && weekTxns.length > 0 && (
                           <div style={{ marginBottom: 8, paddingLeft: 10, borderLeft: '2px solid rgba(224,168,74,.25)', display: 'flex', flexDirection: 'column', gap: 0 }}>
                             {weekTxns.map(t => (
-                              <div key={t.id} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid var(--line)' }}>
+                              <div
+                                key={t.id}
+                                onClick={() => navigate('/txn/' + t.id)}
+                                style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer' }}
+                              >
                                 <div style={{ minWidth: 0, flex: 1 }}>
                                   <div style={{ fontSize: 12, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.desc}</div>
-                                  <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 1 }}>{t.date} · {t.cat}</div>
+                                  <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 1, display: 'flex', gap: 4, alignItems: 'center', overflow: 'hidden' }}>
+                                    {t.cat && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.cat}</span>}
+                                    {t.cat && <span style={{ flexShrink: 0 }}>·</span>}
+                                    <span style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>{t.date}</span>
+                                  </div>
                                 </div>
                                 <span className="num" style={{ fontSize: 12, fontWeight: 600, color: 'var(--neg)', whiteSpace: 'nowrap', marginLeft: 10 }}>
                                   −{fmt(Math.abs(t.amount))}
@@ -551,11 +561,12 @@ export default function Analisis() {
                       <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {t.desc}
                       </div>
-                      <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginTop: 2, display: 'flex', gap: 4 }}>
-                        <span>{t.cat}</span>
-                        {t.subcat && <><span>·</span><span>{t.subcat}</span></>}
-                        <span>·</span>
-                        <span>{t.date}</span>
+                      <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginTop: 2, display: 'flex', gap: 4, alignItems: 'center', overflow: 'hidden' }}>
+                        {t.cat && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.cat}</span>}
+                        {t.cat && t.subcat && <span style={{ flexShrink: 0 }}>·</span>}
+                        {t.subcat && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.subcat}</span>}
+                        {(t.cat || t.subcat) && <span style={{ flexShrink: 0 }}>·</span>}
+                        <span style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>{t.date}</span>
                       </div>
                     </div>
                     <div className="num" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--neg)', whiteSpace: 'nowrap' }}>

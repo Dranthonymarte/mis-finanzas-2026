@@ -15,7 +15,7 @@ import Sheet              from '../components/ui/Sheet'
 import { MOCK_BALANCE_SERIES, MOCK_KPIS, txnGroup, type Transaction } from '../data/mock'
 import { useAccounts }     from '../hooks/useAccounts'
 import { useTransactions } from '../hooks/useTransactions'
-import { useConfig }       from '../hooks/useConfig'
+import { useConfig, type MetaAhorro } from '../hooks/useConfig'
 import { useKPIs }         from '../hooks/useKPIs'
 import { useDineroFuera }  from '../hooks/useDineroFuera'
 import { useFormat }       from '../hooks/useFormat'
@@ -279,19 +279,11 @@ export default function Home() {
   }, [])
 
   // ── Metas de ahorro ──────────────────────────────────────────────
-  interface Meta { id: string; nombre: string; meta_amount: number; current_amount: number; color: string | null }
-  const [metas, setMetas] = useState<Meta[]>([])
-
-  useEffect(() => {
-    if (!householdId) return
-    supabase
-      .from('metas')
-      .select('id, nombre, meta_amount, current_amount, color')
-      .eq('household_id', householdId)
-      .order('created_at', { ascending: false })
-      .limit(3)
-      .then(({ data }) => { if (data) setMetas(data as Meta[]) })
-  }, [householdId])
+  // Data lives in config_usuario.metas_ahorro (JSON array), same source as /metas page
+  const metas: MetaAhorro[] = useMemo(
+    () => config.metasAhorro.filter(m => !m.completada).slice(0, 3),
+    [config.metasAhorro]
+  )
 
   // ── Top 4 categorías de gasto ──
   const topGastos = useMemo(() => {
@@ -785,13 +777,13 @@ export default function Home() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {metas.map(m => {
-                const pct   = m.meta_amount > 0 ? Math.min(100, (m.current_amount / m.meta_amount) * 100) : 0
-                const color = m.color ?? 'var(--amber)'
+                const pct   = m.objetivo > 0 ? Math.min(100, (m.actual / m.objetivo) * 100) : 0
+                const color = pct >= 80 ? 'var(--pos)' : 'var(--amber)'
                 return (
                   <div key={m.id}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
                       <span style={{ fontSize: 12.5, color: 'var(--fg-dim)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>
-                        {m.nombre}
+                        {m.emoji ? `${m.emoji} ` : ''}{m.nombre}
                       </span>
                       <span style={{ fontSize: 11.5, fontWeight: 700, color }}>{pct.toFixed(0)}%</span>
                     </div>
@@ -799,7 +791,7 @@ export default function Home() {
                       <div style={{ height: '100%', borderRadius: 3, background: color, width: `${pct}%`, transition: 'width .4s ease' }} />
                     </div>
                     <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 3 }}>
-                      {fmt(m.current_amount)} / {fmt(m.meta_amount)}
+                      {fmt(m.actual)} / {fmt(m.objetivo)}
                     </div>
                   </div>
                 )
@@ -894,7 +886,7 @@ export default function Home() {
         const savProxy = Math.max(kpiData.ahorro, Math.max(0, kpiData.balance))
         const savRateScore = kpiData.ingresos > 0 ? (savProxy / kpiData.ingresos) * 100 : 0
         // Score: superávit(25) + ahorro≥20%(25) + metas con progreso(25) + gastos<ingresos(25)
-        const hasMetaProgress = metas.length > 0 && metas.some(m => m.current_amount > 0)
+        const hasMetaProgress = metas.length > 0 && metas.some(m => m.actual > 0)
         const score = Math.round(
           (superavit > 0 ? 25 : 0) +
           (savRateScore >= 20 ? 25 : savRateScore > 0 ? savRateScore / 20 * 25 : 0) +
@@ -913,13 +905,13 @@ export default function Home() {
           })
         }
         if (metas.length > 0) {
-          const metaCompleta = metas.find(m => m.meta_amount > 0 && m.current_amount >= m.meta_amount)
+          const metaCompleta = metas.find(m => m.objetivo > 0 && m.actual >= m.objetivo)
           if (metaCompleta) {
             insights.push({ icon: '🎯', text: `Meta "${metaCompleta.nombre}" completada. ¡Excelente disciplina!`, color: 'var(--pos)' })
           } else {
             const topMeta = metas[0]
-            const pctMeta = topMeta.meta_amount > 0 ? Math.min(100, (topMeta.current_amount / topMeta.meta_amount) * 100) : 0
-            insights.push({ icon: '🎯', text: `Meta "${topMeta.nombre}" al ${pctMeta.toFixed(0)}% — ${fmt(topMeta.meta_amount - topMeta.current_amount)} restantes.`, color: 'var(--amber)' })
+            const pctMeta = topMeta.objetivo > 0 ? Math.min(100, (topMeta.actual / topMeta.objetivo) * 100) : 0
+            insights.push({ icon: '🎯', text: `Meta "${topMeta.nombre}" al ${pctMeta.toFixed(0)}% — ${fmt(topMeta.objetivo - topMeta.actual)} restantes.`, color: 'var(--amber)' })
           }
         }
         if (topCat) {

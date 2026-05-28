@@ -108,6 +108,27 @@ export default function More() {
 
         <RowGroup title="Movimientos">
           <RowLink
+            icon={<IcoBg color="#1a2a2a"><TransferIcon /></IcoBg>}
+            iconBg="transparent"
+            label="Transferir"
+            sub="Mover dinero entre cuentas"
+            onClick={() => navigate('/transfer')}
+          />
+          <RowLink
+            icon={<IcoBg color="#1a2a1a"><span style={{ fontSize: 14 }}>🔄</span></IcoBg>}
+            iconBg="transparent"
+            label="Recurrentes"
+            sub="Gastos y pagos automáticos"
+            onClick={() => navigate('/recurrentes')}
+          />
+          <RowLink
+            icon={<IcoBg color="#1a1a2a"><span style={{ fontSize: 14 }}>🧮</span></IcoBg>}
+            iconBg="transparent"
+            label="Calculadora"
+            sub="Cálculos rápidos"
+            onClick={() => navigate('/calculadora')}
+          />
+          <RowLink
             icon={<IcoBg color="#2a1a0a"><span style={{ fontSize: 14 }}>🏷️</span></IcoBg>}
             iconBg="transparent"
             label="Tipos de movimiento"
@@ -132,6 +153,20 @@ export default function More() {
         </RowGroup>
 
         <RowGroup title="Finanzas">
+          <RowLink
+            icon={<IcoBg color="#1a1a3a"><span style={{ fontSize: 14 }}>📊</span></IcoBg>}
+            iconBg="transparent"
+            label="Análisis"
+            sub="Gráficas y tendencias"
+            onClick={() => navigate('/analisis')}
+          />
+          <RowLink
+            icon={<IcoBg color="#1a1a2a"><GlobeIcon /></IcoBg>}
+            iconBg="transparent"
+            label="Monedas y tasas"
+            sub="USD · VES · EUR · BCV"
+            onClick={() => navigate('/monedas')}
+          />
           <RowLink
             icon={<IcoBg color="#1e4f3a"><BudgetIcon /></IcoBg>}
             iconBg="transparent"
@@ -163,13 +198,6 @@ export default function More() {
             label="Apariencia"
             sub="Tema · Fuente · Tamaño"
             onClick={() => navigate('/settings/appearance')}
-          />
-          <RowLink
-            icon={<IcoBg color="#1a1a2a"><GlobeIcon /></IcoBg>}
-            iconBg="transparent"
-            label="Monedas y tasas"
-            sub="USD · VES · EUR · BCV"
-            onClick={() => navigate('/monedas')}
           />
           <RowLink
             icon={<IcoBg color="#1a1a2a"><BellIcon /></IcoBg>}
@@ -252,6 +280,24 @@ export default function More() {
             sub="CSV · Excel · PDF"
             last
             onClick={() => navigate('/exportar')}
+          />
+        </RowGroup>
+
+        <RowGroup title="Soporte">
+          <RowLink
+            icon={<IcoBg color="#1a2a1a"><span style={{ fontSize: 14 }}>💬</span></IcoBg>}
+            iconBg="transparent"
+            label="Sugerencias"
+            sub="Envía tu feedback al equipo"
+            onClick={() => {}}
+          />
+          <RowLink
+            icon={<IcoBg color="#1a1a2a"><span style={{ fontSize: 14 }}>📋</span></IcoBg>}
+            iconBg="transparent"
+            label="Consentimiento de datos"
+            sub="Privacidad y permisos"
+            last
+            onClick={() => {}}
           />
         </RowGroup>
 

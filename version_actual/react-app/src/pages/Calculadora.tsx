@@ -30,6 +30,8 @@ export default function Calculadora() {
   const [display,  setDisplay]  = useState('0')
   const [prev,     setPrev]     = useState<number | null>(null)
   const [op,       setOp]       = useState<string | null>(null)
+  const [lastOp,   setLastOp]   = useState<string | null>(null)  // para repetir = (patrón iOS)
+  const [lastArg,  setLastArg]  = useState<number | null>(null)  // segundo operando al repetir =
   const [fresh,    setFresh]    = useState(false)   // next digit starts new number
 
   function pressDigit(d: string) {
@@ -48,24 +50,40 @@ export default function Calculadora() {
       setPrev(cur)
     }
     setOp(o)
+    setLastOp(null)   // nueva operación anula el repeat
     setFresh(true)
   }
 
   function pressEq() {
-    if (prev === null || op === null) return
     const cur = parseFloat(display)
-    const res = calc(prev, cur, op)
-    setDisplay(fmtNum(res))
-    setPrev(null)
-    setOp(null)
-    setFresh(true)
+    // Caso normal: hay prev + op pendientes
+    if (prev !== null && op !== null) {
+      const res = calc(prev, cur, op)
+      setDisplay(fmtNum(res))
+      setLastOp(op)     // guardar para repetición
+      setLastArg(cur)   // guardar segundo operando
+      setPrev(null)
+      setOp(null)
+      setFresh(true)
+      return
+    }
+    // Caso repeat: usuario presiona = de nuevo → repetir última operación (patrón iOS)
+    if (lastOp !== null && lastArg !== null) {
+      const res = calc(cur, lastArg, lastOp)
+      setDisplay(fmtNum(res))
+      setFresh(true)
+    }
   }
 
   function pressSpecial(k: string) {
-    if (k === 'C')  { setDisplay('0'); setPrev(null); setOp(null); setFresh(false) }
+    if (k === 'C')  {
+      setDisplay('0'); setPrev(null); setOp(null)
+      setLastOp(null); setLastArg(null); setFresh(false)
+    }
     if (k === '±')  { setDisplay(fmtNum(-parseFloat(display))) }
     if (k === '%')  { setDisplay(fmtNum(parseFloat(display) / 100)) }
     if (k === '⌫') {
+      if (fresh) { setDisplay('0'); setFresh(false); return }
       const next = display.length > 1 ? display.slice(0, -1) : '0'
       setDisplay(next)
     }
@@ -232,6 +250,11 @@ function calc(a: number, b: number, op: string): number {
 
 function fmtNum(n: number): string {
   if (!isFinite(n)) return 'Error'
-  const s = parseFloat(n.toPrecision(12)).toString()
+  // Máximo 12 dígitos significativos, sin notación científica para rangos normales
+  const rounded = parseFloat(n.toPrecision(12))
+  const s = rounded.toString()
+  if (s.includes('e') || s.includes('E')) {
+    return rounded.toLocaleString('en-US', { maximumFractionDigits: 8, useGrouping: false })
+  }
   return s
 }

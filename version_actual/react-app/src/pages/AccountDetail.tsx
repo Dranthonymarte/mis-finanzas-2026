@@ -69,13 +69,13 @@ function TxnRow({ t, last }: { t: Transaction; last: boolean }) {
         <div style={{ fontSize: 13.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {t.desc}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 2, display: 'flex', gap: 5, alignItems: 'center' }}>
-          <span>{t.cat}</span>
-          <span>·</span>
-          <span>{t.date}</span>
+        <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 2, display: 'flex', gap: 4, alignItems: 'center', overflow: 'hidden' }}>
+          {t.cat && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.cat}</span>}
+          {t.cat && <span style={{ flexShrink: 0 }}>·</span>}
+          <span style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>{t.date}</span>
           {t.author && (
             <span style={{
-              display: 'inline-flex', width: 14, height: 14, borderRadius: '50%',
+              display: 'inline-flex', width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
               background: t.author === 'isabel' ? '#b0a3c7' : '#6a94c4',
               color: 'var(--ink-0)', fontSize: 9, fontWeight: 700,
               alignItems: 'center', justifyContent: 'center',

@@ -105,18 +105,19 @@ export default function Analisis() {
   const { transactions: liveTxns, loading }  = useTransactions(mesActivo)
   const { transactions: prevTxns }           = useTransactions(prevId)
 
-  const [openCat,         setOpenCat]         = useState<string | null>(null)
-  const [ingresosOpen,    setIngresosOpen]    = useState(false)
-  const [gastosOpen,      setGastosOpen]      = useState(false)
-  const [openIngCat,      setOpenIngCat]      = useState<string | null>(null)
-  const [semanalesOpen,   setSemanalesOpen]   = useState(false)
+  const [openCat,       setOpenCat]       = useState<string | null>(null)
+  const [ingresosOpen,  setIngresosOpen]  = useState(false)
+  const [gastosOpen,    setGastosOpen]    = useState(false)
+  const [openIngCat,    setOpenIngCat]    = useState<string | null>(null)
+  const [semanalesOpen, setSemanalesOpen] = useState(false)
+  const [openSemana,    setOpenSemana]    = useState<string | null>(null)
 
   // ── Helpers ─────────────────────────────────────
-  const txns     = liveTxns ?? []
+  const txns        = liveTxns ?? []
   const prevTxnsArr = prevTxns ?? []
 
   // ── KPIs current + prev ──────────────────────────
-  const kpis     = useMemo(() => {
+  const kpis = useMemo(() => {
     let ingresos = 0, gastos = 0
     for (const t of txns) {
       const g = txnGroup(t.tipo)
@@ -163,54 +164,6 @@ export default function Analisis() {
     )
   }, [txns])
 
-  // ── Ingresos: total ──────────────────────────────
-  const ingresosTotal = useMemo(
-    () => txns.reduce((s, t) => txnGroup(t.tipo) === 'ingreso' ? s + Math.abs(t.amount) : s, 0),
-    [txns],
-  )
-
-  // ── Ingresos por descripción (salarios individuales) ──
-  const ingresosPorDesc = useMemo<BarEntry[]>(() => {
-    const map: Record<string, number> = {}
-    for (const t of txns) {
-      if (txnGroup(t.tipo) !== 'ingreso') continue
-      const key = t.desc || t.cat
-      map[key] = (map[key] ?? 0) + Math.abs(t.amount)
-    }
-    return Object.entries(map)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 8)
-      .map(([label, value]) => ({ label, value }))
-  }, [txns])
-
-  // ── BUG-4: Ingresos fijos vs variables ──────────────────────────
-  // Fijo: tipo === 'Ingreso Fijo' | Variable: 'Ingreso Variable' o cualquier otro ingreso
-  const ingresosFijos = useMemo<BarEntry[]>(() => {
-    const map: Record<string, number> = {}
-    for (const t of txns) {
-      if (txnGroup(t.tipo) !== 'ingreso' || t.tipo !== 'Ingreso Fijo') continue
-      const key = t.desc || t.cat || t.tipo
-      map[key] = (map[key] ?? 0) + Math.abs(t.amount)
-    }
-    return Object.entries(map).sort(([, a], [, b]) => b - a).map(([label, value]) => ({ label, value }))
-  }, [txns])
-
-  const ingresosVariables = useMemo<BarEntry[]>(() => {
-    const map: Record<string, number> = {}
-    for (const t of txns) {
-      if (txnGroup(t.tipo) !== 'ingreso' || t.tipo === 'Ingreso Fijo') continue
-      const key = t.desc || t.cat || t.tipo
-      map[key] = (map[key] ?? 0) + Math.abs(t.amount)
-    }
-    return Object.entries(map).sort(([, a], [, b]) => b - a).map(([label, value]) => ({ label, value }))
-  }, [txns])
-
-  const totalFijos     = ingresosFijos.reduce((s, e) => s + e.value, 0)
-  const totalVariables = ingresosVariables.reduce((s, e) => s + e.value, 0)
-  const prevIngresosTotal = prevTxnsArr.reduce(
-    (s, t) => txnGroup(t.tipo) === 'ingreso' ? s + Math.abs(t.amount) : s, 0
-  )
-
   // ── Ingresos por categoría ────────────────────────
   const ingresosPorCat = useMemo<BarEntry[]>(() => {
     const acc: Record<string, number> = {}
@@ -237,29 +190,42 @@ export default function Analisis() {
     )
   }, [txns])
 
-  // ── Desglose semanal (gastos) ────────────────────
-  const semanal = useMemo<BarEntry[]>(() => {
-    const weeks: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+  // ── Desglose semanal (gastos) con txns por semana ─
+  type TxnItem = typeof txns[number]
+  const semanalData = useMemo<{ label: string; value: number; txns: TxnItem[] }[]>(() => {
+    const weeks: Record<number, { total: number; txns: TxnItem[] }> = {
+      1: { total: 0, txns: [] },
+      2: { total: 0, txns: [] },
+      3: { total: 0, txns: [] },
+      4: { total: 0, txns: [] },
+      5: { total: 0, txns: [] },
+    }
     for (const t of txns) {
       if (txnGroup(t.tipo) !== 'gasto') continue
       const iso = t.isoDate ?? ''
       if (!iso) continue
       const day = parseInt(iso.split('-')[2] ?? '1', 10)
       const wk  = day <= 7 ? 1 : day <= 14 ? 2 : day <= 21 ? 3 : day <= 28 ? 4 : 5
-      weeks[wk] += Math.abs(t.amount)
+      weeks[wk].total += Math.abs(t.amount)
+      weeks[wk].txns.push(t)
     }
-    // Get month label from mesActivo
     const [short, yr] = mesActivo.split('-')
     const monthShortLabel = `${short}.${yr}`
     return Object.entries(weeks)
-      .filter(([, v]) => v > 0)
-      .map(([wk, value]) => ({ label: `Sem ${wk} ${monthShortLabel}`, value }))
+      .filter(([, v]) => v.total > 0)
+      .map(([wk, v]) => ({
+        label: `Sem ${wk} ${monthShortLabel}`,
+        value: v.total,
+        txns:  v.txns.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount)),
+      }))
   }, [txns, mesActivo])
 
   // ── Top 5 individual gastos ──────────────────────
   const topGastosTxns = useMemo(() => {
-    return txns.filter(t => txnGroup(t.tipo) === 'gasto')
-      .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount)).slice(0, 5)
+    return txns
+      .filter(t => txnGroup(t.tipo) === 'gasto')
+      .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+      .slice(0, 5)
   }, [txns])
 
   // ── Prev-month label ──────────────────────────────
@@ -299,14 +265,14 @@ export default function Analisis() {
           {/* ── KPIs + comparativa ── */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
             {([
-              { label: 'Ingresos', cur: kpis.ingresos, prev: prevKpis.ingresos, color: 'var(--pos)',                                      key: 'ing' },
-              { label: 'Gastos',   cur: kpis.gastos,   prev: prevKpis.gastos,   color: 'var(--neg)',                                      key: 'gas' },
-              { label: 'Balance',  cur: kpis.balance,  prev: prevKpis.balance,  color: kpis.balance >= 0 ? 'var(--pos)' : 'var(--neg)',   key: 'bal' },
+              { label: 'Ingresos', cur: kpis.ingresos, prev: prevKpis.ingresos, color: 'var(--pos)',                                    key: 'ing' },
+              { label: 'Gastos',   cur: kpis.gastos,   prev: prevKpis.gastos,   color: 'var(--neg)',                                    key: 'gas' },
+              { label: 'Balance',  cur: kpis.balance,  prev: prevKpis.balance,  color: kpis.balance >= 0 ? 'var(--pos)' : 'var(--neg)', key: 'bal' },
             ]).map(k => {
-              const isIng     = k.key === 'ing'
-              const isGas     = k.key === 'gas'
-              const expanded  = isIng ? ingresosOpen : isGas ? gastosOpen : false
-              const toggle    = isIng ? () => setIngresosOpen(v => !v) : isGas ? () => setGastosOpen(v => !v) : undefined
+              const isIng    = k.key === 'ing'
+              const isGas    = k.key === 'gas'
+              const expanded = isIng ? ingresosOpen : isGas ? gastosOpen : false
+              const toggle   = isIng ? () => setIngresosOpen(v => !v) : isGas ? () => setGastosOpen(v => !v) : undefined
               return (
                 <div
                   key={k.label}
@@ -335,14 +301,20 @@ export default function Analisis() {
                   </div>
                   <Delta cur={k.cur} prev={k.prev} />
                   {k.prev > 0 && (
-                    <div style={{ fontSize: 9, color: 'var(--fg-mute)', marginTop: 3 }}>vs {prevLabel}</div>
+                    <div
+                      title="Comparado con el mes anterior"
+                      style={{ fontSize: 9, color: 'var(--fg-mute)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 2, cursor: 'default' }}
+                    >
+                      <span style={{ opacity: .55 }}>ℹ</span>
+                      <span>vs {prevLabel}</span>
+                    </div>
                   )}
                 </div>
               )
             })}
           </div>
 
-          {/* ── Desglose gastos (expandible) ── */}
+          {/* ── Desglose gastos por categoría (expandible desde KPI) ── */}
           {gastosOpen && gastosPorCat.length > 0 && (
             <div style={{ background: 'var(--ink-2)', border: '1px solid rgba(214,106,90,.3)', borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
@@ -354,53 +326,15 @@ export default function Analisis() {
             </div>
           )}
 
-          {/* ── BUG-4: Desglose ingresos fijo/variable (expandible) ── */}
-          {ingresosOpen && (ingresosFijos.length > 0 || ingresosVariables.length > 0 || ingresosPorDesc.length > 0) && (
+          {/* ── Desglose ingresos por categoría (expandible desde KPI) ── */}
+          {ingresosOpen && ingresosPorCat.length > 0 && (
             <div style={{ background: 'var(--ink-2)', border: '1px solid rgba(88,178,106,.3)', borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-              {/* Totales comparativa vs mes anterior */}
-              {prevIngresosTotal > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: 'var(--fg-mute)', borderBottom: '1px solid var(--line)', paddingBottom: 10 }}>
-                  <span>vs {prevLabel}</span>
-                  <Delta cur={ingresosTotal} prev={prevIngresosTotal} />
+              <div>
+                <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--pos)', marginBottom: 10 }}>
+                  Ingresos por categoría
                 </div>
-              )}
-
-              {/* Ingresos Fijos */}
-              {totalFijos > 0 && (
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--pos)' }}>
-                      Fijos
-                    </div>
-                    <span className="num" style={{ fontSize: 12, fontWeight: 700, color: 'var(--pos)' }}>{fmt(totalFijos)}</span>
-                  </div>
-                  <HBar data={ingresosFijos} color="var(--pos)" />
-                </div>
-              )}
-
-              {/* Ingresos Variables */}
-              {totalVariables > 0 && (
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--amber)' }}>
-                      Variables
-                    </div>
-                    <span className="num" style={{ fontSize: 12, fontWeight: 700, color: 'var(--amber)' }}>{fmt(totalVariables)}</span>
-                  </div>
-                  <HBar data={ingresosVariables} color="var(--amber)" />
-                </div>
-              )}
-
-              {/* Fallback: desglose por fuente si no hay tipos Fijo/Variable */}
-              {totalFijos === 0 && totalVariables === 0 && ingresosPorDesc.length > 0 && (
-                <div>
-                  <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--pos)', marginBottom: 10 }}>
-                    Por fuente
-                  </div>
-                  <HBar data={ingresosPorDesc} color="var(--pos)" />
-                </div>
-              )}
+                <HBar data={ingresosPorCat} color="var(--pos)" />
+              </div>
             </div>
           )}
 
@@ -478,7 +412,7 @@ export default function Analisis() {
             )}
           </Card>
 
-          {/* ── Ingresos por categoría (expandible por subcategoría) ── */}
+          {/* ── Ingresos por categoría (Card con barras horizontales + subcats expandibles) ── */}
           {ingresosPorCat.length > 0 && (
             <Card>
               <SLabel>Ingresos por categoría — {mesLabel(mesActivo)}</SLabel>
@@ -486,7 +420,7 @@ export default function Analisis() {
                 {ingresosPorCat.map(({ label, value }, i) => {
                   const isOpen = openIngCat === label
                   const subs   = subcatByIngCat[label] ?? []
-                  const pct    = ingresosTotal > 0 ? (value / ingresosTotal) * 100 : 0
+                  const max    = ingresosPorCat[0]?.value ?? 1
                   return (
                     <div key={label}>
                       <button
@@ -500,15 +434,14 @@ export default function Analisis() {
                         <CatIcon cat={label} size={16} />
                         <span style={{ flex: 1, fontSize: 12.5, fontWeight: 500, color: 'var(--fg)', textAlign: 'left' }}>{label}</span>
                         <span className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--pos)' }}>{fmt(value)}</span>
-                        <span style={{ fontSize: 10, color: 'var(--fg-mute)', minWidth: 30, textAlign: 'right' }}>{pct.toFixed(0)}%</span>
                         {subs.length > 0 && (
-                          <span style={{ fontSize: 10, color: 'var(--fg-mute)', marginLeft: 2 }}>{isOpen ? '▲' : '▼'}</span>
+                          <span style={{ fontSize: 10, color: 'var(--fg-mute)', marginLeft: 4 }}>{isOpen ? '▲' : '▼'}</span>
                         )}
                       </button>
 
-                      {/* Barra horizontal de porcentaje */}
-                      <div style={{ height: 4, background: 'var(--ink-3)', borderRadius: 2, overflow: 'hidden', marginBottom: 4 }}>
-                        <div style={{ height: '100%', borderRadius: 2, background: 'var(--pos)', width: `${pct}%`, transition: 'width .35s' }} />
+                      {/* Barra horizontal proporcional al máximo */}
+                      <div style={{ height: 6, background: 'var(--ink-3)', borderRadius: 3, overflow: 'hidden', marginBottom: 4 }}>
+                        <div style={{ height: '100%', borderRadius: 3, background: 'var(--pos)', width: `${max > 0 ? (value / max) * 100 : 0}%`, transition: 'width .35s' }} />
                       </div>
 
                       {/* Subcategorías expandibles */}
@@ -529,8 +462,8 @@ export default function Analisis() {
             </Card>
           )}
 
-          {/* ── Desglose semanal (desplegable) ── */}
-          {semanal.length > 0 && (
+          {/* ── Gastos semanales (desplegable con txns por semana) ── */}
+          {semanalData.length > 0 && (
             <Card>
               <button
                 onClick={() => setSemanalesOpen(v => !v)}
@@ -550,7 +483,54 @@ export default function Analisis() {
                   {semanalesOpen ? '▲' : '▼'}
                 </span>
               </button>
-              {semanalesOpen && <HBar data={semanal} color="var(--amber)" />}
+
+              {semanalesOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {semanalData.map(({ label, value, txns: weekTxns }) => {
+                    const isOpen = openSemana === label
+                    const maxVal = semanalData.reduce((m, d) => Math.max(m, d.value), 0)
+                    return (
+                      <div key={label}>
+                        <button
+                          onClick={() => setOpenSemana(isOpen ? null : label)}
+                          style={{
+                            width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '10px 0', background: 'none', border: 'none', cursor: 'pointer',
+                          }}
+                        >
+                          <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: 'var(--fg)', textAlign: 'left' }}>{label}</span>
+                          <span className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--amber)' }}>{fmt(value)}</span>
+                          {weekTxns.length > 0 && (
+                            <span style={{ fontSize: 10, color: 'var(--fg-mute)', marginLeft: 4 }}>{isOpen ? '▲' : '▼'}</span>
+                          )}
+                        </button>
+
+                        {/* Barra proporcional */}
+                        <div style={{ height: 6, background: 'var(--ink-3)', borderRadius: 3, overflow: 'hidden', marginBottom: isOpen ? 8 : 4 }}>
+                          <div style={{ height: '100%', borderRadius: 3, background: 'var(--amber)', width: `${maxVal > 0 ? (value / maxVal) * 100 : 0}%`, transition: 'width .35s' }} />
+                        </div>
+
+                        {/* Transacciones de la semana */}
+                        {isOpen && weekTxns.length > 0 && (
+                          <div style={{ marginBottom: 8, paddingLeft: 10, borderLeft: '2px solid rgba(224,168,74,.25)', display: 'flex', flexDirection: 'column', gap: 0 }}>
+                            {weekTxns.map(t => (
+                              <div key={t.id} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid var(--line)' }}>
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <div style={{ fontSize: 12, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.desc}</div>
+                                  <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 1 }}>{t.date} · {t.cat}</div>
+                                </div>
+                                <span className="num" style={{ fontSize: 12, fontWeight: 600, color: 'var(--neg)', whiteSpace: 'nowrap', marginLeft: 10 }}>
+                                  −{fmt(Math.abs(t.amount))}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </Card>
           )}
 
@@ -592,4 +572,3 @@ export default function Analisis() {
     </div>
   )
 }
-

@@ -270,7 +270,6 @@ export default function Home() {
     return [...base, { month: cur, ingresos: kpiData.ingresos, gastos: kpiData.gastos }]
   }, [histKPIs, kpiData.ingresos, kpiData.gastos, mesActivo])
 
-  const [showEfInfo,   setShowEfInfo]   = useState(false)
   const [shortcuts,    setShortcuts]    = useState<string[]>(loadSC)
   const [showScEditor, setShowScEditor] = useState(false)
 
@@ -279,21 +278,20 @@ export default function Home() {
     localStorage.setItem(SC_KEY, JSON.stringify(ids))
   }, [])
 
-  // ── Fondo emergencia ──────────────────────────────────────────────
-  // Balance = ahorro del MES ACTIVO (empieza en 0, crece con nuevos ingresos)
-  // Meta = 30% de ingresos del mes actual — no retroactivo
-  const emergencyBalance = kpiData.ahorro   // solo mes activo, parte de 0
-  const emergencyTarget  = kpiData.ingresos > 0 ? kpiData.ingresos * 0.30 : 0
-  const efContribMes     = emergencyTarget  // aporte sugerido = meta del mes
-  // ── Meta editable (persisted in localStorage) ──
-  const [efMeta, setEfMeta] = useState<number>(() => {
-    try { return parseFloat(localStorage.getItem('mf-ef-meta') || '') || 0 } catch { return 0 }
-  })
-  const [editingMeta, setEditingMeta] = useState(false)
-  const [metaInput,   setMetaInput]   = useState('')
-  const displayTarget = efMeta > 0 ? efMeta : emergencyTarget
-  const emergencyPct      = displayTarget > 0 ? Math.min(100, (emergencyBalance / displayTarget) * 100) : 0
-  // emergencyMonths reserved for future "X meses de reserva" display
+  // ── Metas de ahorro ──────────────────────────────────────────────
+  interface Meta { id: string; nombre: string; meta_amount: number; current_amount: number; color: string | null }
+  const [metas, setMetas] = useState<Meta[]>([])
+
+  useEffect(() => {
+    if (!householdId) return
+    supabase
+      .from('metas')
+      .select('id, nombre, meta_amount, current_amount, color')
+      .eq('household_id', householdId)
+      .order('created_at', { ascending: false })
+      .limit(3)
+      .then(({ data }) => { if (data) setMetas(data as Meta[]) })
+  }, [householdId])
 
   // ── Top 4 categorías de gasto ──
   const topGastos = useMemo(() => {
@@ -757,104 +755,57 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ─── 7. FONDO EMERGENCIA ─── */}
+      {/* ─── 7. METAS DE AHORRO ─── */}
       <div style={{ padding: '12px 16px 4px' }}>
         <div style={{
           background: 'var(--ink-2)', border: '1px solid var(--line)',
-          borderRadius: 14, padding: '14px',
+          borderRadius: 14, padding: 14,
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 4 }}>
-                Fondo de emergencia
-                <button
-                  onClick={() => setShowEfInfo(v => !v)}
-                  style={{
-                    background: showEfInfo ? 'var(--amber)' : 'var(--ink-3)',
-                    border: '1px solid var(--line)', borderRadius: '50%',
-                    cursor: 'pointer', padding: 0, lineHeight: 1,
-                    color: showEfInfo ? 'var(--ink-0)' : 'var(--fg-dim)',
-                    fontSize: 10, fontWeight: 700,
-                    width: 16, height: 16,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                  aria-label="Qué es esto"
-                >ℹ</button>
-              </div>
-              {showEfInfo && (
-                <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginBottom: 6, lineHeight: 1.5, maxWidth: 220 }}>
-                  Meta mensual: 30% de tus ingresos del mes ({fmt(emergencyTarget)}). Crece cada mes conforme ahorras. Toca la meta para ajustarla.
-                </div>
-              )}
-              <div className="num" style={{ fontSize: 20, fontWeight: 700 }}>{fmt(emergencyBalance)}</div>
-              <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 2 }}>
-                Mes actual · Meta: {fmt(displayTarget)}
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              {editingMeta ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <input
-                    type="number"
-                    value={metaInput}
-                    autoFocus
-                    onChange={e => setMetaInput(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        const v = parseFloat(metaInput)
-                        if (!isNaN(v) && v > 0) { localStorage.setItem('mf-ef-meta', String(v)); setEfMeta(v) }
-                        setEditingMeta(false)
-                      }
-                      if (e.key === 'Escape') setEditingMeta(false)
-                    }}
-                    onBlur={() => {
-                      const v = parseFloat(metaInput)
-                      if (!isNaN(v) && v > 0) { localStorage.setItem('mf-ef-meta', String(v)); setEfMeta(v) }
-                      setEditingMeta(false)
-                    }}
-                    placeholder="Meta USD"
-                    style={{
-                      width: 80, background: 'var(--ink-3)', border: '1px solid var(--amber)',
-                      borderRadius: 7, padding: '4px 7px', fontSize: 12, color: 'var(--fg)',
-                      outline: 'none', textAlign: 'right',
-                    }}
-                  />
-                </div>
-              ) : (
-                <button
-                  onClick={() => { setMetaInput(String(efMeta > 0 ? efMeta : Math.round(displayTarget))); setEditingMeta(true) }}
-                  style={{
-                    background: 'none', border: 'none', cursor: 'pointer', textAlign: 'right', padding: 0,
-                  }}
-                  title="Toca para editar meta"
-                >
-                  <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginBottom: 2 }}>
-                    Meta: {fmt(displayTarget)} ✎
-                  </div>
-                  <div className="num" style={{
-                    fontSize: 18, fontWeight: 700,
-                    color: emergencyPct >= 100 ? 'var(--pos)' : emergencyPct >= 50 ? 'var(--amber)' : 'var(--neg)',
-                  }}>
-                    {emergencyPct.toFixed(0)}%
-                  </div>
-                </button>
-              )}
-            </div>
-          </div>
-          <div style={{ height: 7, background: 'var(--ink-3)', borderRadius: 4, overflow: 'hidden' }}>
-            <div style={{
-              height: '100%', borderRadius: 4, transition: 'width .4s ease',
-              width: `${emergencyPct}%`,
-              background: emergencyPct >= 100 ? 'var(--pos)' : emergencyPct >= 66 ? 'var(--amber)' : 'var(--neg)',
-            }} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5, fontSize: 9.5, color: 'var(--fg-mute)' }}>
-            <span>0%</span>
-            <span style={{ color: emergencyPct >= 100 ? 'var(--pos)' : 'inherit' }}>
-              {emergencyPct >= 100 ? '✓ Meta alcanzada' : `Aporte sugerido: ${fmt(efContribMes)}`}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)' }}>
+              Metas de ahorro
             </span>
-            <span>100%</span>
+            <button
+              onClick={() => navigate('/metas')}
+              style={{ fontSize: 10.5, color: 'var(--amber)', fontWeight: 600, cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
+            >
+              Ver todas →
+            </button>
           </div>
+          {metas.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '10px 0 4px', fontSize: 12.5, color: 'var(--fg-mute)' }}>
+              Sin metas activas ·{' '}
+              <button
+                onClick={() => navigate('/metas')}
+                style={{ color: 'var(--amber)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, padding: 0 }}
+              >
+                + Crear meta →
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {metas.map(m => {
+                const pct   = m.meta_amount > 0 ? Math.min(100, (m.current_amount / m.meta_amount) * 100) : 0
+                const color = m.color ?? 'var(--amber)'
+                return (
+                  <div key={m.id}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+                      <span style={{ fontSize: 12.5, color: 'var(--fg-dim)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>
+                        {m.nombre}
+                      </span>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color }}>{pct.toFixed(0)}%</span>
+                    </div>
+                    <div style={{ height: 5, background: 'var(--ink-3)', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', borderRadius: 3, background: color, width: `${pct}%`, transition: 'width .4s ease' }} />
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 3 }}>
+                      {fmt(m.current_amount)} / {fmt(m.meta_amount)}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -936,18 +887,18 @@ export default function Home() {
       {liveTxns && liveTxns.length > 0 && (() => {
         const superavit    = kpiData.ingresos - kpiData.gastos
         const savRate      = kpiData.ingresos > 0 ? (kpiData.ahorro / kpiData.ingresos) * 100 : 0
-        const efPct        = emergencyTarget > 0 ? Math.min(100, (emergencyBalance / emergencyTarget) * 100) : 0
         const topCat       = topGastos[0]
         const topPct       = topCat && kpiData.gastos > 0 ? (topCat.value / kpiData.gastos) * 100 : 0
 
         // savProxy: máx entre ahorro directo y superávit positivo del mes
         const savProxy = Math.max(kpiData.ahorro, Math.max(0, kpiData.balance))
         const savRateScore = kpiData.ingresos > 0 ? (savProxy / kpiData.ingresos) * 100 : 0
-        // Score: superávit(25) + ahorro≥20%(25) + ef≥20%(25) + gastos<ingresos(25)
+        // Score: superávit(25) + ahorro≥20%(25) + metas con progreso(25) + gastos<ingresos(25)
+        const hasMetaProgress = metas.length > 0 && metas.some(m => m.current_amount > 0)
         const score = Math.round(
           (superavit > 0 ? 25 : 0) +
           (savRateScore >= 20 ? 25 : savRateScore > 0 ? savRateScore / 20 * 25 : 0) +
-          (efPct >= 100 ? 25 : efPct / 100 * 25) +
+          (hasMetaProgress ? 25 : 0) +
           (kpiData.gastos < kpiData.ingresos ? 25 : 0)
         )
 
@@ -961,8 +912,15 @@ export default function Home() {
             color: savRate >= 20 ? 'var(--pos)' : 'var(--amber)',
           })
         }
-        if (efPct < 100 && emergencyBalance > 0) {
-          insights.push({ icon: '🆘', text: `Fondo de emergencia al ${efPct.toFixed(0)}%. Meta: ${fmt(emergencyTarget)}. Considera reforzarlo.`, color: 'var(--amber)' })
+        if (metas.length > 0) {
+          const metaCompleta = metas.find(m => m.meta_amount > 0 && m.current_amount >= m.meta_amount)
+          if (metaCompleta) {
+            insights.push({ icon: '🎯', text: `Meta "${metaCompleta.nombre}" completada. ¡Excelente disciplina!`, color: 'var(--pos)' })
+          } else {
+            const topMeta = metas[0]
+            const pctMeta = topMeta.meta_amount > 0 ? Math.min(100, (topMeta.current_amount / topMeta.meta_amount) * 100) : 0
+            insights.push({ icon: '🎯', text: `Meta "${topMeta.nombre}" al ${pctMeta.toFixed(0)}% — ${fmt(topMeta.meta_amount - topMeta.current_amount)} restantes.`, color: 'var(--amber)' })
+          }
         }
         if (topCat) {
           insights.push({ icon: '📊', text: `Top gasto: "${topCat.cat}" — ${fmt(topCat.value)} (${topPct.toFixed(0)}% del total).` })

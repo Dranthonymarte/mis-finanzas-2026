@@ -264,7 +264,7 @@ INSTRUCCIONES:
   }
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg)', zIndex: 50 }}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))', display: 'flex', flexDirection: 'column', background: 'var(--bg)', zIndex: 50 }}>
 
       {/* ── Header ── */}
       <div style={{ padding: '10px 16px 8px', flexShrink: 0, borderBottom: '1px solid var(--line)' }}>

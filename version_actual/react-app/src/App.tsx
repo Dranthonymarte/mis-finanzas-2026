@@ -58,8 +58,9 @@ const SoporteConsentimiento = lazy(() => import('./pages/soporte/Consentimiento'
 const SoporteSugerencias    = lazy(() => import('./pages/soporte/Sugerencias'))
 
 // ── BLOQUE 9 pages (lazy so they can be added incrementally) ──
-const Analisis       = lazy(() => import('./pages/Analisis'))
-const Recurrentes    = lazy(() => import('./pages/Recurrentes'))
+const Analisis          = lazy(() => import('./pages/Analisis'))
+const Recurrentes       = lazy(() => import('./pages/Recurrentes'))
+const RecurrenteDetail  = lazy(() => import('./pages/RecurrenteDetail'))
 const ListaCompras   = lazy(() => import('./pages/ListaCompras'))
 const TiposSettings  = lazy(() => import('./pages/settings/Tipos'))
 const SubcatSettings = lazy(() => import('./pages/settings/Subcategorias'))
@@ -114,6 +115,7 @@ export default function App() {
             <Route path="/calendar"        element={<Calendar />}        />
             <Route path="/analisis"        element={<Analisis />}        />
             <Route path="/recurrentes"     element={<Recurrentes />}     />
+            <Route path="/recurrentes/:id" element={<RecurrenteDetail />} />
             <Route path="/lista-compras"   element={<ListaCompras />}    />
             <Route path="/soporte/faq"            element={<SoporteFAQ />}           />
             <Route path="/soporte/consentimiento" element={<SoporteConsentimiento />} />

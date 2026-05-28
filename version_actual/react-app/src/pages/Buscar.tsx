@@ -149,18 +149,31 @@ export default function Buscar() {
             )}
           </div>
 
-          {/* Filter toggle */}
+          {/* Filter toggle — mismo tamaño/posición que iBtn del Dashboard */}
           <button
             onClick={() => setShowFilters(v => !v)}
+            aria-label="Filtros"
             style={{
-              flexShrink: 0, height: 36, padding: '0 12px', borderRadius: 10,
+              flexShrink: 0, width: 34, height: 34, borderRadius: 10,
               background: activeFilterCount > 0 ? 'var(--amber)' : 'var(--ink-2)',
               border: '1px solid var(--line)',
               color: activeFilterCount > 0 ? 'var(--ink-0)' : 'var(--fg-dim)',
-              cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5,
+              cursor: 'pointer', display: 'grid', placeItems: 'center',
+              position: 'relative',
             }}
           >
-            ⚙ {activeFilterCount > 0 ? activeFilterCount : ''}
+            <span style={{ fontSize: 16, lineHeight: 1 }}>⚙</span>
+            {activeFilterCount > 0 && (
+              <span style={{
+                position: 'absolute', top: -5, right: -5,
+                width: 15, height: 15, borderRadius: '50%',
+                background: 'var(--neg)', color: '#fff',
+                fontSize: 9, fontWeight: 700, display: 'grid', placeItems: 'center',
+                pointerEvents: 'none',
+              }}>
+                {activeFilterCount}
+              </span>
+            )}
           </button>
         </div>
 

@@ -272,6 +272,7 @@ export default function Home() {
 
   const [shortcuts,    setShortcuts]    = useState<string[]>(loadSC)
   const [showScEditor, setShowScEditor] = useState(false)
+  const [showPronosticoInfo, setShowPronosticoInfo] = useState(false)
 
   const saveSC = useCallback((ids: string[]) => {
     setShortcuts(ids)
@@ -837,29 +838,45 @@ export default function Home() {
       )}
 
       {/* ─── 9. PRONÓSTICO 30D ─── */}
-      {kpiData.gastos > 0 && (
+      {dailySpend > 0 && (
         <div style={{ padding: '12px 16px 4px' }}>
           <div style={{
             background: 'var(--ink-2)', border: '1px solid var(--line)',
             borderRadius: 14, padding: '14px',
           }}>
-            <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 10 }}>
-              Pronóstico de gasto
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)' }}>
+                Pronóstico de gasto
+              </div>
+              <button
+                onClick={() => setShowPronosticoInfo(v => !v)}
+                style={{
+                  width: 20, height: 20, borderRadius: '50%', border: 'none',
+                  background: showPronosticoInfo ? 'var(--amber)' : 'var(--ink-3)',
+                  color: showPronosticoInfo ? 'var(--ink-0)' : 'var(--fg-mute)',
+                  fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'grid', placeItems: 'center',
+                }}
+              >ℹ</button>
             </div>
+            {showPronosticoInfo && (
+              <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', lineHeight: 1.5, marginBottom: 12, padding: '8px 10px', background: 'var(--ink-3)', borderRadius: 8 }}>
+                Basado en tus gastos del mes hasta hoy. Si mantienes este ritmo, así terminarás el mes.
+              </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1px 1fr 1px 1fr' }}>
               {([
-                { label: 'Ritmo diario',   value: fmtShort(dailySpend),              color: 'var(--fg)'  },
+                { label: 'Gasto diario promedio', value: fmtShort(dailySpend),           color: 'var(--fg)'  },
                 null,
-                { label: 'Próx. 30 días',  value: fmtShort(projected30),             color: 'var(--neg)' },
+                { label: 'Proyección 30 días',    value: fmtShort(projected30),          color: 'var(--neg)' },
                 null,
-                { label: 'Ahorro est.',    value: fmtShort(Math.abs(savedByEOM)),    color: savedByEOM >= 0 ? 'var(--pos)' : 'var(--neg)' },
+                { label: 'Ahorro est.',           value: fmtShort(Math.abs(savedByEOM)), color: savedByEOM >= 0 ? 'var(--pos)' : 'var(--neg)' },
               ] as Array<{ label: string; value: string; color: string } | null>).map((col, i) =>
                 col === null
                   ? <div key={i} style={{ background: 'var(--line)', margin: '2px 0' }} />
                   : (
                     <div key={col.label} style={{ padding: '4px 6px', textAlign: 'center' }}>
                       <div className="num" style={{ fontSize: 14, fontWeight: 700, color: col.color }}>
-                        {savedByEOM < 0 && col.label === 'Ahorro est.' ? '−' : ''}{col.value}
+                        {col.value}
                       </div>
                       <div style={{ fontSize: 9.5, color: 'var(--fg-mute)', marginTop: 3, lineHeight: 1.2 }}>
                         {col.label}

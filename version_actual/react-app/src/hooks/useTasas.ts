@@ -15,53 +15,82 @@ export const TASAS_DEFAULTS: Tasas = { bcv: 36.50, eur: 40.00 }
 const HOUSEHOLD_KEY   = 'anthony-isabel-2026'
 const BCV_AUTO_TS_KEY = 'mis_finanzas_bcv_auto_ts'
 const EUR_AUTO_TS_KEY = 'mis_finanzas_eur_auto_ts'
-const THIRTY_MIN      = 30 * 60 * 1000
-let   sessionFetched  = false   // prevents duplicate fetches across hook instances
+const ONE_MIN         = 60 * 1000
+const TASAS_CACHE_KEY = 'mis_finanzas_tasas_v1'
+
+function loadCachedTasas(): Tasas {
+  try {
+    const raw = localStorage.getItem(TASAS_CACHE_KEY)
+    if (raw) return JSON.parse(raw) as Tasas
+  } catch { /* ignore */ }
+  return TASAS_DEFAULTS
+}
 
 export function useTasas() {
   const householdId = useAuthStore(s => s.householdId)
   const mesActivo   = usePrefsStore(s => s.mesActivo)
-  const [tasas,   setTasas]   = useState<Tasas>(TASAS_DEFAULTS)
+  const [tasas,   setTasas]   = useState<Tasas>(loadCachedTasas)
   const [loading, setLoading] = useState(true)
   const tasasRef = useRef<Tasas>(TASAS_DEFAULTS)
   tasasRef.current = tasas
 
-  // ── Auto-refresh BCV from ve.dolarapi.com (silent, max 1×/30min) ──
-  useEffect(() => {
-    if (!householdId || sessionFetched) return
-    const lsTs = parseInt(localStorage.getItem(BCV_AUTO_TS_KEY) ?? '0', 10)
-    if (Date.now() - lsTs < THIRTY_MIN) return
+  const cacheAndSet = (t: Tasas) => {
+    setTasas(t)
+    try { localStorage.setItem(TASAS_CACHE_KEY, JSON.stringify(t)) } catch { /* ignore */ }
+  }
 
-    sessionFetched = true
-    localStorage.setItem(BCV_AUTO_TS_KEY, String(Date.now()))
-
-    fetch('https://ve.dolarapi.com/v1/dolares/oficial')
-      .then(r => r.ok ? (r.json() as Promise<{ promedio?: number }>) : Promise.reject())
-      .then(data => {
-        const rate = data.promedio
-        if (!rate || rate <= 0) return
-        setTasas(prev => ({ ...prev, bcv: rate }))
-        void saveTasas(householdId, rate, tasasRef.current.eur, mesActivo)
-      })
-      .catch(() => { /* silent — user still gets DB rate */ })
-  }, [householdId, mesActivo])
-
-  // ── Auto-refresh EUR/USD from frankfurter.app (silent, max 1×/30min) ──
+  // ── BCV auto-fetch every 1 min ──
   useEffect(() => {
     if (!householdId) return
-    const lsTs = parseInt(localStorage.getItem(EUR_AUTO_TS_KEY) ?? '0', 10)
-    if (Date.now() - lsTs < THIRTY_MIN) return
-    localStorage.setItem(EUR_AUTO_TS_KEY, String(Date.now()))
 
-    fetch('https://api.frankfurter.app/latest?from=USD&to=EUR')
-      .then(r => r.ok ? (r.json() as Promise<{ rates?: { EUR?: number } }>) : Promise.reject())
-      .then(data => {
-        const rate = data.rates?.EUR
-        if (!rate || rate <= 0) return
-        setTasas(prev => ({ ...prev, eur: rate }))
-        void saveTasas(householdId, tasasRef.current.bcv, rate, mesActivo)
-      })
-      .catch(() => { /* silent */ })
+    const doFetchBCV = () => {
+      const now = Date.now()
+      const last = parseInt(localStorage.getItem(BCV_AUTO_TS_KEY) ?? '0', 10)
+      if (now - last < ONE_MIN) return
+      localStorage.setItem(BCV_AUTO_TS_KEY, String(now))
+
+      fetch('https://ve.dolarapi.com/v1/dolares/oficial')
+        .then(r => r.ok ? (r.json() as Promise<{ promedio?: number }>) : Promise.reject())
+        .then(data => {
+          const rate = data.promedio
+          if (!rate || rate <= 0) return
+          const next = { ...tasasRef.current, bcv: rate }
+          cacheAndSet(next)
+          void saveTasas(householdId, rate, tasasRef.current.eur, mesActivo)
+        })
+        .catch(() => {})
+    }
+
+    doFetchBCV()
+    const id = setInterval(doFetchBCV, ONE_MIN)
+    return () => clearInterval(id)
+  }, [householdId, mesActivo])
+
+  // ── EUR auto-fetch every 1 min ──
+  useEffect(() => {
+    if (!householdId) return
+
+    const doFetchEUR = () => {
+      const now = Date.now()
+      const last = parseInt(localStorage.getItem(EUR_AUTO_TS_KEY) ?? '0', 10)
+      if (now - last < ONE_MIN) return
+      localStorage.setItem(EUR_AUTO_TS_KEY, String(now))
+
+      fetch('https://api.frankfurter.app/latest?from=USD&to=EUR')
+        .then(r => r.ok ? (r.json() as Promise<{ rates?: { EUR?: number } }>) : Promise.reject())
+        .then(data => {
+          const rate = data.rates?.EUR
+          if (!rate || rate <= 0) return
+          const next = { ...tasasRef.current, eur: rate }
+          cacheAndSet(next)
+          void saveTasas(householdId, tasasRef.current.bcv, rate, mesActivo)
+        })
+        .catch(() => {})
+    }
+
+    doFetchEUR()
+    const id = setInterval(doFetchEUR, ONE_MIN)
+    return () => clearInterval(id)
   }, [householdId, mesActivo])
 
   useEffect(() => {

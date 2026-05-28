@@ -14,6 +14,7 @@ export const TASAS_DEFAULTS: Tasas = { bcv: 36.50, eur: 40.00 }
 
 const HOUSEHOLD_KEY   = 'anthony-isabel-2026'
 const BCV_AUTO_TS_KEY = 'mis_finanzas_bcv_auto_ts'
+const EUR_AUTO_TS_KEY = 'mis_finanzas_eur_auto_ts'
 const THIRTY_MIN      = 30 * 60 * 1000
 let   sessionFetched  = false   // prevents duplicate fetches across hook instances
 
@@ -43,6 +44,24 @@ export function useTasas() {
         void saveTasas(householdId, rate, tasasRef.current.eur, mesActivo)
       })
       .catch(() => { /* silent — user still gets DB rate */ })
+  }, [householdId, mesActivo])
+
+  // ── Auto-refresh EUR/USD from frankfurter.app (silent, max 1×/30min) ──
+  useEffect(() => {
+    if (!householdId) return
+    const lsTs = parseInt(localStorage.getItem(EUR_AUTO_TS_KEY) ?? '0', 10)
+    if (Date.now() - lsTs < THIRTY_MIN) return
+    localStorage.setItem(EUR_AUTO_TS_KEY, String(Date.now()))
+
+    fetch('https://api.frankfurter.app/latest?from=USD&to=EUR')
+      .then(r => r.ok ? (r.json() as Promise<{ rates?: { EUR?: number } }>) : Promise.reject())
+      .then(data => {
+        const rate = data.rates?.EUR
+        if (!rate || rate <= 0) return
+        setTasas(prev => ({ ...prev, eur: rate }))
+        void saveTasas(householdId, tasasRef.current.bcv, rate, mesActivo)
+      })
+      .catch(() => { /* silent */ })
   }, [householdId, mesActivo])
 
   useEffect(() => {

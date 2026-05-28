@@ -8,7 +8,7 @@ import { useMemo, useState }  from 'react'
 import { useNavigate }        from 'react-router-dom'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import AppHeader              from '../components/shell/AppHeader'
-import CatIcon                from '../components/ui/CatIcon'
+import CatIcon, { catColor }  from '../components/ui/CatIcon'
 import { usePrefsStore }      from '../store/prefs'
 import { useTransactions }    from '../hooks/useTransactions'
 import { useFormat }          from '../hooks/useFormat'
@@ -222,13 +222,6 @@ export default function Analisis() {
       }))
   }, [txns, mesActivo])
 
-  // ── Top 5 individual gastos ──────────────────────
-  const topGastosTxns = useMemo(() => {
-    return txns
-      .filter(t => txnGroup(t.tipo) === 'gasto')
-      .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
-      .slice(0, 5)
-  }, [txns])
 
   // ── Prev-month label ──────────────────────────────
   const prevLabel = mesLabel(prevId)
@@ -544,38 +537,41 @@ export default function Analisis() {
             </Card>
           )}
 
-          {/* ── Top gastos individuales ── */}
+          {/* ── Top gastos por categoría ── */}
           <Card>
             <SLabel>Top gastos — {mesLabel(mesActivo)}</SLabel>
-            {topGastosTxns.length === 0 ? (
-              <Empty />
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {topGastosTxns.map((t, i) => (
-                  <div key={t.id} style={{
-                    display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: 10,
-                    padding: '10px 0',
-                    borderBottom: i < topGastosTxns.length - 1 ? '1px solid var(--line)' : 'none',
-                  }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {t.desc}
+            {gastosPorCat.length === 0 ? <Empty /> : (() => {
+              const totalGastos = gastosPorCat.reduce((s, e) => s + e.value, 0)
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {gastosPorCat.slice(0, 5).map(({ label: cat, value }) => {
+                    const pct   = totalGastos > 0 ? (value / totalGastos) * 100 : 0
+                    const color = catColor(cat)
+                    return (
+                      <div
+                        key={cat}
+                        onClick={() => navigate('/buscar?cat=' + encodeURIComponent(cat))}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                          <CatIcon cat={cat} size={22} />
+                          <span style={{ flex: 1, fontSize: 12.5, color: 'var(--fg-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {cat}
+                          </span>
+                          <span className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--neg)' }}>{fmt(Math.abs(value))}</span>
+                          <span style={{ fontSize: 10, color: 'var(--fg-mute)', minWidth: 28, textAlign: 'right' }}>
+                            {pct.toFixed(0)}%
+                          </span>
+                        </div>
+                        <div style={{ height: 4, background: 'var(--ink-3)', borderRadius: 2, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', borderRadius: 2, background: color, width: `${pct}%`, transition: 'width .3s ease' }} />
+                        </div>
                       </div>
-                      <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginTop: 2, display: 'flex', gap: 4, alignItems: 'center', overflow: 'hidden' }}>
-                        {t.cat && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.cat}</span>}
-                        {t.cat && t.subcat && <span style={{ flexShrink: 0 }}>·</span>}
-                        {t.subcat && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.subcat}</span>}
-                        {(t.cat || t.subcat) && <span style={{ flexShrink: 0 }}>·</span>}
-                        <span style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>{t.date}</span>
-                      </div>
-                    </div>
-                    <div className="num" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--neg)', whiteSpace: 'nowrap' }}>
-                      −{fmt(Math.abs(t.amount))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                    )
+                  })}
+                </div>
+              )
+            })()}
           </Card>
 
         </div>

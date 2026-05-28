@@ -31,7 +31,19 @@ export default function Sugerencias() {
       mensaje:      text.trim(),
     })
 
-    setStatus(error ? 'error' : 'success')
+    if (error) {
+      setStatus('error')
+      return
+    }
+
+    // fire-and-forget — don't block success UX on email delivery
+    fetch('/api/sugerencia-notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mensaje: text.trim(), userId }),
+    }).catch(() => { /* ignore — email notification is best-effort */ })
+
+    setStatus('success')
   }
 
   return (

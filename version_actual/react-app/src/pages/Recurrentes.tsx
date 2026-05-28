@@ -185,12 +185,23 @@ export default function Recurrentes() {
               return (
                 <div
                   key={r.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openEdit(r)}
+                  onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && openEdit(r)}
                   style={{
                     display: 'grid', gridTemplateColumns: '1fr auto',
                     alignItems: 'center', gap: 10,
                     padding: '12px 14px',
                     borderBottom: isLast ? 'none' : '1px solid var(--line)',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    transition: 'background .12s',
                   }}
+                  onPointerDown={e => (e.currentTarget.style.background = 'rgba(255,255,255,.04)')}
+                  onPointerUp={e => (e.currentTarget.style.background = '')}
+                  onPointerLeave={e => (e.currentTarget.style.background = '')}
                 >
                   <div style={{ minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
@@ -220,21 +231,11 @@ export default function Recurrentes() {
                     <div className="num" style={{ fontSize: 14, fontWeight: 700, color, whiteSpace: 'nowrap' }}>
                       {fmt(r.monto)}
                     </div>
-                    <button
-                      onClick={() => openEdit(r)}
-                      aria-label="Editar"
-                      style={{
-                        width: 28, height: 28, borderRadius: 8,
-                        background: 'rgba(224,168,74,.1)', border: '1px solid rgba(224,168,74,.25)',
-                        color: 'var(--amber)', fontSize: 13, display: 'grid', placeItems: 'center',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => handleDelete(r.id)}
+                    <div
+                      role="button"
                       aria-label="Eliminar"
+                      tabIndex={-1}
+                      onClick={e => { e.stopPropagation(); void handleDelete(r.id) }}
                       style={{
                         width: 28, height: 28, borderRadius: 8,
                         background: 'var(--ink-3)', border: '1px solid var(--line)',
@@ -243,7 +244,7 @@ export default function Recurrentes() {
                       }}
                     >
                       ×
-                    </button>
+                    </div>
                   </div>
                 </div>
               )

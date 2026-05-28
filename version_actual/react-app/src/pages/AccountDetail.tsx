@@ -74,17 +74,14 @@ function TxnRow({ t, last }: { t: Transaction; last: boolean }) {
           <span>·</span>
           <span>{t.date}</span>
           {t.author && (
-            <>
-              <span>·</span>
-              <span style={{
-                display: 'inline-flex', width: 14, height: 14, borderRadius: '50%',
-                background: t.author === 'isabel' ? '#b0a3c7' : '#6a94c4',
-                color: 'var(--ink-0)', fontSize: 9, fontWeight: 700,
-                alignItems: 'center', justifyContent: 'center',
-              }}>
-                {t.author === 'isabel' ? 'I' : 'A'}
-              </span>
-            </>
+            <span style={{
+              display: 'inline-flex', width: 14, height: 14, borderRadius: '50%',
+              background: t.author === 'isabel' ? '#b0a3c7' : '#6a94c4',
+              color: 'var(--ink-0)', fontSize: 9, fontWeight: 700,
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              {t.author === 'isabel' ? 'I' : 'A'}
+            </span>
           )}
         </div>
       </div>

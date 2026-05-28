@@ -314,7 +314,7 @@ INSTRUCCIONES:
       </div>
 
       {/* ── Chat area ── */}
-      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '8px 16px 96px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', padding: '8px 16px 96px' }}>
         {messages.map((msg, i) => <Bubble key={i} msg={msg} />)}
         {typing && (
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 14 }}>

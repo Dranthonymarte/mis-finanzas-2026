@@ -9,7 +9,7 @@ import { supabase }    from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
 import { useFormat }    from '../hooks/useFormat'
 import { useAccounts }  from '../hooks/useAccounts'
-import { ArrowLeftIcon, SearchIcon } from '../components/icons/Icons'
+import { ArrowLeftIcon, SearchIcon, FilterIcon } from '../components/icons/Icons'
 import CatIcon from '../components/ui/CatIcon'
 import { txnGroup } from '../data/mock'
 
@@ -159,7 +159,8 @@ export default function Buscar() {
               cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5,
             }}
           >
-            ⚙ {activeFilterCount > 0 ? activeFilterCount : ''}
+            <FilterIcon />
+            {activeFilterCount > 0 && <span style={{ fontSize: 11, fontWeight: 700, lineHeight: 1 }}>{activeFilterCount}</span>}
           </button>
         </div>
 

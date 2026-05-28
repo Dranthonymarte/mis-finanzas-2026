@@ -588,7 +588,14 @@ export default function Home() {
             const isPos = kpiData.balance >= 0
             color = isPos ? 'var(--pos)' : 'var(--neg)'
             value = (isPos ? '+' : '') + fmt(kpiData.balance)
+          } else if (k.id === 'ingresos') {
+            color = 'var(--pos)'
+            value = fmt(Math.abs(k.value))
+          } else if (k.id === 'gastos') {
+            color = 'var(--neg)'
+            value = fmt(Math.abs(k.value))
           } else if (k.id === 'ahorro') {
+            color = 'var(--info)'
             value = fmt(kpiData.ahorro)
             extraRow = (
               <div style={{ fontSize: 9.5, color: 'var(--fg-mute)', marginTop: 4 }}>
@@ -873,7 +880,7 @@ export default function Home() {
                       <span style={{ flex: 1, fontSize: 12.5, color: 'var(--fg-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {cat}
                       </span>
-                      <span className="num" style={{ fontSize: 12.5, fontWeight: 600 }}>{fmt(value)}</span>
+                      <span className="num" style={{ fontSize: 12.5, fontWeight: 600 }}>{fmt(Math.abs(value))}</span>
                       <span style={{ fontSize: 10, color: 'var(--fg-mute)', minWidth: 28, textAlign: 'right' }}>
                         {pct.toFixed(0)}%
                       </span>

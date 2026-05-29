@@ -26,7 +26,16 @@ function relativeDate(iso: string): string {
   const diff = Math.round((today.getTime() - d.getTime()) / 86400000)
   if (diff === 0) return 'Hoy'
   if (diff === 1) return 'Ayer'
-  return d.toLocaleDateString('es-VE', { day: 'numeric', month: 'short' })
+  // Últimos 7 días → nombre del día (patrón Revolut / Monzo / Apple Wallet)
+  if (diff >= 2 && diff <= 6) {
+    const wd = d.toLocaleDateString('es-VE', { weekday: 'long' })
+    return wd.charAt(0).toUpperCase() + wd.slice(1)
+  }
+  // Año previo → incluir año para evitar ambigüedad
+  const sameYear = d.getFullYear() === today.getFullYear()
+  return d.toLocaleDateString('es-VE', sameYear
+    ? { day: 'numeric', month: 'short' }
+    : { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 function mapAuthor(raw: string | null): 'anthony' | 'isabel' {

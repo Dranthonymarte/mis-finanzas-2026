@@ -36,12 +36,22 @@ export default function Sugerencias() {
       return
     }
 
-    // fire-and-forget — don't block success UX on email delivery
-    fetch('/api/sugerencia-notify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mensaje: text.trim(), userId }),
-    }).catch(() => { /* ignore — email notification is best-effort */ })
+    // Best-effort email notification — await but never block success UX
+    try {
+      const notifyRes = await fetch('/api/sugerencia-notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mensaje: text.trim(), userId }),
+      })
+      const notifyJson = await notifyRes.json().catch(() => ({}))
+      if (!notifyRes.ok || notifyJson?.ok === false) {
+        console.warn('[sugerencias] notify failed:', notifyRes.status, notifyJson)
+      } else {
+        console.log('[sugerencias] notify ok:', notifyJson)
+      }
+    } catch (e) {
+      console.warn('[sugerencias] notify fetch error:', e)
+    }
 
     setStatus('success')
   }

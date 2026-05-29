@@ -14,7 +14,9 @@ import { useTransactions }    from '../hooks/useTransactions'
 import { useFormat }          from '../hooks/useFormat'
 import { txnGroup }           from '../data/mock'
 import { generateMeses, mesLabel } from '../lib/mes'
-import { useTasas } from '../hooks/useTasas'
+import { useTasas }           from '../hooks/useTasas'
+import { useConfig, DEFAULTS } from '../hooks/useConfig'
+import { calcKPIs }           from '../lib/finance'
 
 const MONTHS_6 = generateMeses(6)
 
@@ -105,6 +107,7 @@ export default function Analisis() {
   const setMesActivo = usePrefsStore(s => s.setMesActivo)
   const moneda       = usePrefsStore(s => s.moneda)
   const { tasas }    = useTasas()
+  const { config }   = useConfig()
   const prevId       = prevMesId(mesActivo)
 
   const { transactions: liveTxns, loading }  = useTransactions(mesActivo)
@@ -121,26 +124,22 @@ export default function Analisis() {
   const txns        = liveTxns ?? []
   const prevTxnsArr = prevTxns ?? []
 
+  // ── tipos config (same source as Home/useKPIs) ───
+  const tipos = useMemo(
+    () => config.tipos.length > 0 ? config.tipos : DEFAULTS.tipos,
+    [config.tipos]
+  )
+
   // ── KPIs current + prev ──────────────────────────
   const kpis = useMemo(() => {
-    let ingresos = 0, gastos = 0
-    for (const t of txns) {
-      const g = txnGroup(t.tipo)
-      if (g === 'ingreso') ingresos += Math.abs(t.amount)
-      else if (g === 'gasto') gastos += Math.abs(t.amount)
-    }
-    return { ingresos, gastos, balance: ingresos - gastos }
-  }, [txns])
+    const r = calcKPIs(txns, tipos)
+    return { ingresos: r.ingresos, gastos: r.gastos, balance: r.neto }
+  }, [txns, tipos])
 
   const prevKpis = useMemo(() => {
-    let ingresos = 0, gastos = 0
-    for (const t of prevTxnsArr) {
-      const g = txnGroup(t.tipo)
-      if (g === 'ingreso') ingresos += Math.abs(t.amount)
-      else if (g === 'gasto') gastos += Math.abs(t.amount)
-    }
-    return { ingresos, gastos, balance: ingresos - gastos }
-  }, [prevTxnsArr])
+    const r = calcKPIs(prevTxnsArr, tipos)
+    return { ingresos: r.ingresos, gastos: r.gastos, balance: r.neto }
+  }, [prevTxnsArr, tipos])
 
   // ── Gastos por categoría (donut) ─────────────────
   const gastosPorCat = useMemo<BarEntry[]>(() => {
@@ -388,7 +387,14 @@ export default function Analisis() {
                           <div style={{ width: 10, height: 10, borderRadius: '50%', background: PIE_COLORS[i % PIE_COLORS.length], flexShrink: 0 }} />
                           <CatIcon cat={label} size={16} />
                           <span style={{ flex: 1, fontSize: 12.5, fontWeight: 500, color: 'var(--fg)', textAlign: 'left' }}>{label}</span>
-                          <span className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--neg)' }}>{fmt(value)}</span>
+                          <div style={{ textAlign: 'right' }}>
+                            <div className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--neg)' }}>{fmt(value)}</div>
+                            {moneda !== 'BS' && tasas.bcv > 0 && (
+                              <div style={{ fontSize: 9.5, color: 'var(--fg-dim)', fontWeight: 500 }}>
+                                ≈ Bs {(value * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
+                              </div>
+                            )}
+                          </div>
                           {subs.length > 0 && (
                             <span style={{ fontSize: 10, color: 'var(--fg-mute)', marginLeft: 4 }}>{isOpen ? '▲' : '▼'}</span>
                           )}
@@ -434,7 +440,14 @@ export default function Analisis() {
                       >
                         <CatIcon cat={label} size={16} />
                         <span style={{ flex: 1, fontSize: 12.5, fontWeight: 500, color: 'var(--fg)', textAlign: 'left' }}>{label}</span>
-                        <span className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--pos)' }}>{fmt(value)}</span>
+                        <div style={{ textAlign: 'right' }}>
+                          <div className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--pos)' }}>{fmt(value)}</div>
+                          {moneda !== 'BS' && tasas.bcv > 0 && (
+                            <div style={{ fontSize: 9.5, color: 'var(--fg-dim)', fontWeight: 500 }}>
+                              ≈ Bs {(value * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
+                            </div>
+                          )}
+                        </div>
                         {catTxns.length > 0 && (
                           <span style={{ fontSize: 10, color: 'var(--fg-mute)', marginLeft: 4 }}>{isOpen ? '▲' : '▼'}</span>
                         )}
@@ -508,7 +521,14 @@ export default function Analisis() {
                           }}
                         >
                           <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: 'var(--fg)', textAlign: 'left' }}>{label}</span>
-                          <span className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--amber)' }}>{fmt(value)}</span>
+                          <div style={{ textAlign: 'right' }}>
+                            <div className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--amber)' }}>{fmt(value)}</div>
+                            {moneda !== 'BS' && tasas.bcv > 0 && (
+                              <div style={{ fontSize: 9.5, color: 'var(--fg-dim)', fontWeight: 500 }}>
+                                ≈ Bs {(value * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
+                              </div>
+                            )}
+                          </div>
                           {weekTxns.length > 0 && (
                             <span style={{ fontSize: 10, color: 'var(--fg-mute)', marginLeft: 4 }}>{isOpen ? '▲' : '▼'}</span>
                           )}
@@ -537,7 +557,7 @@ export default function Analisis() {
                                   </div>
                                 </div>
                                 <span className="num" style={{ fontSize: 12, fontWeight: 600, color: 'var(--neg)', whiteSpace: 'nowrap', marginLeft: 10 }}>
-                                  −{fmt(Math.abs(t.amount))}
+                                  {fmt(Math.abs(t.amount))}
                                 </span>
                               </div>
                             ))}

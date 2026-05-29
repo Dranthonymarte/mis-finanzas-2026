@@ -9,6 +9,7 @@ import { useConfig } from '../hooks/useConfig'
 import { useTasas } from '../hooks/useTasas'
 import { useAuthStore } from '../store/auth'
 import { supabase } from '../lib/supabase'
+import { haptic } from '../lib/haptic'
 import { mesIdToDbKey, dateToMesId } from '../lib/mes'
 
 // ── Offline queue ──────────────────────────────────
@@ -275,13 +276,16 @@ export default function NewTransaction() {
       if (isOffline) {
         queueOffline(mov as Record<string, unknown>)
         // Mostrar como guardado — se sincronizará cuando haya red
+        haptic('success')
         setTimeout(() => navigate(-1), 400)
         return
       }
       console.error('[NewTxn] insert error:', error.message)
+      haptic('error')
       setSaved(false)
       return
     }
+    haptic('success')
     // If marked recurrente, append to config.recurrentes JSONB
     if (recurrente) {
       const nuevos = [

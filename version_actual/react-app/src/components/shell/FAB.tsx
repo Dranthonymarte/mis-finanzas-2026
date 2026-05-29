@@ -12,6 +12,7 @@ import {
   SearchIcon, MicIcon, ScanIcon,
 } from '../icons/Icons'
 import { useAppStore } from '../../store/app'
+import { haptic } from '../../lib/haptic'
 
 const FAB_ACTIONS = [
   { id: 'search', label: 'Buscar',     Icon: SearchIcon, color: '#6a94c4' },
@@ -30,10 +31,11 @@ export default function FAB() {
     return () => { document.body.style.overflow = '' }
   }, [fabOpen])
 
-  function toggle() { setFabOpen(!fabOpen) }
+  function toggle() { haptic('light'); setFabOpen(!fabOpen) }
   function close()  { setFabOpen(false)    }
 
   function handleAction(id: string) {
+    haptic('light')
     close()
     if (id === 'txn')    navigate('/new-txn')
     if (id === 'search') navigate('/buscar')

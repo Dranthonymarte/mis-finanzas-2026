@@ -102,10 +102,10 @@ export default function Buscar() {
 
       {/* ── Top bar ── */}
       <div style={{
-        padding: '12px 12px 10px',
-        paddingTop: 'max(12px, env(safe-area-inset-top))',
-        paddingLeft: 'max(16px, calc(env(safe-area-inset-left, 0px) + 12px))',
-        paddingRight: 'max(16px, calc(env(safe-area-inset-right, 0px) + 16px))',
+        paddingTop: 'max(12px, env(safe-area-inset-top, 0px))',
+        paddingBottom: '10px',
+        paddingLeft: '16px',
+        paddingRight: '16px',
         background: 'var(--ink-1)',
         position: 'sticky', top: 0, zIndex: 10,
         borderBottom: '1px solid var(--line)',
@@ -150,20 +150,29 @@ export default function Buscar() {
             )}
           </div>
 
-          {/* Filter toggle — mismo tamaño/posición que iBtn del Dashboard */}
-          <button
-            onClick={() => setShowFilters(v => !v)}
-            aria-label="Filtros"
-            style={{
-              flexShrink: 0, width: 34, height: 34, borderRadius: 10,
-              background: activeFilterCount > 0 ? 'var(--amber)' : 'var(--ink-2)',
-              border: '1px solid var(--line)',
-              color: activeFilterCount > 0 ? 'var(--ink-0)' : 'var(--fg-dim)',
-              cursor: 'pointer', display: 'grid', placeItems: 'center',
-              position: 'relative', overflow: 'visible',
-            }}
-          >
-            <span style={{ fontSize: 16, lineHeight: 1 }}>⚙</span>
+          {/* Filter toggle — SVG icon evita clipping de ⚙ Unicode en Safari/PWA */}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <button
+              onClick={() => setShowFilters(v => !v)}
+              aria-label="Filtros"
+              style={{
+                width: 34, height: 34, borderRadius: 10,
+                background: activeFilterCount > 0 ? 'var(--amber)' : 'var(--ink-2)',
+                border: '1px solid var(--line)',
+                color: activeFilterCount > 0 ? 'var(--ink-0)' : 'var(--fg-dim)',
+                cursor: 'pointer', display: 'grid', placeItems: 'center',
+                overflow: 'hidden',
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                <line x1="2" y1="4"   x2="13" y2="4"/>
+                <line x1="2" y1="7.5" x2="13" y2="7.5"/>
+                <line x1="2" y1="11"  x2="13" y2="11"/>
+                <circle cx="5"    cy="4"   r="1.5" fill="currentColor" stroke="none"/>
+                <circle cx="10"   cy="7.5" r="1.5" fill="currentColor" stroke="none"/>
+                <circle cx="6.5"  cy="11"  r="1.5" fill="currentColor" stroke="none"/>
+              </svg>
+            </button>
             {activeFilterCount > 0 && (
               <span style={{
                 position: 'absolute', top: -5, right: -5,
@@ -175,7 +184,7 @@ export default function Buscar() {
                 {activeFilterCount}
               </span>
             )}
-          </button>
+          </div>
         </div>
 
         {/* ── Filter panel ── */}

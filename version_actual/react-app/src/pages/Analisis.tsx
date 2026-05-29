@@ -301,12 +301,8 @@ export default function Analisis() {
                   )}
                   <Delta cur={k.cur} prev={k.prev} />
                   {k.prev > 0 && (
-                    <div
-                      title="Comparado con el mes anterior"
-                      style={{ fontSize: 9, color: 'var(--fg-mute)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 2, cursor: 'default' }}
-                    >
-                      <span style={{ opacity: .55 }}>ℹ</span>
-                      <span>vs {prevLabel}</span>
+                    <div style={{ fontSize: 9, color: 'var(--fg-mute)', marginTop: 3 }}>
+                      vs {prevLabel}
                     </div>
                   )}
                 </div>
@@ -471,7 +467,7 @@ export default function Analisis() {
                                 </div>
                               </div>
                               <span className="num" style={{ fontSize: 12, fontWeight: 600, color: 'var(--pos)', whiteSpace: 'nowrap', marginLeft: 10 }}>
-                                +{fmt(Math.abs(t.amount))}
+                                {fmt(Math.abs(t.amount))}
                               </span>
                             </div>
                           ))}

@@ -421,10 +421,10 @@ export default function TxnDetail() {
               <DetailRow label="Fecha"          value={txn.fecha} />
               <DetailRow label="Hora"           value={fmtTime(txn.created_at)} />
               <DetailRow label="Registrado por" value={fmtAuthor(txn.author)} />
-              <DetailRow label="Cuenta"         value={acc?.name ?? '—'} last={!txn.method && txn.rate_bcv == null && !txn.notas} />
-              {txn.method && <DetailRow label="Método" value={txn.method} last={txn.rate_bcv == null && !txn.notas} />}
-              {txn.rate_bcv != null && <DetailRow label="Tasa BCV" value={`${txn.rate_bcv.toFixed(2)} Bs/$`} last={!txn.notas} />}
-              {txn.notas && <DetailRow label="Notas" value={txn.notas} last />}
+              <DetailRow label="Cuenta"         value={acc?.name ?? '—'} last={!txn.method && txn.rate_bcv == null} />
+              {txn.method && <DetailRow label="Método" value={txn.method} last={txn.rate_bcv == null} />}
+              {txn.rate_bcv != null && <DetailRow label="Tasa BCV" value={`${txn.rate_bcv.toFixed(2)} Bs/$`} />}
+              <DetailRow label="Notas" value={txn.notas || '—'} last />
             </div>
           </>
         )}

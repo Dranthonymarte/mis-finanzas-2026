@@ -11,7 +11,7 @@ import {
   BudgetIcon, PaletteIcon, LockIcon, BellIcon, GlobeIcon,
   LogoutIcon, SearchIcon, TransferIcon,
   UserIcon, TagIcon, MicIcon, UploadIcon,
-  TelegramIcon, CalendarIcon, ShoppingIcon, UsersIcon,
+  TelegramIcon, CalendarIcon, ShoppingIcon, UsersIcon, ScanIcon,
 } from '../components/icons/Icons'
 import { useAuthStore } from '../store/auth'
 import { supabase }     from '../lib/supabase'
@@ -244,6 +244,13 @@ export default function More() {
             label="Registro por voz"
             sub="Dicta un movimiento"
             onClick={() => navigate('/voz')}
+          />
+          <RowLink
+            icon={<IcoBg color="#2a241a"><ScanIcon /></IcoBg>}
+            iconBg="transparent"
+            label="Escanear recibo"
+            sub="Captura un movimiento por foto"
+            onClick={() => navigate('/escanear')}
           />
           <RowLink
             icon={<IcoBg color="#1a3428"><UploadIcon /></IcoBg>}

@@ -77,7 +77,21 @@ export default function Pareja() {
   }
 
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- loadMembers (sets state) re-runs on identity change; excluded from deps (recreated each render → would loop)
-  useEffect(() => { void loadMembers() }, [householdId, userId, userName])
+  useEffect(() => {
+    void loadMembers()
+    if (!householdId) return
+    // Realtime: la lista se actualiza al instante cuando alguien es invitado,
+    // revocado o reincorporado — sin recargar la página (mismo patrón que useAccounts).
+    const ch = supabase
+      .channel(`household_members:${householdId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'household_members', filter: `household_id=eq.${householdId}` },
+        () => { void loadMembers() },
+      )
+      .subscribe()
+    return () => { void supabase.removeChannel(ch) }
+  }, [householdId, userId, userName])
 
   async function handleRevoke(member: Member) {
     const memberKey = member.user_id ?? member.invite_email

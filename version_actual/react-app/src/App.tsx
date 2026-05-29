@@ -26,6 +26,8 @@ import { Routes, Route } from 'react-router-dom'
 import AppShell     from './components/shell/AppShell'
 import ErrorBoundary from './components/shell/ErrorBoundary'
 import SkeletonScreen from './components/shell/SkeletonScreen'
+import Toast         from './components/shell/Toast'
+import ConfirmDialog from './components/shell/ConfirmDialog'
 import { RequireAuth, RequireNoAuth } from './components/shell/AuthGuard'
 import { useAuth } from './hooks/useAuth'
 
@@ -138,6 +140,14 @@ export default function App() {
           </Route>
         </Routes>
       </Suspense>
+
+      {/* ── Overlays globales — montados UNA sola vez en el root ──────────
+          Viven en TODAS las rutas, incluidas las full-screen sin AppShell
+          (Recurrentes, Pareja, Metas, etc.). Antes vivían dentro de AppShell
+          → en esas rutas no se montaban y la confirmación/toast solo aparecía
+          al volver a Inicio. Ambos son fixed/portaleados a <body>. */}
+      <Toast />
+      <ConfirmDialog />
     </ErrorBoundary>
   )
 }

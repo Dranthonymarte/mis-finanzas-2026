@@ -6,8 +6,8 @@
 
 import { Outlet, useLocation } from 'react-router-dom'
 import TabBar from './TabBar'
-import Toast  from './Toast'
-import ConfirmDialog from './ConfirmDialog'
+// Toast + ConfirmDialog se montan en App.tsx (root), no aquí: deben vivir
+// también en las rutas full-screen que no usan AppShell.
 
 export default function AppShell() {
   const location = useLocation()
@@ -37,12 +37,6 @@ export default function AppShell() {
       >
         <Outlet />
       </div>
-
-      {/* ── Toast notifications ── */}
-      <Toast />
-
-      {/* ── Confirmaciones (eliminar / modificar) ── */}
-      <ConfirmDialog />
 
       {/* ── TabBar — fixed at bottom ── */}
       <div

@@ -13,6 +13,7 @@
 import { useState, useMemo } from 'react'
 import { type CSSProperties } from 'react'
 import AppHeader from '../components/shell/AppHeader'
+import EmptyState from '../components/ui/EmptyState'
 import Sheet     from '../components/ui/Sheet'
 import { PlusIcon, EditIcon, TrashIcon } from '../components/icons/Icons'
 import { supabase }      from '../lib/supabase'
@@ -450,9 +451,12 @@ export default function DineroFuera() {
         )}
 
         {!loading && rows.length === 0 && (
-          <div style={{ textAlign: 'center', color: 'var(--fg-mute)', padding: '32px 0', fontSize: 13 }}>
-            Sin registros. Toca <span style={{ color: 'var(--amber)', fontWeight: 700 }}>+</span> para agregar.
-          </div>
+          <EmptyState
+            icon="🤝"
+            title="Sin registros"
+            sub="Lleva el control de lo que te deben y lo que debes. Agrega tu primer registro para empezar."
+            action={{ label: 'Agregar registro', onClick: openCreate }}
+          />
         )}
 
         {/* ── Me deben ── */}

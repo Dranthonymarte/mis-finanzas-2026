@@ -5,6 +5,7 @@
 
 import { useState } from 'react'
 import AppHeader from '../components/shell/AppHeader'
+import EmptyState from '../components/ui/EmptyState'
 import { useConfig } from '../hooks/useConfig'
 import { useFormat } from '../hooks/useFormat'
 import { useAuthStore } from '../store/auth'
@@ -185,18 +186,11 @@ export default function Recurrentes() {
 
         {/* ── Empty state ── */}
         {items.length === 0 && !open && (
-          <div style={{
-            background: 'var(--ink-2)', border: '1px solid var(--line)',
-            borderRadius: 14, padding: 28,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center',
-          }}>
-            <span style={{ fontSize: 36, lineHeight: 1 }}>🔁</span>
-            <div style={{ fontSize: 13.5, fontWeight: 500 }}>Sin recurrentes</div>
-            <div style={{ fontSize: 12, color: 'var(--fg-mute)', lineHeight: 1.6 }}>
-              Agrega pagos o ingresos que se repiten periódicamente.<br />
-              Puedes activar recordatorios por Telegram al crearlos.
-            </div>
-          </div>
+          <EmptyState
+            icon="🔁"
+            title="Sin recurrentes"
+            sub="Agrega pagos o ingresos que se repiten periódicamente. Puedes activar recordatorios por Telegram al crearlos."
+          />
         )}
 
         {/* ── List ── */}

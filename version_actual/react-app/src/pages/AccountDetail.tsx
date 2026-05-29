@@ -10,6 +10,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import Sparkline from '../components/ui/Sparkline'
 import Pill     from '../components/ui/Pill'
 import CatIcon  from '../components/ui/CatIcon'
+import EmptyState from '../components/ui/EmptyState'
 import { ArrowLeftIcon, TransferIcon, EditIcon, TrashIcon, CheckIcon } from '../components/icons/Icons'
 import { txnGroup, type Transaction } from '../data/mock'
 import { useAccounts }     from '../hooks/useAccounts'
@@ -566,9 +567,13 @@ export default function AccountDetail() {
           </div>
 
           {Object.keys(groups).length === 0 ? (
-            <div style={{ padding: '28px 0', textAlign: 'center', color: 'var(--fg-mute)', fontSize: 13 }}>
-              Sin movimientos en esta cuenta
-            </div>
+            <EmptyState
+              icon={filter === 'all' ? '🧾' : '🔍'}
+              title={filter === 'all' ? 'Sin movimientos en esta cuenta' : 'Nada que mostrar'}
+              sub={filter === 'all'
+                ? 'Los ingresos y gastos de esta cuenta aparecerán aquí.'
+                : 'No hay movimientos que coincidan con este filtro.'}
+            />
           ) : (
             Object.entries(groups).map(([date, txns]) => (
               <div key={date} style={{ marginBottom: 14 }}>

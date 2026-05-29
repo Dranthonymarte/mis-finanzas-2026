@@ -16,6 +16,7 @@ import { useTransactions } from '../hooks/useTransactions'
 import { useConfig }       from '../hooks/useConfig'
 import { usePrefsStore }   from '../store/prefs'
 import { FilterIcon, LockIcon, SearchIcon } from '../components/icons/Icons'
+import EmptyState from '../components/ui/EmptyState'
 import { calcKPIs } from '../lib/finance'
 import { generateMesesByYear, mesLabel } from '../lib/mes'
 import { useTasas } from '../hooks/useTasas'
@@ -512,9 +513,14 @@ export default function Txn() {
         ))}
 
         {filtered.length === 0 && (
-          <div style={{ textAlign: 'center', color: 'var(--fg-mute)', marginTop: 48, fontSize: 13 }}>
-            Sin movimientos
-          </div>
+          <EmptyState
+            icon={filter === 'all' ? '💸' : '🔍'}
+            title={filter === 'all' ? 'Sin movimientos este mes' : 'Nada que mostrar'}
+            sub={filter === 'all'
+              ? 'Registra tu primer ingreso o gasto del mes para ver el detalle aquí.'
+              : 'No hay movimientos que coincidan con este filtro.'}
+            cta={filter === 'all' ? { label: 'Agregar movimiento', to: '/new-txn' } : undefined}
+          />
         )}
       </div>
 

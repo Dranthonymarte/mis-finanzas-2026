@@ -11,6 +11,7 @@ import { useFormat }    from '../hooks/useFormat'
 import { useAccounts }  from '../hooks/useAccounts'
 import { ArrowLeftIcon, SearchIcon } from '../components/icons/Icons'
 import CatIcon from '../components/ui/CatIcon'
+import EmptyState from '../components/ui/EmptyState'
 import { txnGroup } from '../data/mock'
 
 interface SearchRow {
@@ -237,14 +238,18 @@ export default function Buscar() {
           <div style={{ textAlign: 'center', color: 'var(--fg-mute)', padding: '32px 0', fontSize: 13 }}>Buscando…</div>
         )}
         {!loading && query.trim().length < 2 && !activeFilterCount && (
-          <div style={{ textAlign: 'center', color: 'var(--fg-mute)', padding: '32px 0', fontSize: 13 }}>
-            Escribe al menos 2 caracteres o aplica filtros
-          </div>
+          <EmptyState
+            icon="🔎"
+            title="Busca tus movimientos"
+            sub="Escribe al menos 2 caracteres o aplica filtros para empezar."
+          />
         )}
         {!loading && (query.trim().length >= 2 || activeFilterCount > 0) && results.length === 0 && (
-          <div style={{ textAlign: 'center', color: 'var(--fg-mute)', padding: '32px 0', fontSize: 13 }}>
-            Sin resultados
-          </div>
+          <EmptyState
+            icon="🔍"
+            title="Sin resultados"
+            sub="No encontramos movimientos para tu búsqueda. Prueba con otras palabras o ajusta los filtros."
+          />
         )}
         {results.length > 0 && (
           <>

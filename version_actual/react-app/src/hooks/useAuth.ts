@@ -83,6 +83,30 @@ async function resolveHouseholdId(userId: string): Promise<string> {
   }
 }
 
+/**
+ * Acepta cualquier invitación PENDIENTE dirigida al correo del usuario: enlaza
+ * la fila (user_id + invite_status='accepted') → pasa a ser miembro real del
+ * hogar que lo invitó. Cubre usuarios NUEVOS y EXISTENTES (el trigger
+ * handle_new_user_household solo provisiona el hogar PROPIO, nunca vincula
+ * invitaciones). Usa la policy hm_accept_own_invite, diseñada justo para esto.
+ * Best-effort: nunca lanza, nunca bloquea el auth. Devuelve true si vinculó algo.
+ */
+async function claimPendingInvites(userId: string, email: string | null): Promise<boolean> {
+  if (!email) return false
+  try {
+    const { data, error } = await supabase
+      .from('household_members')
+      .update({ user_id: userId, invite_status: 'accepted' })
+      .eq('invite_email', email.toLowerCase())
+      .eq('invite_status', 'pending')
+      .select('household_id')
+    if (error) return false
+    return (data?.length ?? 0) > 0
+  } catch {
+    return false
+  }
+}
+
 export function useAuth() {
   const setSession   = useAuthStore(s => s.setSession)
   const clearSession = useAuthStore(s => s.clearSession)
@@ -101,6 +125,44 @@ export function useAuth() {
       })
     }
 
+    // ── Kickback en tiempo real (capa segura de revocación) ──
+    // Vigila la fila de membresía del PROPIO usuario. Si su acceso al hogar
+    // compartido es revocado (o reincorporado), re-resuelve su householdId al
+    // instante: un revocado deja de ver datos del hogar y pasa a los suyos sin
+    // recargar; un reinvitado-aceptado vuelve al hogar. Reusa resolveAndSet
+    // (guardado, no bloqueante, nunca lanza) → cero riesgo de regresión 9b9c0a8.
+    let kickbackUid: string | null = null
+    let kickbackCh: ReturnType<typeof supabase.channel> | null = null
+    const teardownKickback = () => {
+      if (kickbackCh) { void supabase.removeChannel(kickbackCh); kickbackCh = null }
+      kickbackUid = null
+    }
+    const subscribeKickback = (uid: string) => {
+      if (kickbackUid === uid) return            // ya suscrito a este uid
+      teardownKickback()
+      kickbackUid = uid
+      kickbackCh = supabase
+        .channel(`hm:self:${uid}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'household_members', filter: `user_id=eq.${uid}` },
+          () => { if (mounted) resolveAndSet(uid) },
+        )
+        .subscribe()
+    }
+
+    // Acepta invitaciones pendientes UNA vez por sesión (idempotente; si no hay
+    // ninguna, el UPDATE matchea 0 filas). Al vincular, re-resuelve el household
+    // para que el invitado vea de inmediato los datos del hogar compartido.
+    let invitesClaimed = false
+    const claimInvitesOnce = (uid: string, email: string | null) => {
+      if (invitesClaimed || !email) return
+      invitesClaimed = true
+      claimPendingInvites(uid, email).then(claimed => {
+        if (mounted && claimed) resolveAndSet(uid)
+      })
+    }
+
     // ── Cache-first: render the app INSTANTLY from the persisted store ──
     // userId/householdId are persisted in localStorage. If we have them,
     // mark the session ready immediately (<50ms) so the spinner never
@@ -115,6 +177,7 @@ export function useAuth() {
       })
       cached.setAuthReady()
       resolveAndSet(cached.userId)
+      subscribeKickback(cached.userId)
     }
 
     // Catastrophic-only fallback (3.5s). getSession() is a LOCAL read and
@@ -141,6 +204,8 @@ export function useAuth() {
         setSession(sessionFor(uid, email ?? null, session.user.user_metadata))
         getStore().setAuthReady()
         resolveAndSet(uid)
+        subscribeKickback(uid)
+        claimInvitesOnce(uid, email ?? null)
       })
       .catch(() => {
         // Never hang the spinner, even on storage errors
@@ -161,6 +226,7 @@ export function useAuth() {
         if (event === 'SIGNED_OUT') {
           clearSession()
           getStore().setAuthReady()
+          teardownKickback()
           return
         }
 
@@ -172,11 +238,13 @@ export function useAuth() {
           ))
           getStore().setAuthReady()
           resolveAndSet(session.user.id)
+          subscribeKickback(session.user.id)
+          claimInvitesOnce(session.user.id, session.user.email ?? null)
         }
         // null session on a non-SIGNED_OUT event → ignore (transient)
       }
     )
 
-    return () => { mounted = false; clearTimeout(readyTimer); subscription.unsubscribe() }
+    return () => { mounted = false; clearTimeout(readyTimer); subscription.unsubscribe(); teardownKickback() }
   }, [setSession, clearSession])
 }

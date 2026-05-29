@@ -290,6 +290,108 @@ export default function Pareja() {
     return                            <Pill tone="amber" size="xs">Pendiente</Pill>
   }
 
+  // Miembros activos (aceptados/pendientes) vs revocados. Los revocados ya no
+  // pertenecen al hogar → van a una sección discreta "Anteriores" (patrón
+  // Notion/Linear: el historial no ensucia la lista de miembros activos).
+  const activeMembers  = members.filter(m => m.invite_status !== 'revoked')
+  const revokedMembers = members.filter(m => m.invite_status === 'revoked')
+
+  // Fila de miembro — fuente única usada por ambas listas (activos y anteriores).
+  const renderMemberRow = (m: Member, i: number) => {
+    const memberKey     = m.user_id ?? m.invite_email ?? String(i)
+    const isOwner       = m.role === 'owner'
+    const isRevocable   = !isOwner && m.invite_status === 'accepted'
+    const isReinvitable = !isOwner && (m.invite_status === 'revoked' || m.invite_status === 'pending')
+    const isRevokingThis   = revoking   === memberKey
+    const isReinvitingThis = reinviting === memberKey
+    const emailOverride    = reinviteEmail[memberKey] ?? ''
+    const reinviteLabel    = m.invite_status === 'revoked' ? 'Volver a invitar' : 'Re-invitar'
+
+    return (
+      <div
+        key={memberKey}
+        style={{
+          display: 'flex', alignItems: 'flex-start', gap: 12,
+          background: 'var(--ink-1)', borderRadius: 12, padding: '12px 14px',
+        }}
+      >
+        {/* Avatar */}
+        <div style={{
+          width: 44, height: 44, borderRadius: 12, background: m.color, flexShrink: 0,
+          display: 'grid', placeItems: 'center',
+          fontSize: 18, fontWeight: 700, color: 'var(--ink-0)',
+          opacity: m.invite_status === 'pending' || m.invite_status === 'revoked' ? 0.55 : 1,
+        }}>
+          {m.inicial}
+        </div>
+
+        {/* Info + actions */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{m.display}</span>
+            <Pill tone="pos" size="xs">{rolLabel(m.role)}</Pill>
+            {statusBadge(m.invite_status)}
+          </div>
+
+          {m.invite_email && (
+            <div style={{ fontSize: 11, color: 'var(--fg-mute)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {m.invite_email}
+            </div>
+          )}
+
+          {/* Revocar — solo partner aceptado */}
+          {isRevocable && (
+            <button
+              onClick={() => void handleRevoke(m)}
+              disabled={isRevokingThis}
+              style={{
+                alignSelf: 'flex-start', marginTop: 2,
+                padding: '5px 10px', borderRadius: 8, border: '1px solid var(--neg)',
+                background: 'transparent', color: 'var(--neg)',
+                fontSize: 11.5, fontWeight: 600, cursor: isRevokingThis ? 'default' : 'pointer',
+                opacity: isRevokingThis ? 0.6 : 1, transition: 'opacity .15s',
+              }}
+            >
+              {isRevokingThis ? 'Revocando…' : 'Revocar acceso'}
+            </button>
+          )}
+
+          {/* Re-invitar — partner revocado o pendiente */}
+          {isReinvitable && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 2 }}>
+              <input
+                type="email"
+                value={emailOverride}
+                onChange={e => setReinviteEmail(prev => ({ ...prev, [memberKey]: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') void handleReinvite(m) }}
+                placeholder={m.invite_email ?? 'correo@ejemplo.com'}
+                disabled={isReinvitingThis}
+                style={{
+                  background: 'var(--ink-0)', border: '1px solid var(--line)',
+                  borderRadius: 8, padding: '7px 10px', fontSize: 12,
+                  color: 'var(--fg)', outline: 'none', width: '100%',
+                }}
+              />
+              <button
+                onClick={() => void handleReinvite(m)}
+                disabled={isReinvitingThis}
+                style={{
+                  alignSelf: 'flex-start',
+                  padding: '5px 10px', borderRadius: 8, border: 'none',
+                  background: 'var(--amber)', color: 'var(--ink-0)',
+                  fontSize: 11.5, fontWeight: 600, cursor: isReinvitingThis ? 'default' : 'pointer',
+                  opacity: isReinvitingThis ? 0.6 : 1, transition: 'opacity .15s',
+                }}
+              >
+                {isReinvitingThis ? 'Enviando…' : reinviteLabel}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       <AppHeader title="Finanzas en pareja" back />
@@ -304,103 +406,11 @@ export default function Pareja() {
 
           {loading ? (
             <div style={{ textAlign: 'center', color: 'var(--fg-mute)', fontSize: 12, padding: '8px 0' }}>Cargando…</div>
-          ) : members.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--fg-mute)', fontSize: 12, padding: '8px 0' }}>Sin miembros registrados</div>
+          ) : activeMembers.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--fg-mute)', fontSize: 12, padding: '8px 0' }}>Sin miembros activos</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 14 }}>
-              {members.map((m, i) => {
-                const memberKey     = m.user_id ?? m.invite_email ?? String(i)
-                const isOwner       = m.role === 'owner'
-                const isRevocable   = !isOwner && m.invite_status === 'accepted'
-                const isReinvitable = !isOwner && (m.invite_status === 'revoked' || m.invite_status === 'pending')
-                const isRevokingThis   = revoking   === memberKey
-                const isReinvitingThis = reinviting === memberKey
-                const emailOverride    = reinviteEmail[memberKey] ?? ''
-
-                return (
-                  <div
-                    key={memberKey}
-                    style={{
-                      display: 'flex', alignItems: 'flex-start', gap: 12,
-                      background: 'var(--ink-1)', borderRadius: 12, padding: '12px 14px',
-                    }}
-                  >
-                    {/* Avatar */}
-                    <div style={{
-                      width: 44, height: 44, borderRadius: 12, background: m.color, flexShrink: 0,
-                      display: 'grid', placeItems: 'center',
-                      fontSize: 18, fontWeight: 700, color: 'var(--ink-0)',
-                      opacity: m.invite_status === 'pending' || m.invite_status === 'revoked' ? 0.55 : 1,
-                    }}>
-                      {m.inicial}
-                    </div>
-
-                    {/* Info + actions */}
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>{m.display}</span>
-                        <Pill tone="pos" size="xs">{rolLabel(m.role)}</Pill>
-                        {statusBadge(m.invite_status)}
-                      </div>
-
-                      {m.invite_email && (
-                        <div style={{ fontSize: 11, color: 'var(--fg-mute)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {m.invite_email}
-                        </div>
-                      )}
-
-                      {/* Revocar — solo partner aceptado */}
-                      {isRevocable && (
-                        <button
-                          onClick={() => void handleRevoke(m)}
-                          disabled={isRevokingThis}
-                          style={{
-                            alignSelf: 'flex-start', marginTop: 2,
-                            padding: '5px 10px', borderRadius: 8, border: '1px solid var(--neg)',
-                            background: 'transparent', color: 'var(--neg)',
-                            fontSize: 11.5, fontWeight: 600, cursor: isRevokingThis ? 'default' : 'pointer',
-                            opacity: isRevokingThis ? 0.6 : 1, transition: 'opacity .15s',
-                          }}
-                        >
-                          {isRevokingThis ? 'Revocando…' : 'Revocar acceso'}
-                        </button>
-                      )}
-
-                      {/* Re-invitar — partner revocado o pendiente */}
-                      {isReinvitable && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 2 }}>
-                          <input
-                            type="email"
-                            value={emailOverride}
-                            onChange={e => setReinviteEmail(prev => ({ ...prev, [memberKey]: e.target.value }))}
-                            onKeyDown={e => { if (e.key === 'Enter') void handleReinvite(m) }}
-                            placeholder={m.invite_email ?? 'correo@ejemplo.com'}
-                            disabled={isReinvitingThis}
-                            style={{
-                              background: 'var(--ink-0)', border: '1px solid var(--line)',
-                              borderRadius: 8, padding: '7px 10px', fontSize: 12,
-                              color: 'var(--fg)', outline: 'none', width: '100%',
-                            }}
-                          />
-                          <button
-                            onClick={() => void handleReinvite(m)}
-                            disabled={isReinvitingThis}
-                            style={{
-                              alignSelf: 'flex-start',
-                              padding: '5px 10px', borderRadius: 8, border: 'none',
-                              background: 'var(--amber)', color: 'var(--ink-0)',
-                              fontSize: 11.5, fontWeight: 600, cursor: isReinvitingThis ? 'default' : 'pointer',
-                              opacity: isReinvitingThis ? 0.6 : 1, transition: 'opacity .15s',
-                            }}
-                          >
-                            {isReinvitingThis ? 'Enviando…' : 'Re-invitar'}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
+              {activeMembers.map(renderMemberRow)}
             </div>
           )}
 
@@ -408,6 +418,21 @@ export default function Pareja() {
             Household activo · datos compartidos
           </div>
         </div>
+
+        {/* ── Anteriores (revocados) ── */}
+        {revokedMembers.length > 0 && (
+          <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 }}>
+            <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginBottom: 14, letterSpacing: '.1em', textTransform: 'uppercase' }}>
+              Anteriores
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {revokedMembers.map(renderMemberRow)}
+            </div>
+            <div style={{ borderTop: '1px solid var(--line)', marginTop: 14, paddingTop: 10, fontSize: 11.5, color: 'var(--fg-mute)', textAlign: 'center' }}>
+              Sin acceso al hogar · puedes volver a invitarlos
+            </div>
+          </div>
+        )}
 
         {/* ── Invite ── */}
         <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 }}>

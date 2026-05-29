@@ -2,7 +2,7 @@
 // confirm store — diálogo de confirmación global (patrón top-3)
 // Uso imperativo en cualquier handler:
 //   if (!(await confirmAction({ title, message, danger: true }))) return
-// Renderizado único por <ConfirmDialog /> en AppShell.
+// Renderizado único por <ConfirmDialog /> en el root de App (todas las rutas).
 // ═══════════════════════════════════════════════════
 
 import { create } from 'zustand'

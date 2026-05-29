@@ -12,7 +12,16 @@ declare const self: ServiceWorkerGlobalScope
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
-// ── Claim clients immediately so SW activates without reload ──
+// ── Activate the new SW IMMEDIATELY (no need to close every tab) ──
+// injectManifest mode does NOT auto-inject skipWaiting (GenerateSW does).
+// Without it the new SW stays "waiting" while the PWA is open, so the user
+// keeps running the STALE bundle — that's why a deployed fix (e.g. moving
+// ConfirmDialog to the App root) never reached the user until all tabs closed.
+// skipWaiting + clients.claim + registerType:'autoUpdate' → instant takeover
+// then a single auto-reload to the fresh bundle.
+self.addEventListener('install', () => {
+  void self.skipWaiting()
+})
 self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim())
 })

@@ -85,7 +85,27 @@ export default function Calendar() {
     }
   }, [userId])
 
-  useEffect(() => { void checkStatus() }, [checkStatus])
+  useEffect(() => {
+    // ── OAuth popup callback: signal parent window then close ──
+    // When Google redirects back to /calendar inside a popup, close it
+    // and let the parent re-check the connection status.
+    if (window.opener) {
+      try { window.opener.postMessage({ type: 'mf-oauth-done' }, window.location.origin) } catch { /* noop */ }
+      window.close()
+      return
+    }
+
+    // ── Parent window: listen for popup completion signal ──
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin === window.location.origin && (e.data as { type?: string })?.type === 'mf-oauth-done') {
+        void checkStatus()
+      }
+    }
+    window.addEventListener('message', onMsg)
+
+    void checkStatus()
+    return () => { window.removeEventListener('message', onMsg) }
+  }, [checkStatus])
 
   // ── Sync ──
   async function handleSync() {
@@ -133,9 +153,11 @@ export default function Calendar() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { addToast('Sesión expirada', 'error'); return }
 
-      // Redirect to OAuth flow — google-oauth EF handles the redirect URI
+      // Open OAuth in popup — on callback the popup sends postMessage + closes itself
+      // Fallback to same-window redirect if popup is blocked (e.g., strict PWA)
       const oauthUrl = `${GOOGLE_OAUTH_URL}?user_id=${session.user.id}&redirect=${encodeURIComponent(window.location.origin + '/calendar')}`
-      window.location.href = oauthUrl
+      const popup = window.open(oauthUrl, 'mf-google-oauth', 'width=520,height=660,popup=1')
+      if (!popup) window.location.href = oauthUrl   // fallback
     } catch {
       addToast('Error al iniciar conexión con Google', 'error')
     }

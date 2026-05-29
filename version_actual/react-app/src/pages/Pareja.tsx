@@ -44,6 +44,15 @@ export default function Pareja() {
   const [revoking,      setRevoking]      = useState<string | null>(null)  // user_id/email being revoked
   const [reinviting,    setReinviting]    = useState<string | null>(null)  // email being re-invited
   const [reinviteEmail, setReinviteEmail] = useState<Record<string, string>>({}) // overrides per member key
+  const [leaving,       setLeaving]       = useState(false)                // invitado saliendo del hogar
+  const [historial,     setHistorial]     = useState<{ household_id: string; invited_at: string | null }[]>([]) // hogares ajenos donde ya no estás
+
+  // ── Rol del usuario en su hogar activo ────────────────────────────
+  // Por convención, household.id == uid del propietario (RLS hm_insert_own:
+  // household_id = auth.uid()). Por eso householdId === userId ⟺ eres dueño.
+  // Un invitado tiene householdId = uid del dueño (≠ el suyo). Señal instantánea
+  // desde el auth store: sin flash, sin round-trip a DB.
+  const amIOwner = !householdId || householdId === userId
 
   async function loadMembers() {
     if (!householdId) { setLoading(false); return }
@@ -99,6 +108,26 @@ export default function Pareja() {
     return () => { void supabase.removeChannel(ch) }
   }, [householdId, userId, userName])
 
+  // Historial del invitado: hogares AJENOS donde fue parte y ya no (revoked).
+  // RLS members_self_view permite leer las filas propias (user_id = auth.uid()).
+  // No podemos resolver el nombre del dueño de un hogar al que ya no pertenecemos
+  // (RLS lo impide) → se muestra como "Hogar anterior · fecha".
+  useEffect(() => {
+    if (!userId) return
+    let cancel = false
+    void (async () => {
+      const { data } = await supabase
+        .from('household_members')
+        .select('household_id, invited_at')
+        .eq('user_id', userId)
+        .eq('invite_status', 'revoked')
+      if (cancel || !data) return
+      const rows = data as { household_id: string; invited_at: string | null }[]
+      setHistorial(rows.filter(h => h.household_id !== householdId)) // excluir hogar actual
+    })()
+    return () => { cancel = true }
+  }, [userId, householdId])
+
   async function handleRevoke(member: Member) {
     const memberKey = member.user_id ?? member.invite_email
     if (!householdId || !memberKey) return
@@ -135,6 +164,46 @@ export default function Pareja() {
       addToast('Error inesperado al revocar', 'error')
     } finally {
       setRevoking(null)
+    }
+  }
+
+  // Salida voluntaria del invitado (NO es auto-revocar: el invitado "se sale").
+  // Permitido por la policy members_self_accept (USING user_id=auth.uid() AND
+  // status IS DISTINCT FROM 'revoked'; WITH CHECK user_id=auth.uid()).
+  async function handleLeave() {
+    if (!householdId || !userId) return
+    const ownerMember = members.find(m => m.role === 'owner')
+    const ownerName   = ownerMember?.display ?? 'esta persona'
+
+    const confirmed = await confirmAction({
+      title:        'Dejar de ser parte del hogar',
+      message:      `Saldrás del hogar de ${ownerName}. Dejarás de ver y registrar las cuentas, movimientos y datos compartidos del hogar. Tu propia cuenta y tus datos personales se conservan. Para volver a entrar, ${ownerName} tendrá que invitarte de nuevo.`,
+      confirmLabel: 'Dejar de ser parte',
+      cancelLabel:  'Quedarme',
+      danger:       true,
+    })
+    if (!confirmed) return
+
+    setLeaving(true)
+    try {
+      const { error } = await supabase
+        .from('household_members')
+        .update({ invite_status: 'revoked' })
+        .eq('household_id', householdId)
+        .eq('user_id', userId)
+
+      if (error) {
+        console.error('[Pareja] leave:', error)
+        addToast('No se pudo completar la salida del hogar', 'error')
+      } else {
+        addToast('Dejaste de ser parte del hogar', 'info')
+        void loadMembers()
+      }
+    } catch (err) {
+      console.error('[Pareja] handleLeave error:', err)
+      addToast('Error inesperado al salir del hogar', 'error')
+    } finally {
+      setLeaving(false)
     }
   }
 
@@ -316,8 +385,12 @@ export default function Pareja() {
   const renderMemberRow = (m: Member, i: number) => {
     const memberKey     = m.user_id ?? m.invite_email ?? String(i)
     const isOwner       = m.role === 'owner'
-    const isRevocable   = !isOwner && m.invite_status === 'accepted'
-    const isReinvitable = !isOwner && (m.invite_status === 'revoked' || m.invite_status === 'pending')
+    const isSelf        = userId != null && m.user_id === userId
+    // Acciones del DUEÑO sobre los invitados de su hogar:
+    const canRevoke     = amIOwner && !isOwner && m.invite_status === 'accepted'
+    const canReinvite   = amIOwner && !isOwner && (m.invite_status === 'revoked' || m.invite_status === 'pending')
+    // Acción del INVITADO sobre sí mismo (salir voluntariamente del hogar):
+    const canLeave      = !amIOwner && isSelf && m.invite_status === 'accepted'
     const isRevokingThis   = revoking   === memberKey
     const isReinvitingThis = reinviting === memberKey
     const emailOverride    = reinviteEmail[memberKey] ?? ''
@@ -355,8 +428,8 @@ export default function Pareja() {
             </div>
           )}
 
-          {/* Revocar — solo partner aceptado */}
-          {isRevocable && (
+          {/* Revocar — el DUEÑO quita el acceso a un invitado aceptado */}
+          {canRevoke && (
             <button
               onClick={() => void handleRevoke(m)}
               disabled={isRevokingThis}
@@ -372,8 +445,25 @@ export default function Pareja() {
             </button>
           )}
 
-          {/* Re-invitar — partner revocado o pendiente */}
-          {isReinvitable && (
+          {/* Dejar de ser parte — el INVITADO se sale del hogar por su cuenta */}
+          {canLeave && (
+            <button
+              onClick={() => void handleLeave()}
+              disabled={leaving}
+              style={{
+                alignSelf: 'flex-start', marginTop: 2,
+                padding: '5px 10px', borderRadius: 8, border: '1px solid var(--neg)',
+                background: 'transparent', color: 'var(--neg)',
+                fontSize: 11.5, fontWeight: 600, cursor: leaving ? 'default' : 'pointer',
+                opacity: leaving ? 0.6 : 1, transition: 'opacity .15s',
+              }}
+            >
+              {leaving ? 'Saliendo…' : 'Dejar de ser parte'}
+            </button>
+          )}
+
+          {/* Re-invitar — partner revocado o pendiente (solo dueño) */}
+          {canReinvite && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 2 }}>
               <input
                 type="email"
@@ -417,7 +507,7 @@ export default function Pareja() {
         {/* ── Members ── */}
         <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 }}>
           <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginBottom: 14, letterSpacing: '.1em', textTransform: 'uppercase' }}>
-            Tu hogar
+            {amIOwner ? 'Tu hogar' : 'Tu rol en este hogar'}
           </div>
 
           {loading ? (
@@ -430,27 +520,74 @@ export default function Pareja() {
             </div>
           )}
 
-          <div style={{ borderTop: '1px solid var(--line)', paddingTop: 10, fontSize: 11.5, color: 'var(--fg-mute)', textAlign: 'center' }}>
-            Household activo · datos compartidos
-          </div>
+          {amIOwner ? (
+            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 10, fontSize: 11.5, color: 'var(--fg-mute)', textAlign: 'center' }}>
+              Household activo · datos compartidos
+            </div>
+          ) : (
+            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 10, fontSize: 11.5, color: 'var(--fg-mute)', lineHeight: 1.5 }}>
+              Eres parte del hogar de alguien más como invitado/a. Compartes las cuentas,
+              movimientos y datos financieros del hogar. Si dejas de ser parte conservas tu
+              propia cuenta, pero dejarás de ver esta información hasta que te vuelvan a invitar.
+            </div>
+          )}
         </div>
 
-        {/* ── Anteriores (revocados) ── */}
-        {revokedMembers.length > 0 && (
+        {/* ── Anteriores — DUEÑO: personas que dejaron su hogar (revocadas) ── */}
+        {amIOwner && revokedMembers.length > 0 && (
           <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 }}>
             <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginBottom: 14, letterSpacing: '.1em', textTransform: 'uppercase' }}>
-              Anteriores
+              Personas que dejaron tu hogar
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {revokedMembers.map(renderMemberRow)}
             </div>
             <div style={{ borderTop: '1px solid var(--line)', marginTop: 14, paddingTop: 10, fontSize: 11.5, color: 'var(--fg-mute)', textAlign: 'center' }}>
-              Sin acceso al hogar · puedes volver a invitarlos
+              Ya no tienen acceso al hogar · puedes volver a invitarlas
             </div>
           </div>
         )}
 
-        {/* ── Invite ── */}
+        {/* ── Anteriores — INVITADO: hogares donde fue parte y ya no ── */}
+        {!amIOwner && historial.length > 0 && (
+          <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 }}>
+            <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginBottom: 14, letterSpacing: '.1em', textTransform: 'uppercase' }}>
+              Hogares donde fuiste parte
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {historial.map(h => (
+                <div
+                  key={h.household_id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    background: 'var(--ink-1)', borderRadius: 12, padding: '12px 14px',
+                  }}
+                >
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 12, background: 'var(--ink-2)', flexShrink: 0,
+                    display: 'grid', placeItems: 'center', fontSize: 18, opacity: 0.55,
+                  }}>
+                    🏠
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>Hogar anterior</div>
+                    <div style={{ fontSize: 11, color: 'var(--fg-mute)' }}>
+                      {h.invited_at
+                        ? `Fuiste invitado/a el ${new Date(h.invited_at).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                        : 'Ya no tienes acceso'}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ borderTop: '1px solid var(--line)', marginTop: 14, paddingTop: 10, fontSize: 11.5, color: 'var(--fg-mute)', textAlign: 'center' }}>
+              Ya no tienes acceso a estos hogares · te tendrían que invitar de nuevo
+            </div>
+          </div>
+        )}
+
+        {/* ── Invite (solo el dueño del hogar puede invitar) ── */}
+        {amIOwner && (
         <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 }}>
           <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 4 }}>Invitar pareja</div>
           <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginBottom: 10 }}>
@@ -487,11 +624,13 @@ export default function Pareja() {
             </button>
           </div>
         </div>
+        )}
 
         {/* ── Info ── */}
         <div style={{ padding: '0 4px', fontSize: 11.5, color: 'var(--fg-mute)', lineHeight: 1.5 }}>
-          El invite queda pendiente hasta que tu pareja abra el enlace y cree su cuenta.
-          Los datos del hogar se comparten automáticamente al aceptar.
+          {amIOwner
+            ? 'El invite queda pendiente hasta que tu pareja abra el enlace y cree su cuenta. Los datos del hogar se comparten automáticamente al aceptar.'
+            : 'Mientras seas parte de este hogar, lo que registres se comparte con sus miembros. Si dejas de ser parte, esos datos permanecen en el hogar pero tú dejas de verlos.'}
         </div>
 
       </div>

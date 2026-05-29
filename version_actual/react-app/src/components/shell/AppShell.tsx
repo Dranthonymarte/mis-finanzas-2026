@@ -7,6 +7,7 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import TabBar from './TabBar'
 import Toast  from './Toast'
+import ConfirmDialog from './ConfirmDialog'
 
 export default function AppShell() {
   const location = useLocation()
@@ -39,6 +40,9 @@ export default function AppShell() {
 
       {/* ── Toast notifications ── */}
       <Toast />
+
+      {/* ── Confirmaciones (eliminar / modificar) ── */}
+      <ConfirmDialog />
 
       {/* ── TabBar — fixed at bottom ── */}
       <div

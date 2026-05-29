@@ -11,6 +11,7 @@ import { useAuthStore } from '../store/auth'
 import { usePrefsStore } from '../store/prefs'
 import { useTasas } from '../hooks/useTasas'
 import { supabase } from '../lib/supabase'
+import { confirmAction } from '../store/confirm'
 
 interface RecurrenteItem {
   id:               string
@@ -127,6 +128,16 @@ export default function Recurrentes() {
   async function handleSave() {
     const montoNum = parseFloat(monto)
     if (!desc.trim() || !montoNum || montoNum <= 0) return
+
+    if (editId) {
+      if (!(await confirmAction({
+        title: 'Guardar cambios',
+        message: `¿Confirmas los cambios en "${desc.trim()}"?`,
+        confirmLabel: 'Guardar',
+        danger: false,
+      }))) return
+    }
+
     setSaving(true)
 
     const newItem: RecurrenteItem = {
@@ -154,6 +165,13 @@ export default function Recurrentes() {
   }
 
   async function handleDelete(id: string) {
+    const item = items.find(r => r.id === id)
+    if (!(await confirmAction({
+      title: 'Eliminar recurrente',
+      message: item ? `¿Eliminar "${item.descripcion}"? Esta acción no se puede deshacer.` : '¿Seguro? Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    }))) return
     await updateConfig('recurrentes', items.filter(r => r.id !== id))
   }
 

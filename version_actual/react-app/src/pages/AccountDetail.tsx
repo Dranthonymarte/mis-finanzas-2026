@@ -19,6 +19,7 @@ import { usePrefsStore }   from '../store/prefs'
 import { useTasas }        from '../hooks/useTasas'
 import { useAuthStore }    from '../store/auth'
 import { supabase }        from '../lib/supabase'
+import { confirmAction }   from '../store/confirm'
 
 type TxnFilter   = 'all' | 'ingresos' | 'gastos'
 type Currency    = 'USD' | 'BS'
@@ -102,7 +103,6 @@ export default function AccountDetail() {
   const mesActivo = usePrefsStore(s => s.mesActivo)
 
   const [filter,         setFilter]         = useState<TxnFilter>('all')
-  const [confirmDelete,  setConfirmDelete]  = useState(false)
   const [movSum,         setMovSum]         = useState<number | null>(null)
   const [editingBalance, setEditingBalance] = useState(false)
   const [newBalance,     setNewBalance]     = useState('')
@@ -224,6 +224,12 @@ export default function AccountDetail() {
 
   async function handleDeleteAccount() {
     if (!id) return
+    if (!(await confirmAction({
+      title: `Eliminar "${acc?.name ?? 'cuenta'}"`,
+      message: 'Se archivará la cuenta. Los movimientos existentes no se perderán.',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    }))) return
     await supabase.from('cuentas').update({ activa: false }).eq('id', id)
     navigate(-1)
   }
@@ -616,53 +622,18 @@ export default function AccountDetail() {
 
         {/* ── Danger zone ── */}
         <div style={{ padding: '12px 16px', paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
-          {!confirmDelete ? (
-            <button
-              onClick={() => setConfirmDelete(true)}
-              style={{
-                width: '100%', padding: '13px', borderRadius: 14,
-                background: 'transparent', border: '1px solid var(--line)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                color: 'var(--neg)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
-              }}
-            >
-              <TrashIcon />
-              Eliminar cuenta
-            </button>
-          ) : (
-            <div style={{
-              background: 'rgba(214,106,90,.08)', border: '1px solid rgba(214,106,90,.3)',
-              borderRadius: 14, padding: '16px',
-            }}>
-              <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--neg)', textAlign: 'center', marginBottom: 6 }}>
-                ¿Eliminar "{acc.name}"?
-              </div>
-              <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', textAlign: 'center', marginBottom: 14, lineHeight: 1.5 }}>
-                Se archivará la cuenta. Los movimientos existentes no se perderán.
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  style={{
-                    padding: '11px', borderRadius: 12, fontSize: 13.5, fontWeight: 600,
-                    background: 'var(--ink-2)', border: '1px solid var(--line)',
-                    color: 'var(--fg-dim)', cursor: 'pointer',
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => void handleDeleteAccount()}
-                  style={{
-                    padding: '11px', borderRadius: 12, fontSize: 13.5, fontWeight: 700,
-                    background: 'var(--neg)', border: 'none', color: '#fff', cursor: 'pointer',
-                  }}
-                >
-                  Eliminar
-                </button>
-              </div>
-            </div>
-          )}
+          <button
+            onClick={() => void handleDeleteAccount()}
+            style={{
+              width: '100%', padding: '13px', borderRadius: 14,
+              background: 'transparent', border: '1px solid var(--line)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              color: 'var(--neg)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            <TrashIcon />
+            Eliminar cuenta
+          </button>
         </div>
 
       </div>

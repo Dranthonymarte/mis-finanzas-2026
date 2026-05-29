@@ -831,11 +831,15 @@ export default function NewTransaction() {
                 Confirmar movimiento
               </div>
               <div className="num" style={{ fontSize: 40, fontWeight: 700, color: meta.color, lineHeight: 1 }}>
-                {meta.sign || '$'}{amountUSD}
+                ${amountUSD}
               </div>
               <div style={{ fontSize: 14, fontWeight: 500, marginTop: 8 }}>{desc || cat || tipo}</div>
               <div style={{ fontSize: 12, color: 'var(--fg-mute)', marginTop: 4 }}>
-                {tipo} · {cat}{subcat ? ` · ${subcat}` : ''} · {fecha}
+                {tipo} · {cat}{subcat ? ` · ${subcat}` : ''}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--fg-mute)', marginTop: 4 }}>
+                {new Date(fecha + 'T12:00:00').toLocaleDateString('es-VE', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                {' · '}BCV {rateBCV.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs/$
               </div>
               {recurrente && (
                 <div style={{ fontSize: 11, color: 'var(--amber)', marginTop: 6 }}>

@@ -9,6 +9,7 @@ import { useConfig } from '../hooks/useConfig'
 import { supabase }     from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
 import ConfirmSheet from '../components/ui/ConfirmSheet'
+import { confirmAction } from '../store/confirm'
 
 interface SupaMovimiento {
   id:          string
@@ -150,6 +151,14 @@ export default function TxnDetail() {
 
   async function saveEdit() {
     if (!txn || !householdId) return
+
+    if (!(await confirmAction({
+      title: 'Guardar cambios',
+      message: '¿Confirmas los cambios en este movimiento?',
+      confirmLabel: 'Guardar',
+      danger: false,
+    }))) return
+
     // Soft-delete the original to preserve audit trail
     const { error: delErr } = await supabase
       .from('movimientos')

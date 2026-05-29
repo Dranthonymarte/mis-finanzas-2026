@@ -8,6 +8,7 @@ import AppHeader from '../components/shell/AppHeader'
 import Pill from '../components/ui/Pill'
 import { useConfig, type MetaAhorro } from '../hooks/useConfig'
 import { useFormat } from '../hooks/useFormat'
+import { confirmAction } from '../store/confirm'
 
 const inputSt: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box',
@@ -286,6 +287,13 @@ export default function Metas() {
   }
 
   async function deleteMeta(id: string) {
+    const meta = metas.find(m => m.id === id)
+    if (!(await confirmAction({
+      title: 'Eliminar meta',
+      message: meta ? `¿Eliminar "${meta.nombre}"? Esta acción no se puede deshacer.` : '¿Seguro? Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    }))) return
     const next = metas.filter(m => m.id !== id)
     await updateConfig('metas_ahorro', next)
   }

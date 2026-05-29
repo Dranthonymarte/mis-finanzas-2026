@@ -8,8 +8,8 @@ import { useState } from 'react'
 import { type CSSProperties } from 'react'
 import AppHeader    from '../../components/shell/AppHeader'
 import CatIcon      from '../../components/ui/CatIcon'
-import ConfirmSheet from '../../components/ui/ConfirmSheet'
 import { useConfig } from '../../hooks/useConfig'
+import { confirmAction } from '../../store/confirm'
 
 const inputSt: CSSProperties = {
   flex: 1, background: 'var(--ink-1)', border: '1px solid var(--line)',
@@ -17,8 +17,7 @@ const inputSt: CSSProperties = {
   color: 'var(--fg)', outline: 'none',
 }
 
-interface DeleteTarget { cat: string; subcat: string }
-interface EditState    { cat: string; sub: string; newName: string; newEmoji: string }
+interface EditState { cat: string; sub: string; newName: string; newEmoji: string }
 
 export default function Subcategorias() {
   const { config, updateConfig, updateCatEmojis } = useConfig()
@@ -53,7 +52,6 @@ export default function Subcategorias() {
   const [editState,    setEditState]    = useState<EditState | null>(null)
   const [addDraft,     setAddDraft]     = useState('')
   const [showAddForm,  setShowAddForm]  = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
 
   // Derived from config (DB-backed + localStorage cache, unified map with cat_emojis)
   const emojiMap = config.catEmojis
@@ -108,11 +106,15 @@ export default function Subcategorias() {
   }
 
   // ── Delete subcat ─────────────────────────────────
-  async function confirmDelete() {
-    if (!deleteTarget) return
-    const { cat, subcat } = deleteTarget
+  async function handleDelete(cat: string, subcat: string) {
+    const ok = await confirmAction({
+      title:        '¿Eliminar subcategoría?',
+      message:      `"${subcat}" se eliminará de ${cat}.`,
+      confirmLabel: 'Eliminar',
+      danger:       true,
+    })
+    if (!ok) return
     const updated = { ...subcats, [cat]: (subcats[cat] ?? []).filter(s => s !== subcat) }
-    setDeleteTarget(null)
     await updateConfig('subcategorias', updated)
   }
 
@@ -220,7 +222,7 @@ export default function Subcategorias() {
                     ✎
                   </button>
                   <button
-                    onClick={() => setDeleteTarget({ cat: activeCat, subcat: sub })}
+                    onClick={() => handleDelete(activeCat, sub)}
                     style={{
                       width: 28, height: 28, borderRadius: 8,
                       background: 'rgba(214,106,90,.1)', border: '1px solid rgba(214,106,90,.25)',
@@ -288,16 +290,6 @@ export default function Subcategorias() {
       </div>
 
       <div style={{ height: 32 }} />
-
-      <ConfirmSheet
-        open={!!deleteTarget}
-        title="¿Eliminar subcategoría?"
-        message={deleteTarget ? `"${deleteTarget.subcat}" se eliminará de ${deleteTarget.cat}.` : undefined}
-        confirmLabel="Eliminar"
-        danger
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleteTarget(null)}
-      />
     </div>
   )
 }

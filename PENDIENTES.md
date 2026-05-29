@@ -1,15 +1,14 @@
 # PENDIENTES — Mis Finanzas 2026
 
 Orden estricto. Actualizar al completar.
-**Última actualización:** 2026-05-26 — arch cleanup + fixes A+B+C+D, HEAD `822197b`
+**Última actualización:** 2026-05-29 — Analisis KPI fix + ≈Bs categorías/semanales, HEAD `fe8dc77`
 
 ---
 
 ## 🔴 React App — Pendiente inmediato (próxima sesión)
 
-> Contexto: FASE 3/3.2 corrigió de raíz auth (refresh/loop/datos
-> desconfigurados), Lista de compras, Subcat/Cat, patrimonio, sheets,
-> tasa manual, PWA install. Lo siguiente NO está hecho:
+> Contexto: Batch 2026-05-29 completó ≈Bs ecosistema, UX headers, Buscar ⚙,
+> año pills, lista compras, sugerencias email. Lo siguiente NO está hecho:
 
 1. **Fondo emergencia — lógica editable + integración**
    - Columnas YA existen en `config_usuario`: `emergency_fund_base`,
@@ -39,6 +38,74 @@ Orden estricto. Actualizar al completar.
 
 5. **Verificación móvil** del deploy `85e856f`: login + carga ≤3s +
    datos correctos + banner/instalar PWA.
+
+## 🔵 React App — Top-3 mundial validado (próximo batch)
+
+> Todos verificados en Revolut · N26 · Monzo · YNAB · Linear · Notion · Stripe.
+> Ordenados por impacto/esfuerzo. Sin dependencias externas nuevas salvo donde se indica.
+
+### UX / Interacción móvil
+
+**B1. Swipe actions en filas de transacciones** *(Revolut, Monzo, N26)*
+- Swipe izquierda → revela botones Editar / Eliminar inline (sin navegar a detalle)
+- Implementación: `touchstart`/`touchmove`/`touchend` + `transform: translateX` + umbral 60px
+- Archivos: `Txn.tsx`, componente `TxnRow` extraíble
+- Sin librería externa — CSS transitions puras
+
+**B2. Pull-to-refresh** *(universal — Revolut, N26, Monzo)*
+- Swipe down > 60px en cualquier lista → spinner + `refetch()`
+- Archivos: `Home.tsx`, `Txn.tsx`, `Accounts.tsx` — hook `usePullToRefresh` compartido
+- Sin librería externa — `touchstart`/`touchmove` con overscroll detection
+
+**B3. Smart date grouping en /txn** *(Revolut, N26, Monzo)*
+- Agrupar por: "Hoy" / "Ayer" / "Esta semana" / "Semana pasada" / fecha resto
+- Reemplaza el agrupamiento plano actual; mismo dato, mejor lectura
+- Archivo: `Txn.tsx` — función `dateGroupLabel(isoDate)` en `lib/mes.ts`
+
+**B4. Quick filter chips por categoría en /txn** *(Revolut, N26)*
+- Scroll horizontal de chips con las categorías del mes activo → filtra lista sin salir
+- "Todas" chip activo por defecto; al seleccionar una, lista se filtra en memoria (sin query extra)
+- Archivo: `Txn.tsx` — estado `filterCat` local, deriva de `transactions` ya cargado
+
+**B5. Haptic feedback en acciones clave** *(Revolut, Apple Pay)*
+- `navigator.vibrate(10)` al confirmar nueva txn, al eliminar, al completar meta
+- `navigator.vibrate([10, 50, 10])` en errores de validación
+- Archivo: util `lib/haptic.ts` (3 líneas) — import donde se necesite; sin deps
+
+### Inteligencia financiera
+
+**B6. Budget por categoría con progreso visual** *(YNAB — feature definitorio)*
+- Definir límite mensual por categoría desde Settings/Budgets (tabla `config_usuario.budgets` jsonb — ya existe columna)
+- En Home y Analisis: barra de progreso por cat (verde → amarillo → rojo al 80% → 100%)
+- Alerta inline: "⚠ Alimentación al 87%" encima de la barra
+- Archivos: `Settings/Budgets.tsx` (ya existe ruta), `Home.tsx`, `Analisis.tsx`
+
+**B7. Spending insights automáticos en Home** *(Revolut)*
+- Franja colapsable bajo los KPIs: 1-2 insights generados de los datos del mes
+- Ejemplos: "Gastaste 23% más en Comida vs mayo" · "Tu mayor gasto fue Alquiler ($X)"
+- Lógica en `useKPIs` ya tiene prev month — solo falta el render de la franja
+- Archivo: `Home.tsx` — componente `InsightStrip` inline, 0 queries extra
+
+**B8. Running balance en AccountDetail** *(Monzo, Revolut)*
+- En la vista de detalle de cuenta: cada txn muestra el saldo acumulado a ese punto
+- Se calcula en frontend: `saldoInicial + Σ txns hasta esa fecha` (txns ya cargadas)
+- Archivo: `AccountDetail.tsx`
+
+### Polish de producto
+
+**B9. Empty states mejorados** *(Linear, Notion, Stripe)*
+- Cada página vacía (0 txns, 0 cuentas, 0 recurrentes) muestra: emoji grande + headline + subtexto + botón CTA contextual
+- Ejemplos: "Sin movimientos este mes · Registra tu primer gasto →" / "Sin cuentas · Agrega una cuenta →"
+- Patrón: `<EmptyState icon="💸" title="..." sub="..." cta={{ label, to }} />`
+- Archivo: componente `components/ui/EmptyState.tsx` (nuevo, ~30 líneas) + reemplazar todos los `Sin datos` actuales
+
+**B10. Nota/memo opcional en transacciones** *(Revolut, Monzo)*
+- Campo `nota` adicional (máx 120 chars) en TxnDetail y NewTransaction — distinto de `descripcion`
+- Muestra debajo de la descripción en la vista de detalle, en texto más pequeño/muted
+- Requiere: `ALTER TABLE movimientos ADD COLUMN nota TEXT` (migración simple, sin breaking changes)
+- Archivos: `TxnDetail.tsx`, `NewTransaction.tsx`, `EditTransaction.tsx`
+
+---
 
 ## 🟡 React App — Charts / pulido
 

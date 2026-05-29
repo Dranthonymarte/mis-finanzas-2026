@@ -9,45 +9,31 @@ _Última actualización: 2026-05-27 · Branch: develop_
 
 ---
 
-## ✅ ÚLTIMO CHECKPOINT — Sesión 2026-05-27
+## ✅ ÚLTIMO CHECKPOINT — Sesión 2026-05-29
 
 ### Commits pushed a develop + react-preview
 ```
-a38defe fix(ai): welcome message con datos reales del mes activo
-da906b8 feat(auth): password strength, forgot password, magic link
-d300570 feat(ux): accesos directos scroll horizontal + FAB reordenado
-10d69a1 fix(bugs-3-5-6): budget + button, EF meta mes actual 30%, ahorro sin hint EF
-70cfef7 fix(auth+notifs): Google OAuth detectSessionInUrl + toggles push/telegram/gcal + notifs editables
-e636b9b fix(calendar): usar VITE_SUPABASE_URL env var
-822197b feat(calendar): Google Calendar sync UI
-6988e96 fix(pwa): Web Push SW handlers completos
-f1f7f23 fix(pareja): invite flow real — household_members pending + signInWithOtp
-ce01f95 refactor(arch): deprecar vanilla JS → versiones_anteriores
+2286641 feat: ≈Bs ecosistema completo + UX headers + Buscar ⚙ fix + año pills + lista compras
+5926c4d fix: sugerencia-notify CF Pages Function al path correcto + await logging
+b194619 feat: conversión sutil ≈ Bs en ecosistema (patrimony, saldo, neto, txn rows, summary strip)
+1609f51 feat: Analisis desglose ingresos al tap + Home/Txn mes por año + remove top gastos
 ```
 
-### Features implementadas esta sesión
+### Features implementadas esta sesión (2026-05-29)
 | Feature | Archivo | Estado |
 |---------|---------|--------|
-| BUG-3: Presupuestos + botón agregar | `settings/Budgets.tsx` | ✅ |
-| BUG-5: EF meta = 30% ingresos mes actual | `Home.tsx` | ✅ |
-| BUG-6: Ahorro sin hint EF | `NewTransaction.tsx` | ✅ |
-| BUG-7: Tasa vacía al cargar (no 36.50 hardcoded) | `NewTransaction.tsx` | ✅ |
-| BUG-1: Google OAuth detectSessionInUrl | `lib/supabase.ts` | ✅ |
-| BUG-2/9/10: Notificaciones toggles + edit inline | `Notificaciones.tsx` | ✅ |
-| Accesos directos scroll horizontal + editor | `Home.tsx` | ✅ |
-| FAB reordenado: Buscar>Mov>Voz>Escáner | `FAB.tsx` | ✅ |
-| More: eliminar grid 4x4 duplicada | `More.tsx` | ✅ |
-| Info icon KPI color --info visible | `Home.tsx` | ✅ |
-| Password strength meter (5 segmentos) | `Login.tsx` | ✅ |
-| Forgot password (resetPasswordForEmail) | `Login.tsx` | ✅ |
-| Magic link (signInWithOtp) | `Login.tsx` | ✅ |
-| Reglas bancarias registro: 8+, mayúscula, número, símbolo | `Login.tsx` | ✅ |
-| AI: welcome message con datos reales del mes | `AI.tsx` | ✅ |
-| Google Calendar sync UI | `Calendar.tsx` | ✅ |
-| Web Push SW handlers | `sw.ts` | ✅ |
-| Pareja invite flow real | `Pareja.tsx` | ✅ |
-| Vanilla JS → versiones_anteriores | repo raíz | ✅ |
-| RLS + escalabilidad multi-usuario | Supabase | ✅ |
+| Buscar ⚙ paddingRight fix (max 44→16px) | `Buscar.tsx` | ✅ |
+| AppHeader título 16px/700 + padding 12px 16px | `mobile-uix.css` | ✅ |
+| Year pills: solo año actual en adelante | `Home.tsx` | ✅ |
+| Neto sin `+` cuando positivo (redundante con verde) | `Home.tsx` | ✅ |
+| ≈ Bs en top gastos Home | `Home.tsx` | ✅ |
+| ≈ Bs en últimos movimientos Home | `Home.tsx` | ✅ |
+| ≈ Bs en patrimonio total | `Accounts.tsx` | ✅ |
+| ≈ Bs en KPI cards Analisis | `Analisis.tsx` | ✅ |
+| ≈ Bs en filas recurrentes | `Recurrentes.tsx` | ✅ |
+| Lista de compras → grupo Movimientos | `More.tsx` | ✅ |
+| Sugerencias: envía userEmail + userName | `Sugerencias.tsx` | ✅ |
+| Email notificación muestra nombre + email | `functions/api/sugerencia-notify.js` | ✅ |
 
 ---
 

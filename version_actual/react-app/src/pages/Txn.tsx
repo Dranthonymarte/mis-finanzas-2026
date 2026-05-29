@@ -517,8 +517,8 @@ export default function Txn() {
         )}
       </div>
 
-      {/* ── Presupuesto vs real ── */}
-      {true && (
+      {/* ── Presupuesto vs real (siempre visible) ── */}
+      {(
         <div style={{ padding: '20px 16px 4px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

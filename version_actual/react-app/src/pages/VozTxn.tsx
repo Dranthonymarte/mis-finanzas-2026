@@ -46,6 +46,7 @@ export default function VozTxn() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w   = window as any
     const SR  = w.SpeechRecognition ?? w.webkitSpeechRecognition
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- detección one-shot de capacidad del navegador, no causa cascada
     if (!SR) { setSupported(false); return }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

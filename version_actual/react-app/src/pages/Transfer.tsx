@@ -5,7 +5,7 @@
 // (2 rows: Transferencia Interna, shared descripcion)
 // ═══════════════════════════════════════════════════
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { type CSSProperties, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeftIcon, CheckIcon, TransferIcon } from '../components/icons/Icons'
@@ -82,18 +82,20 @@ export default function Transfer() {
   const householdId = useAuthStore(s => s.householdId)
   const { fmt }     = useFormat()
   const { accounts: liveAccounts, loading: accsLoading } = useAccounts()
-  const accounts = liveAccounts ?? []
+  const accounts = useMemo(() => liveAccounts ?? [], [liveAccounts])
 
   // Initialise from/to once accounts load (useRef prevents re-trigger)
   const initDone = useRef(false)
   const [fromId, setFromId] = useState<string>('')
   const [toId,   setToId]   = useState<string>('')
 
-  if (!initDone.current && accounts.length >= 1) {
-    setFromId(accounts[0].id)
-    setToId(accounts[1]?.id ?? accounts[0].id)
-    initDone.current = true
-  }
+  useEffect(() => {
+    if (!initDone.current && accounts.length >= 1) {
+      setFromId(accounts[0].id)
+      setToId(accounts[1]?.id ?? accounts[0].id)
+      initDone.current = true
+    }
+  }, [accounts])
 
   const [amount,  setAmount]  = useState('')
   const [desc,    setDesc]    = useState('')

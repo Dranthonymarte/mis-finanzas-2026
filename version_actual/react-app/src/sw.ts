@@ -29,10 +29,9 @@ self.addEventListener('push', (event) => {
     requireInteraction?: boolean
   }
 
-  let data: PushPayload = {}
+  let data: PushPayload
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     data = (event as PushEvent).data?.json() ?? {}
   } catch {
     data = { body: (event as PushEvent).data?.text() ?? '' }

@@ -2,12 +2,17 @@
 // Login — signInWithPassword + signUp tab
 // onAuthStateChange dispara la navegación automáticamente
 // vía RequireNoAuth redirect cuando isAuthenticated = true
+// PIN / WebAuthn: capa local adicional (NO reemplaza sesión Supabase)
 // ═══════════════════════════════════════════════════
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { type CSSProperties } from 'react'
 import { Logo } from '../components/brand/Logo'
 import { supabase } from '../lib/supabase'
+
+const PIN_KEY      = 'mf-pin'
+const WEBAUTHN_KEY = 'mf-webauthn-cred'
+const PIN_UNLOCKED = 'mf-pin-unlocked'  // sessionStorage flag — cleared on tab close
 
 // BeforeInstallPromptEvent is not in lib.dom — declare minimally
 interface BeforeInstallPromptEvent extends Event {
@@ -53,6 +58,191 @@ const PW_LEVELS = [
   { label: 'Muy fuerte',color: '#58b26a' },
 ]
 
+// ── PIN Keypad ────────────────────────────────────────────────
+function PinKeypad({
+  value, onChange, onSubmit, label, sublabel, error,
+}: {
+  value: string
+  onChange: (v: string) => void
+  onSubmit?: () => void
+  label: string
+  sublabel?: string
+  error?: string | null
+}) {
+  const digits = ['1','2','3','4','5','6','7','8','9','','0','⌫']
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+      <div style={{ fontSize: 14, color: 'rgba(255,255,255,.8)', textAlign: 'center', fontWeight: 500 }}>{label}</div>
+      {sublabel && (
+        <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.4)', textAlign: 'center', marginTop: -10 }}>{sublabel}</div>
+      )}
+
+      {/* Dots */}
+      <div style={{ display: 'flex', gap: 14 }}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} style={{
+            width: 16, height: 16, borderRadius: '50%',
+            background: i < value.length ? '#e0a84a' : 'rgba(255,255,255,.15)',
+            border: '1.5px solid rgba(255,255,255,.2)',
+            transition: 'background .15s',
+          }} />
+        ))}
+      </div>
+
+      {error && (
+        <div style={{ fontSize: 12.5, color: '#d66a5a', textAlign: 'center' }}>{error}</div>
+      )}
+
+      {/* Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 70px)', gap: 10 }}>
+        {digits.map((d, idx) => (
+          <button
+            key={idx}
+            disabled={d === ''}
+            onClick={() => {
+              if (d === '⌫') {
+                onChange(value.slice(0, -1))
+              } else if (d !== '' && value.length < 4) {
+                const next = value + d
+                onChange(next)
+                if (next.length === 4) onSubmit?.()
+              }
+            }}
+            style={{
+              width: 70, height: 70, borderRadius: '50%',
+              background: d === '' ? 'transparent' : 'rgba(255,255,255,.08)',
+              border: d === '' ? 'none' : '1px solid rgba(255,255,255,.12)',
+              color: '#fff', fontSize: d === '⌫' ? 20 : 22, fontWeight: 400,
+              cursor: d === '' ? 'default' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'background .1s',
+            }}
+          >
+            {d}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── PIN Lock Screen ───────────────────────────────────────────
+function PinLockScreen({ onUnlocked }: { onUnlocked: () => void }) {
+  const [pin,         setPin]         = useState('')
+  const [pinError,    setPinError]    = useState<string | null>(null)
+  const [bioLoading,  setBioLoading]  = useState(false)
+  const [bioError,    setBioError]    = useState<string | null>(null)
+
+  const storedPin  = localStorage.getItem(PIN_KEY)
+  const credId     = localStorage.getItem(WEBAUTHN_KEY)
+  const bioSupport = typeof PublicKeyCredential !== 'undefined' && Boolean(credId)
+
+  const markUnlocked = useCallback(() => {
+    sessionStorage.setItem(PIN_UNLOCKED, '1')
+    onUnlocked()
+  }, [onUnlocked])
+
+  // Auto-trigger biometría if available and PIN is also set
+  useEffect(() => {
+    if (bioSupport) void handleBiometria()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function handlePinSubmit() {
+    if (pin === storedPin) {
+      markUnlocked()
+    } else {
+      setPinError('PIN incorrecto. Inténtalo de nuevo.')
+      setPin('')
+    }
+  }
+
+  async function handleBiometria() {
+    if (!bioSupport || !credId) return
+    setBioLoading(true)
+    setBioError(null)
+    try {
+      const challenge = crypto.getRandomValues(new Uint8Array(32))
+      const assertion = await navigator.credentials.get({
+        publicKey: {
+          challenge,
+          allowCredentials: [{ type: 'public-key', id: base64ToBuffer(credId) }],
+          userVerification: 'required',
+          timeout: 60000,
+        },
+      })
+      if (assertion) markUnlocked()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (!msg.includes('cancel') && !msg.includes('Cancel') && !msg.includes('abort') && !msg.includes('NotAllowed')) {
+        setBioError('Biometría fallida. Usa tu PIN.')
+      }
+    } finally {
+      setBioLoading(false)
+    }
+  }
+
+  return (
+    <div style={{
+      minHeight: '100dvh',
+      background: 'radial-gradient(ellipse at 50% -4%, #1f1509 0%, #0a0b0d 52%)',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: '0 24px',
+      paddingTop: 'env(safe-area-inset-top, 0px)',
+      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+    }}>
+      <div style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 28, alignItems: 'center' }}>
+
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <Logo iconSize={28} textSize={15} />
+        </div>
+
+        <PinKeypad
+          value={pin}
+          onChange={v => { setPin(v); setPinError(null) }}
+          onSubmit={handlePinSubmit}
+          label="Ingresa tu PIN"
+          error={pinError}
+        />
+
+        {bioSupport && (
+          <button
+            onClick={() => void handleBiometria()}
+            disabled={bioLoading}
+            style={{
+              background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)',
+              borderRadius: 14, padding: '12px 24px', color: '#fff',
+              fontSize: 13, fontWeight: 500, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 8,
+              opacity: bioLoading ? .6 : 1,
+            }}
+          >
+            <span style={{ fontSize: 20 }}>🫆</span>
+            {bioLoading ? 'Verificando…' : 'Desbloquear con biometría'}
+          </button>
+        )}
+
+        {bioError && (
+          <div style={{ fontSize: 12, color: '#d66a5a', textAlign: 'center' }}>{bioError}</div>
+        )}
+
+      </div>
+    </div>
+  )
+}
+
+// ── Util ──────────────────────────────────────────────────────
+function base64ToBuffer(b64: string): ArrayBuffer {
+  // credential.id is base64url — convert to ArrayBuffer
+  const padded = b64.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(b64.length / 4) * 4, '=')
+  const binary  = atob(padded)
+  const buf     = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) buf[i] = binary.charCodeAt(i)
+  return buf.buffer
+}
+
+// ── Main Login Component ──────────────────────────────────────
 export default function Login() {
   const [mode,          setMode]          = useState<Mode>('login')
   const [email,         setEmail]         = useState('')
@@ -63,6 +253,26 @@ export default function Login() {
   const [error,         setError]         = useState<string | null>(null)
   const [success,       setSuccess]       = useState<string | null>(null)
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  // PIN lock: active when Supabase session exists + PIN is set + not yet unlocked this session
+  const [pinLocked,     setPinLocked]     = useState(false)
+  const [checkingPin,   setCheckingPin]   = useState(true)
+
+  // On mount: check if we need to show PIN lock screen
+  useEffect(() => {
+    async function checkPinLock() {
+      const storedPin = localStorage.getItem(PIN_KEY)
+      if (!storedPin) { setCheckingPin(false); return }
+      // Already unlocked this session?
+      if (sessionStorage.getItem(PIN_UNLOCKED)) { setCheckingPin(false); return }
+      // Check Supabase session
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        setPinLocked(true)
+      }
+      setCheckingPin(false)
+    }
+    void checkPinLock()
+  }, [])
 
   // Capture the PWA install prompt — only fires once per session on Android Chrome
   useEffect(() => {
@@ -194,6 +404,16 @@ export default function Login() {
       setLoading(false)
       setError('Error de conexión. Intenta de nuevo.')
     }
+  }
+
+  // ── PIN lock gate ──────────────────────────────────────────
+  if (checkingPin) {
+    // Brief check — show nothing to avoid flash
+    return null
+  }
+
+  if (pinLocked) {
+    return <PinLockScreen onUnlocked={() => setPinLocked(false)} />
   }
 
   const isLogin = mode === 'login'
@@ -387,7 +607,7 @@ export default function Login() {
         )}
 
         {/* Register form */}
-        {!isLogin && (
+        {!isLogin && mode !== 'forgot' && (
           <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.5)', marginBottom: 7, letterSpacing: '.04em' }}>NOMBRE</div>

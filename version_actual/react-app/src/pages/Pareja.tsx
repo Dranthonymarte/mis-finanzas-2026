@@ -12,6 +12,12 @@ import { useAuthStore }  from '../store/auth'
 import { useToastStore } from '../store/toast'
 import { confirmAction } from '../store/confirm'
 
+// ── Límite de miembros del hogar (owner + invitados activos) ──────
+// ESCALABLE: súbelo a 3 o 5 para permitir más personas. Cuenta solo
+// miembros activos (accepted/pending); revocar libera cupo. Default 2
+// = owner + 1 pareja (es decir, 1 invitado, como se pidió).
+const MAX_MIEMBROS = 2
+
 interface Member {
   user_id:      string | null
   role:         string | null
@@ -216,6 +222,14 @@ export default function Pareja() {
       return
     }
 
+    // Límite de miembros del hogar (escalable vía MAX_MIEMBROS). Revocar un
+    // acceso libera cupo. Guard de seguridad además del UI deshabilitado.
+    const activos = members.filter(m => m.invite_status !== 'revoked').length
+    if (activos >= MAX_MIEMBROS) {
+      addToast(`Tu hogar ya tiene el máximo de miembros (${MAX_MIEMBROS}). Revoca un acceso para invitar a alguien más.`, 'warn')
+      return
+    }
+
     setSending(true)
     try {
       // 1. Registrar el invite en household_members (user_id = null hasta que se una)
@@ -295,6 +309,8 @@ export default function Pareja() {
   // Notion/Linear: el historial no ensucia la lista de miembros activos).
   const activeMembers  = members.filter(m => m.invite_status !== 'revoked')
   const revokedMembers = members.filter(m => m.invite_status === 'revoked')
+  // Límite de miembros activos (escalable vía MAX_MIEMBROS). Revocar libera cupo.
+  const limiteAlcanzado = activeMembers.length >= MAX_MIEMBROS
 
   // Fila de miembro — fuente única usada por ambas listas (activos y anteriores).
   const renderMemberRow = (m: Member, i: number) => {
@@ -438,16 +454,18 @@ export default function Pareja() {
         <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 16, padding: 16 }}>
           <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 4 }}>Invitar pareja</div>
           <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginBottom: 10 }}>
-            Tu pareja recibirá un enlace para unirse a tu hogar financiero.
+            {limiteAlcanzado
+              ? `Tu hogar está completo (máx. ${MAX_MIEMBROS} miembros). Revoca un acceso para invitar a alguien más.`
+              : 'Tu pareja recibirá un enlace para unirse a tu hogar financiero.'}
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, opacity: limiteAlcanzado ? 0.5 : 1 }}>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') void handleInvite() }}
               placeholder="correo@ejemplo.com"
-              disabled={sending || sent}
+              disabled={sending || sent || limiteAlcanzado}
               style={{
                 flex: 1, background: 'var(--ink-1)', border: '1px solid var(--line)',
                 borderRadius: 10, padding: '9px 12px', fontSize: 13, color: 'var(--fg)', outline: 'none',
@@ -455,14 +473,14 @@ export default function Pareja() {
             />
             <button
               onClick={() => void handleInvite()}
-              disabled={sending || sent || !email.trim()}
+              disabled={sending || sent || limiteAlcanzado || !email.trim()}
               style={{
                 padding: '9px 14px',
                 background: sent ? 'var(--pos)' : sending ? 'var(--fg-mute)' : 'var(--amber)',
                 color: 'var(--ink-0)', border: 'none', borderRadius: 10,
-                fontSize: 13, fontWeight: 600, cursor: sending || sent ? 'default' : 'pointer',
+                fontSize: 13, fontWeight: 600, cursor: sending || sent || limiteAlcanzado ? 'default' : 'pointer',
                 transition: 'background .2s', whiteSpace: 'nowrap',
-                opacity: !email.trim() && !sending ? 0.5 : 1,
+                opacity: (!email.trim() && !sending) || limiteAlcanzado ? 0.5 : 1,
               }}
             >
               {sent ? '✓ Enviado' : sending ? '…' : 'Invitar'}

@@ -124,6 +124,8 @@ function PillBtn({
 function TxnRowPreview({ t, last }: { t: Transaction; last: boolean }) {
   const { fmt }  = useFormat()
   const navigate = useNavigate()
+  const { tasas } = useTasas()
+  const moneda    = usePrefsStore(s => s.moneda)
   const group = txnGroup(t.tipo)
   const isInc = group === 'ingreso'
   const isSav = group === 'ahorro'
@@ -159,8 +161,15 @@ function TxnRowPreview({ t, last }: { t: Transaction; last: boolean }) {
           )}
         </div>
       </div>
-      <div style={{ fontSize: 13, fontWeight: 600, color, whiteSpace: 'nowrap' }}>
-        {fmt(Math.abs(t.amount))}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color, whiteSpace: 'nowrap' }}>
+          {fmt(Math.abs(t.amount))}
+        </div>
+        {moneda !== 'BS' && tasas.bcv > 0 && (
+          <div style={{ fontSize: 9.5, color: 'var(--fg-dim)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+            ≈ Bs {(Math.abs(t.amount) * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -369,9 +378,9 @@ export default function Home() {
       </div>
 
       {/* ── Selector de mes (agrupado por año) ── */}
-      {/* Year pills */}
+      {/* Year pills — only current year forward */}
       <div style={{ display: 'flex', gap: 6, padding: '0 16px 4px' }}>
-        {MONTHS_BY_YEAR.map(yg => {
+        {MONTHS_BY_YEAR.filter(yg => parseInt('20' + yg.year) >= new Date().getFullYear()).map(yg => {
           const isActiveYear = yg.year === activeYear
           return (
             <button
@@ -500,7 +509,7 @@ export default function Home() {
               fontSize: 18, fontWeight: 700,
               color: kpiData.balance >= 0 ? 'var(--pos)' : 'var(--neg)',
             }}>
-              {kpiData.balance >= 0 ? '+' : ''}{fmt(kpiData.balance)}
+              {fmt(kpiData.balance)}
             </div>
             {moneda !== 'BS' && tasas.bcv > 0 && (
               <div style={{ fontSize: 10, color: 'var(--fg-dim)', marginTop: 2, fontWeight: 500 }}>
@@ -861,7 +870,14 @@ export default function Home() {
                       <span style={{ flex: 1, fontSize: 12.5, color: 'var(--fg-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {cat}
                       </span>
-                      <span className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--neg)' }}>{fmt(Math.abs(value))}</span>
+                      <div style={{ textAlign: 'right' }}>
+                        <div className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--neg)' }}>{fmt(Math.abs(value))}</div>
+                        {moneda !== 'BS' && tasas.bcv > 0 && (
+                          <div style={{ fontSize: 9.5, color: 'var(--fg-dim)', fontWeight: 500 }}>
+                            ≈ Bs {(Math.abs(value) * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
+                          </div>
+                        )}
+                      </div>
                       <span style={{ fontSize: 10, color: 'var(--fg-mute)', minWidth: 28, textAlign: 'right' }}>
                         {pct.toFixed(0)}%
                       </span>

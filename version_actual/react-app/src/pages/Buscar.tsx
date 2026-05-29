@@ -105,7 +105,7 @@ export default function Buscar() {
         padding: '12px 12px 10px',
         paddingTop: 'max(12px, env(safe-area-inset-top))',
         paddingLeft: 'max(16px, calc(env(safe-area-inset-left, 0px) + 12px))',
-        paddingRight: 'max(44px, calc(env(safe-area-inset-right, 0px) + 16px))',
+        paddingRight: 'max(16px, calc(env(safe-area-inset-right, 0px) + 16px))',
         background: 'var(--ink-1)',
         position: 'sticky', top: 0, zIndex: 10,
         borderBottom: '1px solid var(--line)',

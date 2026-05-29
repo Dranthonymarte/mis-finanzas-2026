@@ -147,8 +147,15 @@ export default function More() {
             iconBg="transparent"
             label="Subcategorías"
             sub="Detalle por categoría"
-            last
             onClick={() => navigate('/settings/subcategorias')}
+          />
+          <RowLink
+            icon={<IcoBg color="#1a3020"><ShoppingIcon /></IcoBg>}
+            iconBg="transparent"
+            label="Lista de compras"
+            sub="Gestiona tu lista del mercado"
+            last
+            onClick={() => navigate('/lista-compras')}
           />
         </RowGroup>
 
@@ -258,13 +265,6 @@ export default function More() {
             label="Google Calendar"
             sub="Sincroniza recurrentes al calendario"
             onClick={() => navigate('/calendar')}
-          />
-          <RowLink
-            icon={<IcoBg color="#1a3020"><ShoppingIcon /></IcoBg>}
-            iconBg="transparent"
-            label="Lista de compras"
-            sub="Gestiona tu lista del mercado"
-            onClick={() => navigate('/lista-compras')}
           />
           <RowLink
             icon={<IcoBg color="#1a2a3a"><TransferIcon /></IcoBg>}

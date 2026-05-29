@@ -14,6 +14,7 @@ import { useTransactions }    from '../hooks/useTransactions'
 import { useFormat }          from '../hooks/useFormat'
 import { txnGroup }           from '../data/mock'
 import { generateMeses, mesLabel } from '../lib/mes'
+import { useTasas } from '../hooks/useTasas'
 
 const MONTHS_6 = generateMeses(6)
 
@@ -102,6 +103,8 @@ export default function Analisis() {
   const { fmt }      = useFormat()
   const mesActivo    = usePrefsStore(s => s.mesActivo)
   const setMesActivo = usePrefsStore(s => s.setMesActivo)
+  const moneda       = usePrefsStore(s => s.moneda)
+  const { tasas }    = useTasas()
   const prevId       = prevMesId(mesActivo)
 
   const { transactions: liveTxns, loading }  = useTransactions(mesActivo)
@@ -292,6 +295,11 @@ export default function Analisis() {
                   <div className="num" style={{ fontSize: 13, fontWeight: 700, color: k.color, marginBottom: 4 }}>
                     {k.label === 'Balance' && k.cur >= 0 ? '+' : ''}{fmt(k.cur)}
                   </div>
+                  {moneda !== 'BS' && tasas.bcv > 0 && (
+                    <div style={{ fontSize: 9, color: 'var(--fg-dim)', fontWeight: 500, marginBottom: 2 }}>
+                      ≈ Bs {(Math.abs(k.cur) * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
+                    </div>
+                  )}
                   <Delta cur={k.cur} prev={k.prev} />
                   {k.prev > 0 && (
                     <div

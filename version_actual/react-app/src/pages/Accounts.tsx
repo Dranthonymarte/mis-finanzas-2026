@@ -73,6 +73,7 @@ export default function Accounts() {
   const setMoneda  = usePrefsStore(s => s.setMoneda)
   const { accounts: liveAccounts, loading } = useAccounts()
   const { meDebenActivo } = useDineroFuera()
+  const { tasas }  = useTasas()
   const accounts = liveAccounts ?? (loading ? MOCK_ACCOUNTS : [])
 
   const saldoDisponible = accounts
@@ -121,6 +122,11 @@ export default function Accounts() {
         <div className="font-display" style={{ fontSize: 42, lineHeight: 1.05, letterSpacing: '-.02em', marginTop: 4 }}>
           {fmt(totalUSD)}
         </div>
+        {moneda !== 'BS' && tasas.bcv > 0 && (
+          <div style={{ fontSize: 11, color: 'var(--fg-dim)', marginTop: 3, fontWeight: 500 }}>
+            ≈ Bs {(totalUSD * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
+          </div>
+        )}
         <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginTop: 5 }}>
           Saldo disponible{meDebenActivo > 0 ? ` + ${fmt(meDebenActivo)} que te deben` : ''}
         </div>

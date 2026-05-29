@@ -16,6 +16,8 @@ const MAX = 500
 export default function Sugerencias() {
   const navigate    = useNavigate()
   const userId      = useAuthStore(s => s.userId)
+  const userEmail   = useAuthStore(s => s.userEmail)
+  const userName    = useAuthStore(s => s.userName)
   const householdId = useAuthStore(s => s.householdId)
 
   const [text,   setText]   = useState('')
@@ -41,7 +43,7 @@ export default function Sugerencias() {
       const notifyRes = await fetch('/api/sugerencia-notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mensaje: text.trim(), userId }),
+        body: JSON.stringify({ mensaje: text.trim(), userId, userEmail, userName }),
       })
       const notifyJson = await notifyRes.json().catch(() => ({}))
       if (!notifyRes.ok || notifyJson?.ok === false) {

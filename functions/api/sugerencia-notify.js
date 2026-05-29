@@ -6,7 +6,7 @@ export async function onRequestPost(context) {
   const { request, env } = context
 
   try {
-    const { mensaje, userId } = await request.json()
+    const { mensaje, userId, userEmail, userName } = await request.json()
 
     if (!mensaje || typeof mensaje !== 'string') {
       return new Response(JSON.stringify({ error: 'mensaje requerido' }), {
@@ -34,9 +34,15 @@ export async function onRequestPost(context) {
         subject: '💬 Nueva sugerencia — Mis Finanzas',
         html: `
           <h2 style="font-family:sans-serif;color:#1a1a2e">Nueva sugerencia</h2>
+          <p style="font-family:sans-serif;font-size:13px;color:#555;margin-bottom:4px">
+            <strong>De:</strong> ${(userName ?? 'Desconocido').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+            &nbsp;·&nbsp;
+            <a href="mailto:${(userEmail ?? '').replace(/</g,'&lt;')}" style="color:#4a90e2">${(userEmail ?? 'sin correo').replace(/</g,'&lt;')}</a>
+          </p>
+          <hr style="border:none;border-top:1px solid #eee;margin:16px 0"/>
           <p style="font-family:sans-serif;font-size:16px;color:#333;white-space:pre-wrap">${mensaje.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0"/>
-          <p style="font-family:sans-serif;font-size:12px;color:#999">Usuario: ${userId ?? 'desconocido'} · Mis Finanzas App</p>
+          <p style="font-family:sans-serif;font-size:11px;color:#bbb">ID: ${userId ?? 'desconocido'} · Mis Finanzas App</p>
         `,
       }),
     })

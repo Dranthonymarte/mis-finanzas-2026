@@ -8,6 +8,8 @@ import AppHeader from '../components/shell/AppHeader'
 import { useConfig } from '../hooks/useConfig'
 import { useFormat } from '../hooks/useFormat'
 import { useAuthStore } from '../store/auth'
+import { usePrefsStore } from '../store/prefs'
+import { useTasas } from '../hooks/useTasas'
 import { supabase } from '../lib/supabase'
 
 interface RecurrenteItem {
@@ -58,6 +60,8 @@ export default function Recurrentes() {
   const { fmt }              = useFormat()
   const { config, updateConfig } = useConfig()
   const userId               = useAuthStore(s => s.userId)
+  const moneda               = usePrefsStore(s => s.moneda)
+  const { tasas }            = useTasas()
 
   const items = (config.recurrentes as RecurrenteItem[])
 
@@ -228,8 +232,15 @@ export default function Recurrentes() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div className="num" style={{ fontSize: 14, fontWeight: 700, color, whiteSpace: 'nowrap' }}>
-                      {fmt(r.monto)}
+                    <div style={{ textAlign: 'right' }}>
+                      <div className="num" style={{ fontSize: 14, fontWeight: 700, color, whiteSpace: 'nowrap' }}>
+                        {fmt(r.monto)}
+                      </div>
+                      {moneda !== 'BS' && tasas.bcv > 0 && (
+                        <div style={{ fontSize: 9.5, color: 'var(--fg-dim)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                          ≈ Bs {(r.monto * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
+                        </div>
+                      )}
                     </div>
                     <div
                       role="button"

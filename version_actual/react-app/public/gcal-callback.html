@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Conectando Google Calendar…</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      display: grid; place-items: center;
+      background: #0f1115; color: #e7e9ee;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 24px;
+    }
+    .card {
+      max-width: 360px; width: 100%; text-align: center;
+      background: #171a21; border: 1px solid #262b36;
+      border-radius: 18px; padding: 28px 24px;
+    }
+    .ico { font-size: 44px; line-height: 1; margin-bottom: 14px; }
+    h1 { font-size: 17px; margin: 0 0 6px; font-weight: 650; }
+    p  { font-size: 13.5px; margin: 0; color: #9aa1ad; line-height: 1.5; }
+    a.btn {
+      display: inline-block; margin-top: 18px; text-decoration: none;
+      background: #f0b429; color: #1a1d23; font-weight: 650; font-size: 13.5px;
+      padding: 10px 18px; border-radius: 11px;
+    }
+    .spin {
+      width: 22px; height: 22px; margin: 0 auto 14px;
+      border: 2.5px solid #2a2f3a; border-top-color: #f0b429;
+      border-radius: 50%; animation: r .8s linear infinite;
+    }
+    @keyframes r { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="spin" id="spin"></div>
+    <h1 id="title">Conectando con Google…</h1>
+    <p id="msg">Un momento, estamos finalizando la conexión.</p>
+  </div>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var status = params.get('status');      // 'success' | 'error' | null
+      var email  = params.get('email') || '';
+      var errMsg = params.get('msg') || '';
+      var ok     = status === 'success';
+
+      // 1) Popup flow: notify the parent app, then close.
+      if (window.opener && !window.opener.closed) {
+        try {
+          window.opener.postMessage(
+            { type: 'mf-oauth-done', status: status, email: email },
+            window.location.origin
+          );
+        } catch (e) { /* noop */ }
+        setTimeout(function () { window.close(); }, 150);
+        return;
+      }
+
+      // 2) Same-window fallback: show result + a link back into the app.
+      var spin  = document.getElementById('spin');
+      var title = document.getElementById('title');
+      var msg   = document.getElementById('msg');
+      var card  = document.getElementById('card');
+      if (spin) spin.remove();
+
+      if (ok) {
+        card.insertAdjacentHTML('afterbegin', '<div class="ico">✅</div>');
+        title.textContent = 'Google Calendar conectado';
+        msg.textContent = email ? ('Conectado como ' + email) : 'Tu cuenta quedó vinculada.';
+      } else {
+        card.insertAdjacentHTML('afterbegin', '<div class="ico">⚠️</div>');
+        title.textContent = 'No se pudo conectar';
+        msg.textContent = errMsg ? ('Detalle: ' + errMsg) : 'Ocurrió un error al vincular tu cuenta. Intenta de nuevo.';
+      }
+      card.insertAdjacentHTML('beforeend', '<a class="btn" href="/calendar">Volver a la app</a>');
+    })();
+  </script>
+</body>
+</html>

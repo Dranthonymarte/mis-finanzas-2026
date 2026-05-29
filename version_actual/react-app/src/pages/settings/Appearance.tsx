@@ -3,16 +3,24 @@ import AppHeader from '../../components/shell/AppHeader'
 import { CheckIcon } from '../../components/icons/Icons'
 
 type ThemeMode = 'dark' | 'light' | 'system'
+type PaletteId = 'amber' | 'emerald' | 'indigo' | 'rose' | 'graphite'
 
-const LS_THEME  = 'mis_finanzas_theme'
-const LS_ACCENT = 'mis_finanzas_accent'
-
-const ACCENTS = ['#e0a84a', '#58b26a', '#6a94c4', '#d66a5a', '#3d8b82', '#b0a3c7']
+const LS_THEME   = 'mis_finanzas_theme'
+const LS_PALETTE = 'mis_finanzas_palette'
 
 const THEMES: { id: ThemeMode; label: string; bg: string; dot: string }[] = [
   { id: 'dark',   label: 'Oscuro',  bg: '#0a0b0d', dot: '#e0a84a' },
   { id: 'light',  label: 'Claro',   bg: '#f5f3ee', dot: '#b87d1f' },
   { id: 'system', label: 'Sistema', bg: 'linear-gradient(135deg,#0a0b0d 50%,#f5f3ee 50%)', dot: '#9aa0ab' },
+]
+
+// Paletas de marca — acento + tinte sutil de superficie (ver tokens.css).
+const PALETTES: { id: PaletteId; label: string; accent: string }[] = [
+  { id: 'amber',    label: 'Ámbar',     accent: '#e0a84a' },
+  { id: 'emerald',  label: 'Esmeralda', accent: '#4eb88a' },
+  { id: 'indigo',   label: 'Índigo',    accent: '#7c8cf0' },
+  { id: 'rose',     label: 'Rosa',      accent: '#e87aa8' },
+  { id: 'graphite', label: 'Grafito',   accent: '#aeb4bf' },
 ]
 
 function resolveTheme(t: ThemeMode): 'dark' | 'light' {
@@ -25,31 +33,29 @@ function applyTheme(t: ThemeMode) {
   localStorage.setItem(LS_THEME, t)
 }
 
-function applyAccent(c: string) {
-  document.documentElement.style.setProperty('--amber', c)
-  localStorage.setItem(LS_ACCENT, c)
+function applyPalette(p: PaletteId) {
+  document.documentElement.setAttribute('data-palette', p)
+  localStorage.setItem(LS_PALETTE, p)
 }
 
 export default function Appearance() {
-  const [theme,  setTheme]  = useState<ThemeMode>(
+  const [theme,   setTheme]   = useState<ThemeMode>(
     () => (localStorage.getItem(LS_THEME) as ThemeMode) ?? 'dark'
   )
-  const [accent, setAccent] = useState(
-    () => localStorage.getItem(LS_ACCENT) ?? '#e0a84a'
+  const [palette, setPalette] = useState<PaletteId>(
+    () => (localStorage.getItem(LS_PALETTE) as PaletteId) ?? 'amber'
   )
 
-  useEffect(() => {
-    applyTheme(theme)
-  }, [theme])
+  useEffect(() => { applyTheme(theme) }, [theme])
 
   function handleTheme(t: ThemeMode) {
     setTheme(t)
     applyTheme(t)
   }
 
-  function handleAccent(c: string) {
-    setAccent(c)
-    applyAccent(c)
+  function handlePalette(p: PaletteId) {
+    setPalette(p)
+    applyPalette(p)
   }
 
   return (
@@ -57,6 +63,7 @@ export default function Appearance() {
       <AppHeader title="Apariencia" back />
 
       <div style={{ padding: '20px 16px 0' }}>
+        {/* ── Modo ── */}
         <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 12 }}>
           Tema
         </div>
@@ -89,23 +96,38 @@ export default function Appearance() {
           ))}
         </div>
 
+        {/* ── Paleta de marca ── */}
         <div style={{ marginTop: 28 }}>
           <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 12 }}>
-            Color acento
+            Paleta de marca
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            {ACCENTS.map(c => (
+          <div style={{ display: 'flex', gap: 8 }}>
+            {PALETTES.map(p => (
               <button
-                key={c}
-                onClick={() => handleAccent(c)}
-                aria-label={`Acento ${c}`}
+                key={p.id}
+                onClick={() => handlePalette(p.id)}
+                aria-label={`Paleta ${p.label}`}
                 style={{
-                  width: 36, height: 36, borderRadius: '50%', background: c,
-                  border: accent === c ? '3px solid var(--fg)' : '3px solid transparent',
-                  cursor: 'pointer', transition: 'border .15s',
+                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                  padding: '10px 4px', background: 'var(--ink-2)',
+                  border: palette === p.id ? '2px solid var(--amber)' : '2px solid var(--line)',
+                  borderRadius: 12, cursor: 'pointer',
                 }}
-              />
+              >
+                <div style={{
+                  width: 32, height: 32, borderRadius: 10, background: p.accent,
+                  display: 'grid', placeItems: 'center', color: '#0a0b0d',
+                }}>
+                  {palette === p.id && <CheckIcon />}
+                </div>
+                <span style={{ fontSize: 9.5, fontWeight: 600, color: palette === p.id ? 'var(--amber)' : 'var(--fg-mute)' }}>
+                  {p.label}
+                </span>
+              </button>
             ))}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 10, lineHeight: 1.4 }}>
+            Cambia el color de acento y un tinte sutil de la app. Combínalo con cualquier tema.
           </div>
         </div>
       </div>

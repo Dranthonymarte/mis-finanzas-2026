@@ -12,14 +12,15 @@ import App from './App'
 // and Android Chrome will NOT offer "Add to home screen".
 registerSW({ immediate: true })
 
-// ── Apply saved theme/accent before React renders (prevents flash) ──
+// ── Apply saved theme/palette before React renders (prevents flash) ──
 const _savedTheme  = localStorage.getItem('mis_finanzas_theme') ?? 'dark'
 const _resolved    = _savedTheme === 'system'
   ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
   : _savedTheme
 document.documentElement.setAttribute('data-theme', _resolved)
-const _savedAccent = localStorage.getItem('mis_finanzas_accent')
-if (_savedAccent) document.documentElement.style.setProperty('--amber', _savedAccent)
+// Paleta de marca (acento + tinte). Migración: si había accent custom, default amber.
+const _savedPalette = localStorage.getItem('mis_finanzas_palette') ?? 'amber'
+document.documentElement.setAttribute('data-palette', _savedPalette)
 
 // Force is-mobile so mobile-uix.css body.is-mobile rules apply on all viewports
 document.body.classList.add('is-mobile')

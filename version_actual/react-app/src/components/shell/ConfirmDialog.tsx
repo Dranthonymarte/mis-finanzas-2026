@@ -21,15 +21,15 @@ export default function ConfirmDialog() {
     danger       = false,
   } = opts
 
-  // Portaleado a <body> + zIndex 2000 para que SIEMPRE quede por encima
-  // de cualquier Sheet (zIndex 1001, también portaleado). Antes se montaba
-  // dentro de AppShell con zIndex 1000 → la confirmación salía detrás del
-  // panel (revocar Pareja, eliminar Recurrente, etc.).
+  // Portaleado a <body> + zIndex 10300: capa más alta de la app. Debe quedar
+  // por encima del FAB (10200-10202, también portaleado) y de cualquier Sheet
+  // (1001). Con zIndex 2000 el FAB pintaba ENCIMA → la confirmación parecía
+  // salir "detrás" del panel (revocar Pareja, eliminar Recurrente, etc.).
   return createPortal(
     <div
       onClick={() => close(false)}
       style={{
-        position: 'fixed', inset: 0, zIndex: 2000,
+        position: 'fixed', inset: 0, zIndex: 10300,
         background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(2px)',
         display: 'grid', placeItems: 'center', padding: 24,
       }}

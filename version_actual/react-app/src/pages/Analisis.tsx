@@ -106,6 +106,7 @@ export default function Analisis() {
   const mesActivo    = usePrefsStore(s => s.mesActivo)
   const setMesActivo = usePrefsStore(s => s.setMesActivo)
   const moneda       = usePrefsStore(s => s.moneda)
+  const ocultarMontos = usePrefsStore(s => s.ocultarMontos)
   const { tasas }    = useTasas()
   const { config }   = useConfig()
   const prevId       = prevMesId(mesActivo)
@@ -294,7 +295,7 @@ export default function Analisis() {
                   <div className="num" style={{ fontSize: 13, fontWeight: 700, color: k.color, marginBottom: 4 }}>
                     {k.label === 'Balance' && k.cur >= 0 ? '+' : ''}{fmt(k.cur)}
                   </div>
-                  {moneda !== 'BS' && tasas.bcv > 0 && (
+                  {moneda !== 'BS' && tasas.bcv > 0 && !ocultarMontos && (
                     <div style={{ fontSize: 9, color: 'var(--fg-dim)', fontWeight: 500, marginBottom: 2 }}>
                       ≈ Bs {(Math.abs(k.cur) * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
                     </div>
@@ -385,7 +386,7 @@ export default function Analisis() {
                           <span style={{ flex: 1, fontSize: 12.5, fontWeight: 500, color: 'var(--fg)', textAlign: 'left' }}>{label}</span>
                           <div style={{ textAlign: 'right' }}>
                             <div className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--neg)' }}>{fmt(value)}</div>
-                            {moneda !== 'BS' && tasas.bcv > 0 && (
+                            {moneda !== 'BS' && tasas.bcv > 0 && !ocultarMontos && (
                               <div style={{ fontSize: 9.5, color: 'var(--fg-dim)', fontWeight: 500 }}>
                                 ≈ Bs {(value * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
                               </div>
@@ -438,7 +439,7 @@ export default function Analisis() {
                         <span style={{ flex: 1, fontSize: 12.5, fontWeight: 500, color: 'var(--fg)', textAlign: 'left' }}>{label}</span>
                         <div style={{ textAlign: 'right' }}>
                           <div className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--pos)' }}>{fmt(value)}</div>
-                          {moneda !== 'BS' && tasas.bcv > 0 && (
+                          {moneda !== 'BS' && tasas.bcv > 0 && !ocultarMontos && (
                             <div style={{ fontSize: 9.5, color: 'var(--fg-dim)', fontWeight: 500 }}>
                               ≈ Bs {(value * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
                             </div>
@@ -519,7 +520,7 @@ export default function Analisis() {
                           <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: 'var(--fg)', textAlign: 'left' }}>{label}</span>
                           <div style={{ textAlign: 'right' }}>
                             <div className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--amber)' }}>{fmt(value)}</div>
-                            {moneda !== 'BS' && tasas.bcv > 0 && (
+                            {moneda !== 'BS' && tasas.bcv > 0 && !ocultarMontos && (
                               <div style={{ fontSize: 9.5, color: 'var(--fg-dim)', fontWeight: 500 }}>
                                 ≈ Bs {(value * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
                               </div>

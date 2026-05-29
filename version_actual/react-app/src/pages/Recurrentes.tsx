@@ -61,6 +61,7 @@ export default function Recurrentes() {
   const { config, updateConfig } = useConfig()
   const userId               = useAuthStore(s => s.userId)
   const moneda               = usePrefsStore(s => s.moneda)
+  const ocultarMontos        = usePrefsStore(s => s.ocultarMontos)
   const { tasas }            = useTasas()
 
   const items = (config.recurrentes as RecurrenteItem[])
@@ -236,7 +237,7 @@ export default function Recurrentes() {
                       <div className="num" style={{ fontSize: 14, fontWeight: 700, color, whiteSpace: 'nowrap' }}>
                         {fmt(r.monto)}
                       </div>
-                      {moneda !== 'BS' && tasas.bcv > 0 && (
+                      {moneda !== 'BS' && tasas.bcv > 0 && !ocultarMontos && (
                         <div style={{ fontSize: 9.5, color: 'var(--fg-dim)', fontWeight: 500, whiteSpace: 'nowrap' }}>
                           ≈ Bs {(r.monto * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
                         </div>

@@ -57,6 +57,7 @@ function TxnRow({ t, last, onTap }: { t: Transaction; last: boolean; onTap: () =
   const { fmt }  = useFormat()
   const { tasas } = useTasas()
   const moneda   = usePrefsStore(s => s.moneda)
+  const ocultarMontos = usePrefsStore(s => s.ocultarMontos)
   const group = txnGroup(t.tipo)
   const isInc = group === 'ingreso'
   const isSav = group === 'ahorro'
@@ -100,7 +101,7 @@ function TxnRow({ t, last, onTap }: { t: Transaction; last: boolean; onTap: () =
         <div style={{ fontSize: 13, fontWeight: 600, color, whiteSpace: 'nowrap' }}>
           {fmt(Math.abs(t.amount))}
         </div>
-        {moneda !== 'BS' && tasas.bcv > 0 && t.amount !== 0 && (
+        {moneda !== 'BS' && tasas.bcv > 0 && !ocultarMontos && t.amount !== 0 && (
           <div style={{ fontSize: 10, color: 'var(--fg-dim)', fontWeight: 500, whiteSpace: 'nowrap', marginTop: 1 }}>
             ≈ Bs {(Math.abs(t.amount) * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
           </div>
@@ -161,6 +162,7 @@ export default function Txn() {
   const activeMes       = usePrefsStore(s => s.mesActivo)
   const setMesActivo    = usePrefsStore(s => s.setMesActivo)
   const moneda          = usePrefsStore(s => s.moneda)
+  const ocultarMontos   = usePrefsStore(s => s.ocultarMontos)
   const activeYear      = activeMes.split('-')[1]
   const { tasas }       = useTasas()
 
@@ -418,7 +420,7 @@ export default function Txn() {
                 <div className="num" style={{ fontSize: 14, fontWeight: 700, color: col.color }}>
                   {fmt(col.rawUSD)}
                 </div>
-                {moneda !== 'BS' && tasas.bcv > 0 && col.rawUSD !== 0 && (
+                {moneda !== 'BS' && tasas.bcv > 0 && !ocultarMontos && col.rawUSD !== 0 && (
                   <div style={{ fontSize: 9.5, color: 'var(--fg-dim)', marginTop: 2, fontWeight: 500 }}>
                     ≈ {(Math.abs(col.rawUSD) * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })} Bs
                   </div>

@@ -126,6 +126,7 @@ function TxnRowPreview({ t, last }: { t: Transaction; last: boolean }) {
   const navigate = useNavigate()
   const { tasas } = useTasas()
   const moneda    = usePrefsStore(s => s.moneda)
+  const ocultarMontos = usePrefsStore(s => s.ocultarMontos)
   const group = txnGroup(t.tipo)
   const isInc = group === 'ingreso'
   const isSav = group === 'ahorro'
@@ -165,7 +166,7 @@ function TxnRowPreview({ t, last }: { t: Transaction; last: boolean }) {
         <div style={{ fontSize: 13, fontWeight: 600, color, whiteSpace: 'nowrap' }}>
           {fmt(Math.abs(t.amount))}
         </div>
-        {moneda !== 'BS' && tasas.bcv > 0 && (
+        {moneda !== 'BS' && tasas.bcv > 0 && !ocultarMontos && (
           <div style={{ fontSize: 9.5, color: 'var(--fg-dim)', fontWeight: 500, whiteSpace: 'nowrap' }}>
             ≈ Bs {(Math.abs(t.amount) * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
           </div>
@@ -469,7 +470,7 @@ export default function Home() {
         <div className="font-display" style={{ fontSize: 44, lineHeight: 1, letterSpacing: '-.02em', marginTop: 6 }}>
           {fmt(patrimony)}
         </div>
-        {moneda !== 'BS' && tasas.bcv > 0 && (
+        {moneda !== 'BS' && tasas.bcv > 0 && !ocultarMontos && (
           <div style={{ fontSize: 11, color: 'var(--fg-dim)', marginTop: 5, fontWeight: 500 }}>
             ≈ Bs {(patrimony * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
           </div>
@@ -493,7 +494,7 @@ export default function Home() {
             <div className="num" style={{ fontSize: 18, fontWeight: 700 }}>
               {fmt(saldoDisponible)}
             </div>
-            {moneda !== 'BS' && tasas.bcv > 0 && (
+            {moneda !== 'BS' && tasas.bcv > 0 && !ocultarMontos && (
               <div style={{ fontSize: 10, color: 'var(--fg-dim)', marginTop: 2, fontWeight: 500 }}>
                 ≈ Bs {(saldoDisponible * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
               </div>
@@ -511,7 +512,7 @@ export default function Home() {
             }}>
               {fmt(kpiData.balance)}
             </div>
-            {moneda !== 'BS' && tasas.bcv > 0 && (
+            {moneda !== 'BS' && tasas.bcv > 0 && !ocultarMontos && (
               <div style={{ fontSize: 10, color: 'var(--fg-dim)', marginTop: 2, fontWeight: 500 }}>
                 ≈ Bs {(Math.abs(kpiData.balance) * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
               </div>
@@ -872,7 +873,7 @@ export default function Home() {
                       </span>
                       <div style={{ textAlign: 'right' }}>
                         <div className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--neg)' }}>{fmt(Math.abs(value))}</div>
-                        {moneda !== 'BS' && tasas.bcv > 0 && (
+                        {moneda !== 'BS' && tasas.bcv > 0 && !ocultarMontos && (
                           <div style={{ fontSize: 9.5, color: 'var(--fg-dim)', fontWeight: 500 }}>
                             ≈ Bs {(Math.abs(value) * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
                           </div>

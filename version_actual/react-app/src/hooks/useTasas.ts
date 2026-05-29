@@ -33,7 +33,8 @@ export function useTasas() {
   const [loading, setLoading] = useState(true)
   const tasasRef    = useRef<Tasas>(TASAS_DEFAULTS)
   const eurPerUsdRef = useRef<number | null>(null)   // raw EUR/USD to recalculate VES/EUR when BCV updates
-  tasasRef.current  = tasas
+  // Keep ref in sync with latest tasas (read by async fetch callbacks, never during render)
+  useEffect(() => { tasasRef.current = tasas }, [tasas])
 
   const cacheAndSet = (t: Tasas) => {
     setTasas(t)
@@ -99,6 +100,7 @@ export function useTasas() {
   }, [householdId, mesActivo])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- guard: clear loader when no household yet (cache-first auth)
     if (!householdId) { setLoading(false); return }
 
     // Try month-specific row first ("Mayo"), fallback to legacy 'global'

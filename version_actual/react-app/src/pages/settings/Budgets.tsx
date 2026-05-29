@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import AppHeader from '../../components/shell/AppHeader'
-import CatIcon, { catColor } from '../../components/ui/CatIcon'
+import CatIcon from '../../components/ui/CatIcon'
+import { catColor } from '../../components/ui/catColor'
 import { useConfig } from '../../hooks/useConfig'
 import { useFormat } from '../../hooks/useFormat'
 import { useTransactions } from '../../hooks/useTransactions'

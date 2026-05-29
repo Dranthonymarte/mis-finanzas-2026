@@ -145,6 +145,7 @@ export function useConfig() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- guard: clear loader when no user yet (cache-first auth)
     if (!userId) { setLoading(false); return }
 
     supabase

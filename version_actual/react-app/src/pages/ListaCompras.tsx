@@ -476,6 +476,7 @@ export default function ListaCompras() {
   const [savingNew,   setSavingNew]   = useState(false)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- guard: clear loader when no household/user yet (cache-first auth)
     if (!householdId || !userId) { setLoading(false); return }
     supabase
       .from('listas_compras')

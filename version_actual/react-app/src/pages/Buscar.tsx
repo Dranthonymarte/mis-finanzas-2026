@@ -58,6 +58,7 @@ export default function Buscar() {
     const q = query.trim()
     const hasFilters = !!(filterTipo || filterFrom || filterTo || filterCuenta || filterBCV)
     if ((q.length < 2 && !hasFilters) || !householdId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset results/loading when query too short or no household
       setResults([])
       setLoading(false)
       return

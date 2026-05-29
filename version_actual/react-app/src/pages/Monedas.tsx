@@ -30,6 +30,7 @@ export default function Monedas() {
 
   // Sync inputs when tasas loads from Supabase
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync store rate → editable inputs when tasas loads/changes
     setBcvInput(String(tasas.bcv))
     setEurInput(String(tasas.eur))
   }, [tasas.bcv, tasas.eur])

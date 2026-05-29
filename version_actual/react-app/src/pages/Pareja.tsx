@@ -76,6 +76,7 @@ export default function Pareja() {
     setLoading(false)
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- loadMembers (sets state) re-runs on identity change; excluded from deps (recreated each render → would loop)
   useEffect(() => { void loadMembers() }, [householdId, userId, userName])
 
   async function handleRevoke(member: Member) {

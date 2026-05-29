@@ -103,6 +103,7 @@ export default function Calendar() {
     }
     window.addEventListener('message', onMsg)
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- on-mount connection-status fetch (async setState after await)
     void checkStatus()
     return () => { window.removeEventListener('message', onMsg) }
   }, [checkStatus])

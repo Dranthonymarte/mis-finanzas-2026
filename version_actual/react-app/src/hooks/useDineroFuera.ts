@@ -69,6 +69,7 @@ export function useDineroFuera() {
     setLoading(false)
   }, [householdId])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- reload() (sets rows/loading) on mount & when householdId changes
   useEffect(() => { reload() }, [reload])
 
   const meDebenActivo = computeMeDebenActivo(rows)

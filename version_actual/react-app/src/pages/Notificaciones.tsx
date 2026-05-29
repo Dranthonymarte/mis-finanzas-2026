@@ -239,7 +239,9 @@ export default function Notificaciones() {
 
   const [notifs,  setNotifs]  = useState<Notif[]>([])
   const [loading, setLoading] = useState(true)
-  const [permission, setPermission] = useState<NotificationPermission>('default')
+  const [permission, setPermission] = useState<NotificationPermission>(
+    () => ('Notification' in window ? Notification.permission : 'default'),
+  )
 
   // ── Channel toggles (from config_usuario) ──
   const [toggles,       setToggles]       = useState<NotifToggles>({ push_enabled: false, telegram_enabled: false, gcal_enabled: false })
@@ -260,12 +262,9 @@ export default function Notificaciones() {
   const [recDias,    setRecDias]    = useState('7')
   const [saving,     setSaving]     = useState(false)
 
-  useEffect(() => {
-    if ('Notification' in window) setPermission(Notification.permission)
-  }, [])
-
   // Load notifications + channel toggles
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- guard: clear loader when no user yet (cache-first auth)
     if (!userId) { setLoading(false); return }
 
     Promise.all([

@@ -122,8 +122,8 @@ export default function Analisis() {
   const [openSemana,    setOpenSemana]    = useState<string | null>(null)
 
   // ── Helpers ─────────────────────────────────────
-  const txns        = liveTxns ?? []
-  const prevTxnsArr = prevTxns ?? []
+  const txns        = useMemo(() => liveTxns ?? [], [liveTxns])
+  const prevTxnsArr = useMemo(() => prevTxns ?? [], [prevTxns])
 
   // ── tipos config (same source as Home/useKPIs) ───
   const tipos = useMemo(

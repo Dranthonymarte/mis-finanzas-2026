@@ -34,7 +34,6 @@ export default function RowLink({
   sub,
   right,
   danger,
-  last: _last,   // CSS :last-child handles border — prop kept for call-site clarity
   onClick,
 }: RowLinkProps) {
   return (

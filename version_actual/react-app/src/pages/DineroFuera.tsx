@@ -57,6 +57,25 @@ const EMPTY_FORM: FormState = {
   fecha: todayISO(), notas: '', tipo: 'prestamo', pagado: false,
 }
 
+// ── Section header with total ─────────────────────
+function SectionHeader({ label, total, color, fmt }: {
+  label: string; total?: number; color: string; fmt: (amount: number) => string
+}) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+      marginTop: 18, marginBottom: 2,
+    }}>
+      <div style={{ fontSize: 10.5, color, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 700 }}>
+        {label}
+      </div>
+      {total !== undefined && (
+        <div className="num" style={{ fontSize: 13, fontWeight: 700, color }}>{fmt(total)}</div>
+      )}
+    </div>
+  )
+}
+
 export default function DineroFuera() {
   const householdId = useAuthStore(s => s.householdId)
   const userId      = useAuthStore(s => s.userId)
@@ -392,23 +411,6 @@ export default function DineroFuera() {
     )
   }
 
-  // ── Section header with total ─────────────────────
-  function SectionHeader({ label, total, color }: { label: string; total?: number; color: string }) {
-    return (
-      <div style={{
-        display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-        marginTop: 18, marginBottom: 2,
-      }}>
-        <div style={{ fontSize: 10.5, color, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 700 }}>
-          {label}
-        </div>
-        {total !== undefined && (
-          <div className="num" style={{ fontSize: 13, fontWeight: 700, color }}>{fmt(total)}</div>
-        )}
-      </div>
-    )
-  }
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       <AppHeader
@@ -456,7 +458,7 @@ export default function DineroFuera() {
         {/* ── Me deben ── */}
         {!loading && meDeben.length > 0 && (
           <>
-            <SectionHeader label="Me deben" total={totalMeDeben} color="var(--pos)" />
+            <SectionHeader label="Me deben" total={totalMeDeben} color="var(--pos)" fmt={fmt} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
               {meDeben.map(r => <RecordCard key={r.id} r={r} />)}
             </div>
@@ -466,7 +468,7 @@ export default function DineroFuera() {
         {/* ── Yo debo ── */}
         {!loading && yoDebo.length > 0 && (
           <>
-            <SectionHeader label="Yo debo" total={totalYoDebo} color="var(--neg)" />
+            <SectionHeader label="Yo debo" total={totalYoDebo} color="var(--neg)" fmt={fmt} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
               {yoDebo.map(r => <RecordCard key={r.id} r={r} />)}
             </div>
@@ -476,7 +478,7 @@ export default function DineroFuera() {
         {/* ── Pagados (historial) ── */}
         {!loading && pagados.length > 0 && (
           <>
-            <SectionHeader label={`Pagados · ${pagados.length}`} color="var(--fg-mute)" />
+            <SectionHeader label={`Pagados · ${pagados.length}`} color="var(--fg-mute)" fmt={fmt} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
               {pagados.map(r => <RecordCard key={r.id} r={r} />)}
             </div>

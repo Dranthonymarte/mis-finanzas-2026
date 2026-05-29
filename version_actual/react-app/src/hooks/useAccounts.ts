@@ -113,6 +113,7 @@ export function useAccounts() {
   }, [householdId, tasas.bcv])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- guard: clear loader when no household yet (cache-first auth)
     if (!householdId) { setLoading(false); return }
     fetchData()
 

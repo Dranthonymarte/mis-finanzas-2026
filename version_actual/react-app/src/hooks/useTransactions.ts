@@ -76,6 +76,7 @@ export function useTransactions(mesId: string) {
   }, [userId, householdId, dbKey])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- guard: clear loader when no user/household yet (cache-first auth)
     if (!userId || !householdId) { setLoading(false); return }
     setLoading(true)
     setTransactions(null)

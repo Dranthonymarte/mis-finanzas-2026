@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { type CSSProperties, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import CatIcon, { catColor } from '../components/ui/CatIcon'
+import CatIcon from '../components/ui/CatIcon'
+import { catColor } from '../components/ui/catColor'
 import { ArrowLeftIcon, CheckIcon } from '../components/icons/Icons'
 import { useAccounts } from '../hooks/useAccounts'
 import { useConfig } from '../hooks/useConfig'
@@ -91,7 +92,7 @@ export default function NewTransaction() {
   // BUG-7: destructure loading flag to know when tasas has loaded from DB
   const { tasas, loading: tasasLoading }  = useTasas()
 
-  const accounts = liveAccounts ?? []
+  const accounts = useMemo(() => liveAccounts ?? [], [liveAccounts])
   const tipos    = config.tipos
 
   // ── Form state ─────────────────────────────────
@@ -120,6 +121,7 @@ export default function NewTransaction() {
   // Sync BCV rate when tasas loads FROM DB — but not if user already edited it manually
   useEffect(() => {
     if (!userEditedRate && !tasasLoading) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync DB-loaded BCV rate into form unless user edited it
       setRateBCV(tasas.bcv)
       setRateStr(String(tasas.bcv))
     }
@@ -131,6 +133,7 @@ export default function NewTransaction() {
     if (!raw) return
     try {
       const { amount, desc: d } = JSON.parse(raw) as { amount: string; desc: string }
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot prefill from VozTxn handoff (sessionStorage), runs once on mount
       if (amount) { setAmountUSD(amount); setAmountBs((parseFloat(amount) * tasas.bcv).toFixed(2)) }
       if (d)      setDesc(d)
     } catch { /* ignore malformed */ }

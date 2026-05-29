@@ -16,13 +16,11 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 export function usePushSubscription() {
   const userId      = useAuthStore(s => s.userId)
   const householdId = useAuthStore(s => s.householdId)
-  const [supported,   setSupported]   = useState(false)
+  const [supported] = useState(
+    () => 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window,
+  )
   const [subscribed,  setSubscribed]  = useState(false)
   const [subscribing, setSubscribing] = useState(false)
-
-  useEffect(() => {
-    setSupported('Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window)
-  }, [])
 
   useEffect(() => {
     if (!supported) return

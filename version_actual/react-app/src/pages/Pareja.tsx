@@ -7,9 +7,10 @@
 import { useState, useEffect } from 'react'
 import AppHeader from '../components/shell/AppHeader'
 import Pill from '../components/ui/Pill'
-import { supabase }    from '../lib/supabase'
-import { useAuthStore } from '../store/auth'
+import { supabase }      from '../lib/supabase'
+import { useAuthStore }  from '../store/auth'
 import { useToastStore } from '../store/toast'
+import { confirmAction } from '../store/confirm'
 
 interface Member {
   user_id:      string | null
@@ -29,11 +30,14 @@ export default function Pareja() {
   const userName    = useAuthStore(s => s.userName)
   const addToast    = useToastStore(s => s.addToast)
 
-  const [members,  setMembers]  = useState<Member[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [email,    setEmail]    = useState('')
-  const [sending,  setSending]  = useState(false)
-  const [sent,     setSent]     = useState(false)
+  const [members,       setMembers]       = useState<Member[]>([])
+  const [loading,       setLoading]       = useState(true)
+  const [email,         setEmail]         = useState('')
+  const [sending,       setSending]       = useState(false)
+  const [sent,          setSent]          = useState(false)
+  const [revoking,      setRevoking]      = useState<string | null>(null)  // user_id/email being revoked
+  const [reinviting,    setReinviting]    = useState<string | null>(null)  // email being re-invited
+  const [reinviteEmail, setReinviteEmail] = useState<Record<string, string>>({}) // overrides per member key
 
   async function loadMembers() {
     if (!householdId) { setLoading(false); return }
@@ -73,6 +77,112 @@ export default function Pareja() {
   }
 
   useEffect(() => { void loadMembers() }, [householdId, userId, userName])
+
+  async function handleRevoke(member: Member) {
+    const memberKey = member.user_id ?? member.invite_email
+    if (!householdId || !memberKey) return
+
+    const confirmed = await confirmAction({
+      title:        'Revocar acceso',
+      message:      `¿Quitar el acceso de "${member.display}" al hogar? Podrás re-invitarlo después.`,
+      confirmLabel: 'Revocar',
+      danger:       true,
+    })
+    if (!confirmed) return
+
+    setRevoking(memberKey)
+    try {
+      const query = supabase
+        .from('household_members')
+        .update({ invite_status: 'revoked' })
+        .eq('household_id', householdId)
+
+      // match by user_id if available, otherwise by invite_email
+      const { error } = member.user_id
+        ? await query.eq('user_id', member.user_id)
+        : await query.eq('invite_email', member.invite_email)
+
+      if (error) {
+        console.error('[Pareja] revoke:', error)
+        addToast('Error al revocar el acceso', 'error')
+      } else {
+        addToast(`Acceso de ${member.display} revocado`, 'info')
+        void loadMembers()
+      }
+    } catch (err) {
+      console.error('[Pareja] handleRevoke error:', err)
+      addToast('Error inesperado al revocar', 'error')
+    } finally {
+      setRevoking(null)
+    }
+  }
+
+  async function handleReinvite(member: Member) {
+    const memberKey = member.user_id ?? member.invite_email
+    if (!householdId || !userId || !memberKey) return
+
+    // Use override email if user typed one, else fall back to member's email
+    const targetEmail = (reinviteEmail[memberKey] ?? member.invite_email ?? '').trim().toLowerCase()
+    if (!targetEmail) {
+      addToast('Ingresa un correo para re-invitar', 'warn')
+      return
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail)) {
+      addToast('Ingresa un correo válido', 'warn')
+      return
+    }
+
+    setReinviting(memberKey)
+    try {
+      // Update existing row: new email + reset status to pending
+      const query = supabase
+        .from('household_members')
+        .update({
+          invite_status: 'pending',
+          invite_email:  targetEmail,
+          invited_at:    new Date().toISOString(),
+        })
+        .eq('household_id', householdId)
+
+      const { error: dbError } = member.user_id
+        ? await query.eq('user_id', member.user_id)
+        : await query.eq('invite_email', member.invite_email)
+
+      if (dbError) {
+        console.error('[Pareja] reinvite update:', dbError)
+        addToast('Error al actualizar el invite', 'error')
+        return
+      }
+
+      // Re-send OTP
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: targetEmail,
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: `${window.location.origin}/onboarding`,
+          data: {
+            invited_by_household: householdId,
+            invited_by_user:      userId,
+          },
+        },
+      })
+
+      if (otpError) {
+        console.error('[Pareja] reinvite OTP:', otpError)
+        addToast(`Invite actualizado pero el correo falló: ${otpError.message}`, 'warn')
+      } else {
+        addToast(`Re-invitación enviada a ${targetEmail}`, 'info')
+        // Clear override email for this member
+        setReinviteEmail(prev => { const next = { ...prev }; delete next[memberKey]; return next })
+        void loadMembers()
+      }
+    } catch (err) {
+      console.error('[Pareja] handleReinvite error:', err)
+      addToast('Error inesperado al re-invitar', 'error')
+    } finally {
+      setReinviting(null)
+    }
+  }
 
   async function handleInvite() {
     const trimmedEmail = email.trim().toLowerCase()
@@ -161,9 +271,8 @@ export default function Pareja() {
 
   const statusBadge = (status: string) => {
     if (status === 'accepted') return null
-    return (
-      <Pill tone="amber" size="xs">Pendiente</Pill>
-    )
+    if (status === 'revoked')  return <Pill tone="neg"   size="xs">Revocado</Pill>
+    return                            <Pill tone="amber" size="xs">Pendiente</Pill>
   }
 
   return (
@@ -183,25 +292,100 @@ export default function Pareja() {
           ) : members.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--fg-mute)', fontSize: 12, padding: '8px 0' }}>Sin miembros registrados</div>
           ) : (
-            <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
-              {members.map((m, i) => (
-                <div
-                  key={m.user_id ?? m.invite_email ?? i}
-                  style={{ flex: 1, minWidth: 80, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}
-                >
-                  <div style={{
-                    width: 52, height: 52, borderRadius: 15, background: m.color,
-                    display: 'grid', placeItems: 'center',
-                    fontSize: 22, fontWeight: 700, color: 'var(--ink-0)',
-                    opacity: m.invite_status === 'pending' ? 0.6 : 1,
-                  }}>
-                    {m.inicial}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 14 }}>
+              {members.map((m, i) => {
+                const memberKey     = m.user_id ?? m.invite_email ?? String(i)
+                const isOwner       = m.role === 'owner'
+                const isRevocable   = !isOwner && m.invite_status === 'accepted'
+                const isReinvitable = !isOwner && (m.invite_status === 'revoked' || m.invite_status === 'pending')
+                const isRevokingThis   = revoking   === memberKey
+                const isReinvitingThis = reinviting === memberKey
+                const emailOverride    = reinviteEmail[memberKey] ?? ''
+
+                return (
+                  <div
+                    key={memberKey}
+                    style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 12,
+                      background: 'var(--ink-1)', borderRadius: 12, padding: '12px 14px',
+                    }}
+                  >
+                    {/* Avatar */}
+                    <div style={{
+                      width: 44, height: 44, borderRadius: 12, background: m.color, flexShrink: 0,
+                      display: 'grid', placeItems: 'center',
+                      fontSize: 18, fontWeight: 700, color: 'var(--ink-0)',
+                      opacity: m.invite_status === 'pending' || m.invite_status === 'revoked' ? 0.55 : 1,
+                    }}>
+                      {m.inicial}
+                    </div>
+
+                    {/* Info + actions */}
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>{m.display}</span>
+                        <Pill tone="pos" size="xs">{rolLabel(m.role)}</Pill>
+                        {statusBadge(m.invite_status)}
+                      </div>
+
+                      {m.invite_email && (
+                        <div style={{ fontSize: 11, color: 'var(--fg-mute)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {m.invite_email}
+                        </div>
+                      )}
+
+                      {/* Revocar — solo partner aceptado */}
+                      {isRevocable && (
+                        <button
+                          onClick={() => void handleRevoke(m)}
+                          disabled={isRevokingThis}
+                          style={{
+                            alignSelf: 'flex-start', marginTop: 2,
+                            padding: '5px 10px', borderRadius: 8, border: '1px solid var(--neg)',
+                            background: 'transparent', color: 'var(--neg)',
+                            fontSize: 11.5, fontWeight: 600, cursor: isRevokingThis ? 'default' : 'pointer',
+                            opacity: isRevokingThis ? 0.6 : 1, transition: 'opacity .15s',
+                          }}
+                        >
+                          {isRevokingThis ? 'Revocando…' : 'Revocar acceso'}
+                        </button>
+                      )}
+
+                      {/* Re-invitar — partner revocado o pendiente */}
+                      {isReinvitable && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 2 }}>
+                          <input
+                            type="email"
+                            value={emailOverride}
+                            onChange={e => setReinviteEmail(prev => ({ ...prev, [memberKey]: e.target.value }))}
+                            onKeyDown={e => { if (e.key === 'Enter') void handleReinvite(m) }}
+                            placeholder={m.invite_email ?? 'correo@ejemplo.com'}
+                            disabled={isReinvitingThis}
+                            style={{
+                              background: 'var(--ink-0)', border: '1px solid var(--line)',
+                              borderRadius: 8, padding: '7px 10px', fontSize: 12,
+                              color: 'var(--fg)', outline: 'none', width: '100%',
+                            }}
+                          />
+                          <button
+                            onClick={() => void handleReinvite(m)}
+                            disabled={isReinvitingThis}
+                            style={{
+                              alignSelf: 'flex-start',
+                              padding: '5px 10px', borderRadius: 8, border: 'none',
+                              background: 'var(--amber)', color: 'var(--ink-0)',
+                              fontSize: 11.5, fontWeight: 600, cursor: isReinvitingThis ? 'default' : 'pointer',
+                              opacity: isReinvitingThis ? 0.6 : 1, transition: 'opacity .15s',
+                            }}
+                          >
+                            {isReinvitingThis ? 'Enviando…' : 'Re-invitar'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'center' }}>{m.display}</div>
-                  <Pill tone="pos" size="xs">{rolLabel(m.role)}</Pill>
-                  {statusBadge(m.invite_status)}
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 

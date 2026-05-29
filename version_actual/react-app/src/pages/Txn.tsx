@@ -17,6 +17,7 @@ import { usePrefsStore }   from '../store/prefs'
 import { FilterIcon, LockIcon, SearchIcon } from '../components/icons/Icons'
 import { calcKPIs } from '../lib/finance'
 import { generateMesesByYear, mesLabel } from '../lib/mes'
+import { useTasas } from '../hooks/useTasas'
 
 const MONTHS_BY_YEAR = generateMesesByYear(14)
 
@@ -53,7 +54,9 @@ type FilterType = 'all' | 'gasto' | 'ingreso' | 'ahorro'
 
 /* ── TxnRow ── */
 function TxnRow({ t, last, onTap }: { t: Transaction; last: boolean; onTap: () => void }) {
-  const { fmt } = useFormat()
+  const { fmt }  = useFormat()
+  const { tasas } = useTasas()
+  const moneda   = usePrefsStore(s => s.moneda)
   const group = txnGroup(t.tipo)
   const isInc = group === 'ingreso'
   const isSav = group === 'ahorro'
@@ -93,8 +96,15 @@ function TxnRow({ t, last, onTap }: { t: Transaction; last: boolean; onTap: () =
           )}
         </div>
       </div>
-      <div style={{ fontSize: 13, fontWeight: 600, color, whiteSpace: 'nowrap' }}>
-        {fmt(Math.abs(t.amount))}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color, whiteSpace: 'nowrap' }}>
+          {fmt(Math.abs(t.amount))}
+        </div>
+        {moneda !== 'BS' && tasas.bcv > 0 && t.amount !== 0 && (
+          <div style={{ fontSize: 10, color: 'var(--fg-dim)', fontWeight: 500, whiteSpace: 'nowrap', marginTop: 1 }}>
+            ≈ Bs {(Math.abs(t.amount) * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -150,7 +160,9 @@ export default function Txn() {
   // ── Mes activo desde prefs store (sincronizado con Home) ──
   const activeMes       = usePrefsStore(s => s.mesActivo)
   const setMesActivo    = usePrefsStore(s => s.setMesActivo)
+  const moneda          = usePrefsStore(s => s.moneda)
   const activeYear      = activeMes.split('-')[1]
+  const { tasas }       = useTasas()
 
   const [filter,        setFilter]        = useState<FilterType>('all')
   const [closed,        setClosed]        = useState<Set<string>>(loadClosed)
@@ -390,11 +402,11 @@ export default function Txn() {
         display: 'grid', gridTemplateColumns: '1fr 1px 1fr 1px 1fr',
       }}>
         {[
-          { label: 'Entradas', value: fmt(income),            color: 'var(--pos)' },
+          { label: 'Entradas', rawUSD: income,            color: 'var(--pos)' },
           null,
-          { label: 'Salidas',  value: fmt(expenses),          color: 'var(--neg)' },
+          { label: 'Salidas',  rawUSD: expenses,          color: 'var(--neg)' },
           null,
-          { label: 'Neto',     value: fmt(income - expenses), color: 'var(--fg)' },
+          { label: 'Neto',     rawUSD: income - expenses, color: 'var(--fg)' },
         ].map((col, i) =>
           col === null
             ? <div key={i} style={{ background: 'var(--line)', width: 1, margin: '10px 0' }} />
@@ -404,8 +416,13 @@ export default function Txn() {
                   {col.label}
                 </div>
                 <div className="num" style={{ fontSize: 14, fontWeight: 700, color: col.color }}>
-                  {col.value}
+                  {fmt(col.rawUSD)}
                 </div>
+                {moneda !== 'BS' && tasas.bcv > 0 && col.rawUSD !== 0 && (
+                  <div style={{ fontSize: 9.5, color: 'var(--fg-dim)', marginTop: 2, fontWeight: 500 }}>
+                    ≈ {(Math.abs(col.rawUSD) * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })} Bs
+                  </div>
+                )}
               </div>
             )
         )}

@@ -23,6 +23,7 @@ import { usePrefsStore, type Moneda } from '../store/prefs'
 import { useAuthStore }    from '../store/auth'
 import { supabase }        from '../lib/supabase'
 import { generateMeses, generateMesesByYear, mesLabel, dateToMesId } from '../lib/mes'
+import { useTasas } from '../hooks/useTasas'
 import { DEFAULTS } from '../hooks/useConfig'
 import { BellIcon } from '../components/icons/Icons'
 
@@ -183,6 +184,7 @@ export default function Home() {
   const mesActivo      = usePrefsStore(s => s.mesActivo)
   const setMesActivo   = usePrefsStore(s => s.setMesActivo)
   const activeYear     = mesActivo.split('-')[1]
+  const { tasas }      = useTasas()
   const ocultarMontos  = usePrefsStore(s => s.ocultarMontos)
   const toggleOcultar  = usePrefsStore(s => s.toggleOcultarMontos)
   const moneda         = usePrefsStore(s => s.moneda)
@@ -458,6 +460,11 @@ export default function Home() {
         <div className="font-display" style={{ fontSize: 44, lineHeight: 1, letterSpacing: '-.02em', marginTop: 6 }}>
           {fmt(patrimony)}
         </div>
+        {moneda !== 'BS' && tasas.bcv > 0 && (
+          <div style={{ fontSize: 11, color: 'var(--fg-dim)', marginTop: 5, fontWeight: 500 }}>
+            ≈ Bs {(patrimony * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
+          </div>
+        )}
         <div style={{ marginTop: 16 }}>
           <Sparkline data={MOCK_BALANCE_SERIES} color="var(--amber)" w={350} h={36} fill stroke={1.8} />
         </div>
@@ -477,6 +484,11 @@ export default function Home() {
             <div className="num" style={{ fontSize: 18, fontWeight: 700 }}>
               {fmt(saldoDisponible)}
             </div>
+            {moneda !== 'BS' && tasas.bcv > 0 && (
+              <div style={{ fontSize: 10, color: 'var(--fg-dim)', marginTop: 2, fontWeight: 500 }}>
+                ≈ Bs {(saldoDisponible * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
+              </div>
+            )}
             <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 3 }}>Activos disponibles</div>
           </div>
           <div style={{ background: 'var(--line)', margin: '4px 0' }} />
@@ -490,6 +502,11 @@ export default function Home() {
             }}>
               {kpiData.balance >= 0 ? '+' : ''}{fmt(kpiData.balance)}
             </div>
+            {moneda !== 'BS' && tasas.bcv > 0 && (
+              <div style={{ fontSize: 10, color: 'var(--fg-dim)', marginTop: 2, fontWeight: 500 }}>
+                ≈ Bs {(Math.abs(kpiData.balance) * tasas.bcv).toLocaleString('es-VE', { maximumFractionDigits: 0 })}
+              </div>
+            )}
             <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 3 }}>
               Ing − Gas
             </div>

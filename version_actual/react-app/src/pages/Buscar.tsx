@@ -126,7 +126,7 @@ export default function Buscar() {
 
           {/* Search input */}
           <div style={{
-            flex: 1, display: 'flex', alignItems: 'center', gap: 8,
+            flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8,
             background: 'var(--ink-2)', border: '1px solid var(--line)',
             borderRadius: 12, padding: '8px 12px',
           }}>
@@ -138,7 +138,7 @@ export default function Buscar() {
               onChange={e => setQuery(e.target.value)}
               placeholder="Descripción o categoría…"
               style={{
-                flex: 1, background: 'none', border: 'none', outline: 'none',
+                flex: 1, minWidth: 0, background: 'none', border: 'none', outline: 'none',
                 fontSize: 15, color: 'var(--fg)', fontFamily: 'var(--f-ui)',
               }}
             />
@@ -150,7 +150,7 @@ export default function Buscar() {
             )}
           </div>
 
-          {/* Filter toggle — SVG icon evita clipping de ⚙ Unicode en Safari/PWA */}
+          {/* Filter toggle — gear ⚙ (margen derecho garantizado por minWidth:0 del search bar) */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <button
               onClick={() => setShowFilters(v => !v)}
@@ -161,17 +161,9 @@ export default function Buscar() {
                 border: '1px solid var(--line)',
                 color: activeFilterCount > 0 ? 'var(--ink-0)' : 'var(--fg-dim)',
                 cursor: 'pointer', display: 'grid', placeItems: 'center',
-                overflow: 'hidden',
               }}
             >
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-                <line x1="2" y1="4"   x2="13" y2="4"/>
-                <line x1="2" y1="7.5" x2="13" y2="7.5"/>
-                <line x1="2" y1="11"  x2="13" y2="11"/>
-                <circle cx="5"    cy="4"   r="1.5" fill="currentColor" stroke="none"/>
-                <circle cx="10"   cy="7.5" r="1.5" fill="currentColor" stroke="none"/>
-                <circle cx="6.5"  cy="11"  r="1.5" fill="currentColor" stroke="none"/>
-              </svg>
+              <span style={{ fontSize: 16, lineHeight: 1 }}>⚙</span>
             </button>
             {activeFilterCount > 0 && (
               <span style={{

@@ -91,7 +91,26 @@ export default function NotificationsSettings() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bot_token: trimToken }),
       })
-      const result = await res.json() as { ok: boolean; description?: string }
+
+      // La respuesta puede NO ser JSON (route no desplegada → fallback SPA
+      // devuelve HTML, o body vacío). Parsear defensivamente para evitar el
+      // "Unexpected token '<' … is not valid JSON".
+      const raw = await res.text()
+      let result: { ok: boolean; description?: string }
+      try {
+        result = JSON.parse(raw) as { ok: boolean; description?: string }
+      } catch {
+        await Promise.all([
+          updateConfig('telegram_bot_token',    null),
+          updateConfig('telegram_bot_username', null),
+        ])
+        setMsg({
+          text: `No se pudo registrar el webhook (respuesta inválida del servidor, código ${res.status}). Intenta de nuevo en unos minutos.`,
+          ok: false,
+        })
+        setSaving(false)
+        return
+      }
 
       if (!result.ok) {
         // Token inválido según Telegram → revertir guardado

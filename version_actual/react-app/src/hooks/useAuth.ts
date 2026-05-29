@@ -39,6 +39,31 @@ function buildSession(
 }
 
 /**
+ * Build a session payload that PRESERVES an already-resolved householdId.
+ *
+ * Fixes "datos desaparecen random": getSession() and TOKEN_REFRESHED (~hourly)
+ * both re-emit the session. Using buildSession() there resets householdId to
+ * the provisional uid, so for a *partner* (Isabel: uid 455c23cd, household
+ * fa3f7b3b) every query in the window before resolveAndSet finishes scopes to
+ * the wrong household → empty results → data appears to vanish. When the user
+ * is unchanged and the store already holds a resolved household (≠ uid), keep
+ * it. A *different* uid (real account switch) falls back to provisional and
+ * resolveAndSet corrects it. Auth stays non-blocking — no regression of 9b9c0a8.
+ */
+function sessionFor(
+  userId: string,
+  email:  string | null,
+  meta?:  Record<string, unknown>,
+): SessionPayload {
+  const base = buildSession(userId, email, meta)
+  const prev = getStore()
+  if (prev.userId === userId && prev.householdId && prev.householdId !== userId) {
+    return { ...base, householdId: prev.householdId }
+  }
+  return base
+}
+
+/**
  * Resolve the user's active household from `household_members`. Prefers a
  * `partner` membership (the shared family household) over an `owner` one
  * (a user's legacy solo household). Pure read — never throws, never writes.
@@ -113,7 +138,7 @@ export function useAuth() {
         }
 
         const { id: uid, email } = session.user
-        setSession(buildSession(uid, email ?? null, session.user.user_metadata))
+        setSession(sessionFor(uid, email ?? null, session.user.user_metadata))
         getStore().setAuthReady()
         resolveAndSet(uid)
       })
@@ -140,7 +165,7 @@ export function useAuth() {
         }
 
         if (session?.user) {
-          setSession(buildSession(
+          setSession(sessionFor(
             session.user.id,
             session.user.email ?? null,
             session.user.user_metadata,

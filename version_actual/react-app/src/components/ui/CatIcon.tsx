@@ -88,21 +88,32 @@ export function catColor(cat: string | null | undefined): string {
 }
 
 interface CatIconProps {
-  cat: string | null | undefined
-  size?: number
+  cat:       string | null | undefined
+  size?:     number
+  /** When rendering a subcategory icon, pass "ParentCat::SubName" to resolve its specific emoji */
+  subcatKey?: string
 }
 
-function getStoredEmoji(cat: string): string | undefined {
+const CAT_EMOJI_LS_KEY = 'mf-cat-emojis'
+
+/**
+ * Look up a stored emoji override.
+ * - For categories: key = cat name
+ * - For subcategories: key = "parentCat::subName"
+ * Both live in the same unified map (matches config_usuario.cat_emojis).
+ */
+function getStoredEmoji(cat: string, subcatKey?: string): string | undefined {
   try {
-    const map = JSON.parse(localStorage.getItem('mf-cat-emojis') || '{}') as Record<string, string>
+    const map = JSON.parse(localStorage.getItem(CAT_EMOJI_LS_KEY) || '{}') as Record<string, string>
+    if (subcatKey) return map[subcatKey] || undefined
     return map[cat] || undefined
   } catch { return undefined }
 }
 
-export default function CatIcon({ cat, size = 36 }: CatIconProps) {
+export default function CatIcon({ cat, size = 36, subcatKey }: CatIconProps) {
   const safe  = cat ?? ''
   const c     = catColor(safe)
-  const emoji = getStoredEmoji(safe) ?? CAT_EMOJI[safe] ?? findEmojiByKeyword(safe) ?? '💸'
+  const emoji = getStoredEmoji(safe, subcatKey) ?? CAT_EMOJI[safe] ?? findEmojiByKeyword(safe) ?? '💸'
   return (
     <div
       style={{

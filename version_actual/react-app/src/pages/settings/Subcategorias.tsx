@@ -17,18 +17,11 @@ const inputSt: CSSProperties = {
   color: 'var(--fg)', outline: 'none',
 }
 
-function readSubEmojiMap(): Record<string, string> {
-  try { return JSON.parse(localStorage.getItem('mf-subcat-emojis') || '{}') } catch { return {} }
-}
-function writeSubEmojiMap(map: Record<string, string>) {
-  try { localStorage.setItem('mf-subcat-emojis', JSON.stringify(map)) } catch { /* noop */ }
-}
-
 interface DeleteTarget { cat: string; subcat: string }
 interface EditState    { cat: string; sub: string; newName: string; newEmoji: string }
 
 export default function Subcategorias() {
-  const { config, updateConfig } = useConfig()
+  const { config, updateConfig, updateCatEmojis } = useConfig()
   const subcats = config.subcategorias   // Record<string, string[]>
 
   // Build ordered chip list: cats that HAVE subcats, ordered by tipo order then alpha
@@ -61,7 +54,9 @@ export default function Subcategorias() {
   const [addDraft,     setAddDraft]     = useState('')
   const [showAddForm,  setShowAddForm]  = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
-  const [emojiMap,     setEmojiMap]     = useState<Record<string, string>>(readSubEmojiMap)
+
+  // Derived from config (DB-backed + localStorage cache, unified map with cat_emojis)
+  const emojiMap = config.catEmojis
 
   // All chips: ALL categories (discover where to add subcats), with count badge on those that have them
   const chipCats = Array.from(new Set([
@@ -99,9 +94,8 @@ export default function Subcategorias() {
     const trimmed = newName.trim()
     const emojiTrimmed = newEmoji.trim()
     if (emojiTrimmed) {
-      const nextMap = { ...emojiMap, [`${cat}::${trimmed || sub}`]: emojiTrimmed }
-      writeSubEmojiMap(nextMap)
-      setEmojiMap(nextMap)
+      // Subcat emoji key: "ParentCat::SubName" — lives in unified cat_emojis map
+      await updateCatEmojis(`${cat}::${trimmed || sub}`, emojiTrimmed)
     }
     if (trimmed && trimmed !== sub) {
       const catList = subcats[cat] ?? []
@@ -176,7 +170,7 @@ export default function Subcategorias() {
                 display: 'flex', alignItems: 'center', gap: 12,
               }}
             >
-              <CatIcon cat={activeCat} size={36} />
+              <CatIcon cat={activeCat} size={36} subcatKey={emojiKey} />
               {isEditing ? (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <input
@@ -208,7 +202,7 @@ export default function Subcategorias() {
                   onClick={() => setEditState({ cat: activeCat, sub, newName: sub, newEmoji: storedEmoji ?? '' })}
                   title="Toca para renombrar o cambiar emoji"
                 >
-                  {storedEmoji ? `${storedEmoji} ` : ''}{sub}
+                  {sub}
                 </span>
               )}
               {!isEditing && (

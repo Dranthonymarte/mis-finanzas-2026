@@ -2,6 +2,16 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
 
+// ── Emoji-map helpers (unified: cats use plain name, subcats use "cat::sub") ──
+export const CAT_EMOJI_LS_KEY = 'mf-cat-emojis'
+
+export function readEmojiMapLS(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(CAT_EMOJI_LS_KEY) || '{}') } catch { return {} }
+}
+export function writeEmojiMapLS(map: Record<string, string>) {
+  try { localStorage.setItem(CAT_EMOJI_LS_KEY, JSON.stringify(map)) } catch { /* noop */ }
+}
+
 export interface TipoConfig {
   nombre: string
   esIngreso: boolean
@@ -44,6 +54,8 @@ export interface Config {
   closedMonths:        string[]
   metasAhorro:         MetaAhorro[]
   fireConfig:          FireConfig
+  // ── Emoji overrides (cats: plain name, subcats: "cat::sub") ─────────────
+  catEmojis:           Record<string, string>
   // ── Telegram bot config (per-user, multi-tenant) ──────────────────────────
   telegramBotToken:    string | null
   telegramBotUsername: string | null
@@ -53,6 +65,7 @@ export const DEFAULTS: Config = {
   // ── Telegram bot config defaults (null = not connected) ───────────────────
   telegramBotToken:    null,
   telegramBotUsername: null,
+  catEmojis:           {},
   tipos: [
     { nombre: 'Gasto',                 esIngreso: false },
     { nombre: 'Ingreso Fijo',          esIngreso: true  },
@@ -136,13 +149,19 @@ export function useConfig() {
 
     supabase
       .from('config_usuario')
-      .select('tipos,categorias,subcategorias,presupuestos,recurrentes,closed_months,metas_ahorro,fire_config,telegram_bot_token,telegram_bot_username')
+      .select('tipos,categorias,subcategorias,presupuestos,recurrentes,closed_months,metas_ahorro,fire_config,cat_emojis,telegram_bot_token,telegram_bot_username')
       .eq('user_id', userId)
       .single()
       .then(({ data, error }) => {
         if (error || !data) { setLoading(false); return }
-        const cats = (data.categorias  as Record<string,string[]> | null)
-        const subs = (data.subcategorias as Record<string,string[]> | null)
+        const cats      = (data.categorias    as Record<string,string[]> | null)
+        const subs      = (data.subcategorias as Record<string,string[]> | null)
+        const dbEmojis  = (data.cat_emojis    as Record<string,string>  | null) ?? {}
+
+        // Merge DB emojis → localStorage (DB wins; this seeds cache on every login)
+        const lsEmojis  = readEmojiMapLS()
+        const merged    = { ...lsEmojis, ...dbEmojis }
+        writeEmojiMapLS(merged)
 
         setConfig({
           tipos:               normalizeTipos(data.tipos),
@@ -153,6 +172,7 @@ export function useConfig() {
           closedMonths:        (data.closed_months as string[])             ?? [],
           metasAhorro:         (data.metas_ahorro  as MetaAhorro[])         ?? [],
           fireConfig:          (data.fire_config   as FireConfig)            ?? DEFAULTS.fireConfig,
+          catEmojis:           merged,
           // ── Telegram bot columns (nullable, per-user) ────────────────────
           telegramBotToken:    (data.telegram_bot_token    as string | null) ?? null,
           telegramBotUsername: (data.telegram_bot_username as string | null) ?? null,
@@ -173,6 +193,7 @@ export function useConfig() {
       closed_months:         'closedMonths',
       metas_ahorro:          'metasAhorro',
       fire_config:           'fireConfig',
+      cat_emojis:            'catEmojis',
       // ── Telegram bot columns ─────────────────────────────────────────────
       telegram_bot_token:    'telegramBotToken',
       telegram_bot_username: 'telegramBotUsername',
@@ -185,5 +206,18 @@ export function useConfig() {
       .upsert({ user_id: userId, [campo]: valor }, { onConflict: 'user_id' })
   }
 
-  return { config, loading, updateConfig }
+  /**
+   * Persist an emoji override for a category or subcategory.
+   * - Category: key = cat name (e.g. "Alimentación")
+   * - Subcategory: key = "ParentCat::SubName" (e.g. "Alimentación::Supermercado")
+   * Writes localStorage immediately (cache) and upserts DB (durable).
+   */
+  async function updateCatEmojis(key: string, emoji: string) {
+    const next = { ...readEmojiMapLS(), [key]: emoji }
+    writeEmojiMapLS(next)
+    setConfig(prev => ({ ...prev, catEmojis: next }))
+    await updateConfig('cat_emojis', next)
+  }
+
+  return { config, loading, updateConfig, updateCatEmojis }
 }

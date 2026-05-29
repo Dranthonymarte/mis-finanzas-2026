@@ -3,6 +3,7 @@ import { type CSSProperties } from 'react'
 import AppHeader from '../../components/shell/AppHeader'
 import CatIcon from '../../components/ui/CatIcon'
 import { useConfig } from '../../hooks/useConfig'
+import { confirmAction } from '../../store/confirm'
 
 const inputSt: CSSProperties = {
   flex: 1, background: 'var(--ink-1)', border: '1px solid var(--line)',
@@ -10,16 +11,8 @@ const inputSt: CSSProperties = {
   color: 'var(--fg)', outline: 'none',
 }
 
-/** Read/write emoji overrides from localStorage */
-function readEmojiMap(): Record<string, string> {
-  try { return JSON.parse(localStorage.getItem('mf-cat-emojis') || '{}') } catch { return {} }
-}
-function writeEmojiMap(map: Record<string, string>) {
-  try { localStorage.setItem('mf-cat-emojis', JSON.stringify(map)) } catch { /* noop */ }
-}
-
 export default function Categories() {
-  const { config, updateConfig } = useConfig()
+  const { config, updateConfig, updateCatEmojis } = useConfig()
   const [activeTipo, setActiveTipo] = useState(config.tipos[0]?.nombre ?? 'Gasto')
   const [showForm,  setShowForm]   = useState(false)
   const [newName,   setNewName]    = useState('')
@@ -27,7 +20,9 @@ export default function Categories() {
   const [editCat,   setEditCat]    = useState<string | null>(null)
   const [editVal,   setEditVal]    = useState('')
   const [editEmoji, setEditEmoji]  = useState('')
-  const [emojiMap,  setEmojiMap]   = useState<Record<string, string>>(readEmojiMap)
+
+  // Derived from config (DB-backed + localStorage cache, always fresh)
+  const emojiMap = config.catEmojis
 
   const tipos = config.tipos.map(t => t.nombre)
   const cats  = config.categorias[activeTipo] ?? []
@@ -44,6 +39,7 @@ export default function Categories() {
   }
 
   async function removeCategory(cat: string) {
+    if (!(await confirmAction({ title: 'Eliminar categoría', message: 'Esta acción no se puede deshacer.', confirmLabel: 'Eliminar', danger: true }))) return
     const next = { ...config.categorias, [activeTipo]: cats.filter(c => c !== cat) }
     await updateConfig('categorias', next)
   }
@@ -51,12 +47,10 @@ export default function Categories() {
   async function renameCategory() {
     if (!editCat) return
     const trimmed = editVal.trim()
-    // Save emoji override even if name didn't change
+    // Save emoji override even if name didn't change — persists to DB + localStorage
     const emojiTrimmed = editEmoji.trim()
     if (emojiTrimmed) {
-      const nextMap = { ...emojiMap, [trimmed || editCat]: emojiTrimmed }
-      writeEmojiMap(nextMap)
-      setEmojiMap(nextMap)
+      await updateCatEmojis(trimmed || editCat, emojiTrimmed)
     }
     if (!trimmed || trimmed === editCat || cats.includes(trimmed)) { setEditCat(null); return }
     // Rename inside categorias[tipo]

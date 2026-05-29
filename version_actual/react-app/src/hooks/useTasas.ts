@@ -31,8 +31,9 @@ export function useTasas() {
   const mesActivo   = usePrefsStore(s => s.mesActivo)
   const [tasas,   setTasas]   = useState<Tasas>(loadCachedTasas)
   const [loading, setLoading] = useState(true)
-  const tasasRef = useRef<Tasas>(TASAS_DEFAULTS)
-  tasasRef.current = tasas
+  const tasasRef    = useRef<Tasas>(TASAS_DEFAULTS)
+  const eurPerUsdRef = useRef<number | null>(null)   // raw EUR/USD to recalculate VES/EUR when BCV updates
+  tasasRef.current  = tasas
 
   const cacheAndSet = (t: Tasas) => {
     setTasas(t)
@@ -54,9 +55,11 @@ export function useTasas() {
         .then(data => {
           const rate = data.promedio
           if (!rate || rate <= 0) return
-          const next = { ...tasasRef.current, bcv: rate }
+          // Recalculate VES/EUR with updated BCV if we have the raw EUR/USD stored
+          const eur = eurPerUsdRef.current ? rate / eurPerUsdRef.current : tasasRef.current.eur
+          const next = { bcv: rate, eur }
           cacheAndSet(next)
-          void saveTasas(householdId, rate, tasasRef.current.eur, mesActivo)
+          void saveTasas(householdId, rate, eur, mesActivo)
         })
         .catch(() => {})
     }
@@ -81,6 +84,7 @@ export function useTasas() {
         .then(data => {
           const eurPerUsd = data.rates?.EUR
           if (!eurPerUsd || eurPerUsd <= 0) return
+          eurPerUsdRef.current = eurPerUsd            // store raw so BCV fetch can recalculate
           const vesPerEur = tasasRef.current.bcv / eurPerUsd
           const next = { ...tasasRef.current, eur: vesPerEur }
           cacheAndSet(next)
@@ -113,10 +117,11 @@ export function useTasas() {
         if (data && data.length > 0) {
           // Prefer month-specific row if present, otherwise global
           const monthRow = data.find(r => (r as { mes?: string }).mes === mesKey) ?? data[0]
-          setTasas({
-            bcv: (monthRow as { rate_bcv: number }).rate_bcv ?? TASAS_DEFAULTS.bcv,
-            eur: (monthRow as { rate_eur: number | null }).rate_eur ?? TASAS_DEFAULTS.eur,
-          })
+          const rawBcv = (monthRow as { rate_bcv: number }).rate_bcv ?? TASAS_DEFAULTS.bcv
+          const rawEur = (monthRow as { rate_eur: number | null }).rate_eur ?? TASAS_DEFAULTS.eur
+          // Detect old EUR/USD format (~0.92) vs correct VES/EUR (~633): values < 10 are EUR/USD
+          const eur = rawEur < 10 ? rawBcv / rawEur : rawEur
+          cacheAndSet({ bcv: rawBcv, eur })
         }
         setLoading(false)
       })

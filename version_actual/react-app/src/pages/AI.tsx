@@ -12,6 +12,7 @@ import { useTransactions } from '../hooks/useTransactions'
 import { useAccounts } from '../hooks/useAccounts'
 import { usePrefsStore } from '../store/prefs'
 import { useFormat } from '../hooks/useFormat'
+import { useTasas } from '../hooks/useTasas'
 
 // ── Groq config — routed via CF Pages Function /api/groq ──
 const GROQ_URL      = '/api/groq'
@@ -24,14 +25,14 @@ function buildContext(
   txns: ReturnType<typeof useTransactions>['transactions'],
   mesId: string,
   fmtMoney: (n: number) => string,
+  tasas: { bcv: number; eur: number },
 ): string {
   const accsLine = accounts
     ? accounts.map(a => `${a.name}(${a.currency}):${fmtMoney(a.balance)}`).join(' | ')
     : 'cuentas no disponibles'
 
-  const rateBCV = (() => {
-    try { return JSON.parse(localStorage.getItem('mis_finanzas_tasas') || '{}').bcv || 36.50 } catch { return 36.50 }
-  })()
+  const rateBCV = tasas.bcv
+  const rateEUR = tasas.eur
 
   const txList = txns ?? []
 
@@ -60,7 +61,7 @@ function buildContext(
   return [
     `=== DATOS REALES - ${mesLabel(mesId)} ===`,
     `CUENTAS: ${accsLine}`,
-    `TASA BCV: ${rateBCV} Bs/$`,
+    `TASAS: BCV ${rateBCV.toFixed(2)} Bs/$ | EUR ${rateEUR.toFixed(2)} Bs/€`,
     ``,
     `RESUMEN MES:`,
     `  Ingresos totales: ${fmtMoney(income)}`,
@@ -183,6 +184,7 @@ export default function AI() {
 
   const mesActivo = usePrefsStore(s => s.mesActivo)
   const { fmt: fmtMoney } = useFormat()
+  const { tasas } = useTasas()
   const { accounts } = useAccounts()
   const { transactions } = useTransactions(mesActivo || currentMes())
 
@@ -230,7 +232,7 @@ export default function AI() {
         .slice(0, 500)
         .replace(/system\s*prompt|ignore\s*(previous|above|all)|jailbreak|DAN\s*mode/gi, '[bloqueado]')
 
-      const ctx = buildContext(accounts, transactions, mesActivo || currentMes(), fmtMoney)
+      const ctx = buildContext(accounts, transactions, mesActivo || currentMes(), fmtMoney, tasas)
       const today = new Date().toLocaleDateString('es-VE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
       const systemMsg = `Eres el asistente financiero personal del usuario autenticado actualmente en la app Mis Finanzas 2026. Hoy es ${today}.
 

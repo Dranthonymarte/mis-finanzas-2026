@@ -10,7 +10,7 @@ export interface Tasas {
   eur: number
 }
 
-export const TASAS_DEFAULTS: Tasas = { bcv: 36.50, eur: 40.00 }
+export const TASAS_DEFAULTS: Tasas = { bcv: 582.80, eur: 633.50 }
 
 const HOUSEHOLD_KEY   = 'anthony-isabel-2026'
 const BCV_AUTO_TS_KEY = 'mis_finanzas_bcv_auto_ts'

@@ -16,9 +16,9 @@ import { useConfig }       from '../hooks/useConfig'
 import { usePrefsStore }   from '../store/prefs'
 import { FilterIcon, LockIcon, SearchIcon } from '../components/icons/Icons'
 import { calcKPIs } from '../lib/finance'
-import { generateMeses, mesLabel } from '../lib/mes'
+import { generateMesesByYear, mesLabel } from '../lib/mes'
 
-const MONTHS = generateMeses(12)
+const MONTHS_BY_YEAR = generateMesesByYear(14)
 
 const LS_CLOSED = 'mis_finanzas_closed_months'
 
@@ -150,6 +150,7 @@ export default function Txn() {
   // ── Mes activo desde prefs store (sincronizado con Home) ──
   const activeMes       = usePrefsStore(s => s.mesActivo)
   const setMesActivo    = usePrefsStore(s => s.setMesActivo)
+  const activeYear      = activeMes.split('-')[1]
 
   const [filter,        setFilter]        = useState<FilterType>('all')
   const [closed,        setClosed]        = useState<Set<string>>(loadClosed)
@@ -322,16 +323,42 @@ export default function Txn() {
         </button>
       </div>
 
-      {/* ── Month selector ── */}
+      {/* ── Month selector (agrupado por año) ── */}
+      {/* Year pills */}
+      <div style={{ display: 'flex', gap: 6, padding: '2px 16px 4px' }}>
+        {MONTHS_BY_YEAR.map(yg => {
+          const isActiveYear = yg.year === activeYear
+          return (
+            <button
+              key={yg.year}
+              onClick={() => {
+                const last = yg.months[yg.months.length - 1]
+                setMesActivo(last.id)
+                setFilter('all')
+              }}
+              style={{
+                padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700,
+                whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer',
+                background: isActiveYear ? 'var(--fg)' : 'var(--ink-2)',
+                color:      isActiveYear ? 'var(--ink-0)' : 'var(--fg-mute)',
+                border:     isActiveYear ? 'none' : '1px solid var(--line)',
+              }}
+            >
+              {yg.yearLabel}
+            </button>
+          )
+        })}
+      </div>
+      {/* Month pills (filtered by active year) */}
       <div
         ref={monthsRef}
         style={{
-          display: 'flex', gap: 6, padding: '2px 16px 12px', overflowX: 'auto',
+          display: 'flex', gap: 6, padding: '0 16px 12px', overflowX: 'auto',
           msOverflowStyle: 'none', scrollbarWidth: 'none',
         }}
       >
-        {MONTHS.map(m => {
-          const isActive  = m.id === activeMes
+        {(MONTHS_BY_YEAR.find(yg => yg.year === activeYear)?.months ?? []).map(m => {
+          const isActive   = m.id === activeMes
           const isMeClosed = closed.has(m.id)
           return (
             <button

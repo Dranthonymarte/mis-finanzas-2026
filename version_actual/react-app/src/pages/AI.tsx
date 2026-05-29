@@ -249,10 +249,11 @@ ${ctx}
 
 INSTRUCCIONES:
 - Responde en español venezolano natural y amigable
+- Para preguntas sobre los datos del usuario: usa SOLO los números del contexto arriba, cítalos exactos
+- Para preguntas generales de finanzas (conceptos, economía, inversiones, criptomonedas, tasas de interés, inflación, ahorro, cálculos matemáticos, educación financiera): respóndelas con tu conocimiento general — no estás limitado solo a los datos del usuario
 - NUNCA digas que no tienes acceso a datos — los datos están arriba
-- Cita los números exactos del contexto (no aproximados)
 - Si preguntan de meses anteriores no disponibles, indica qué mes tienes
-- Máximo 350 palabras, usa emojis ocasionalmente`
+- Máximo 400 palabras, usa emojis ocasionalmente`
 
       const reply = await groqCall(safeMsg, systemMsg)
       const botNow = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })
@@ -310,7 +311,7 @@ INSTRUCCIONES:
         </div>
         {showInfo && (
           <div style={{ background: 'rgba(224,168,74,.07)', border: '1px solid rgba(224,168,74,.2)', borderRadius: 10, padding: '10px 12px', marginTop: 8, fontSize: 12, color: 'var(--fg-dim)', lineHeight: 1.6 }}>
-            Puedo darte <b>saldos exactos, resumen del mes, análisis de gastos, sugerencias de ahorro</b> y más — todo con tus datos reales. Solo pregúntame en lenguaje natural.
+            Puedo darte <b>saldos, resumen del mes, análisis de gastos, sugerencias de ahorro</b> con tus datos reales — y también responder <b>preguntas generales de finanzas</b>: conceptos, cálculos, economía, inversiones, criptomonedas. Solo pregúntame.
           </div>
         )}
       </div>

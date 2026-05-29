@@ -104,7 +104,8 @@ export default function Buscar() {
       <div style={{
         padding: '12px 12px 10px',
         paddingTop: 'max(12px, env(safe-area-inset-top))',
-        paddingRight: 'calc(36px + env(safe-area-inset-right, 0px))',
+        paddingLeft: 'max(16px, calc(env(safe-area-inset-left, 0px) + 12px))',
+        paddingRight: 'max(44px, calc(env(safe-area-inset-right, 0px) + 16px))',
         background: 'var(--ink-1)',
         position: 'sticky', top: 0, zIndex: 10,
         borderBottom: '1px solid var(--line)',
@@ -159,7 +160,7 @@ export default function Buscar() {
               border: '1px solid var(--line)',
               color: activeFilterCount > 0 ? 'var(--ink-0)' : 'var(--fg-dim)',
               cursor: 'pointer', display: 'grid', placeItems: 'center',
-              position: 'relative',
+              position: 'relative', overflow: 'visible',
             }}
           >
             <span style={{ fontSize: 16, lineHeight: 1 }}>⚙</span>

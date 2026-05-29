@@ -48,6 +48,25 @@ export function currentMes(): string {
   return dateToMesId(new Date())
 }
 
+/** Months grouped by year — for year-based selectors.
+ *  Returns years newest-first, each with its months oldest-first. */
+export function generateMesesByYear(count = 14): Array<{
+  year: string        // "26"
+  yearLabel: string   // "2026"
+  months: Array<{ id: string; label: string; dbKey: string }>
+}> {
+  const all = generateMeses(count)
+  const byYear: Record<string, typeof all> = {}
+  for (const m of all) {
+    const yr = m.id.split('-')[1]
+    if (!byYear[yr]) byYear[yr] = []
+    byYear[yr].push(m)
+  }
+  return Object.entries(byYear)
+    .sort(([a], [b]) => Number(b) - Number(a))
+    .map(([yr, months]) => ({ year: yr, yearLabel: `20${yr}`, months }))
+}
+
 /** Last N months as { id: "may-26", label: "Mayo" | "Dic 2025", dbKey: "Mayo" } */
 export function generateMeses(count = 12): Array<{ id: string; label: string; dbKey: string }> {
   const result  = []

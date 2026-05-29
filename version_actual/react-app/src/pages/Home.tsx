@@ -22,7 +22,7 @@ import { useFormat }       from '../hooks/useFormat'
 import { usePrefsStore, type Moneda } from '../store/prefs'
 import { useAuthStore }    from '../store/auth'
 import { supabase }        from '../lib/supabase'
-import { generateMeses, mesLabel, dateToMesId } from '../lib/mes'
+import { generateMeses, generateMesesByYear, mesLabel, dateToMesId } from '../lib/mes'
 import { DEFAULTS } from '../hooks/useConfig'
 import { BellIcon } from '../components/icons/Icons'
 
@@ -46,7 +46,7 @@ function loadSC(): string[] {
   catch { return DEFAULT_SC }
 }
 
-const MONTHS_6 = generateMeses(6)
+const MONTHS_BY_YEAR = generateMesesByYear(14)
 
 /** Next calendar month id (for "abrir mes siguiente" button) */
 function nextMesId(): string {
@@ -182,6 +182,7 @@ export default function Home() {
   const navigate  = useNavigate()
   const mesActivo      = usePrefsStore(s => s.mesActivo)
   const setMesActivo   = usePrefsStore(s => s.setMesActivo)
+  const activeYear     = mesActivo.split('-')[1]
   const ocultarMontos  = usePrefsStore(s => s.ocultarMontos)
   const toggleOcultar  = usePrefsStore(s => s.toggleOcultarMontos)
   const moneda         = usePrefsStore(s => s.moneda)
@@ -365,12 +366,34 @@ export default function Home() {
         </button>
       </div>
 
-      {/* Selector de mes */}
+      {/* ── Selector de mes (agrupado por año) ── */}
+      {/* Year pills */}
+      <div style={{ display: 'flex', gap: 6, padding: '0 16px 4px' }}>
+        {MONTHS_BY_YEAR.map(yg => {
+          const isActiveYear = yg.year === activeYear
+          return (
+            <button
+              key={yg.year}
+              onClick={() => setMesActivo(yg.months[yg.months.length - 1].id)}
+              style={{
+                padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700,
+                whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer',
+                background: isActiveYear ? 'var(--fg)' : 'var(--ink-2)',
+                color:      isActiveYear ? 'var(--ink-0)' : 'var(--fg-mute)',
+                border:     isActiveYear ? 'none' : '1px solid var(--line)',
+              }}
+            >
+              {yg.yearLabel}
+            </button>
+          )
+        })}
+      </div>
+      {/* Month pills (filtered by active year) */}
       <div style={{
         display: 'flex', gap: 6, padding: '0 16px 4px',
         overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none',
       }}>
-        {MONTHS_6.map(m => {
+        {(MONTHS_BY_YEAR.find(yg => yg.year === activeYear)?.months ?? []).map(m => {
           const isActive = m.id === mesActivo
           return (
             <button

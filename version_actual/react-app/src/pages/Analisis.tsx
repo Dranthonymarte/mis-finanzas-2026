@@ -8,7 +8,7 @@ import { useMemo, useState }  from 'react'
 import { useNavigate }        from 'react-router-dom'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import AppHeader              from '../components/shell/AppHeader'
-import CatIcon, { catColor }  from '../components/ui/CatIcon'
+import CatIcon                from '../components/ui/CatIcon'
 import { usePrefsStore }      from '../store/prefs'
 import { useTransactions }    from '../hooks/useTransactions'
 import { useFormat }          from '../hooks/useFormat'
@@ -176,19 +176,17 @@ export default function Analisis() {
     return Object.entries(acc).sort(([, a], [, b]) => b - a).map(([label, value]) => ({ label, value }))
   }, [txns])
 
-  const subcatByIngCat = useMemo<Record<string, BarEntry[]>>(() => {
-    const acc: Record<string, Record<string, number>> = {}
+  // ── Txns por categoría de ingreso (desglose al tap) ─
+  type IngTxn = typeof txns[number]
+  const txnsByIngCat = useMemo<Record<string, IngTxn[]>>(() => {
+    const acc: Record<string, IngTxn[]> = {}
     for (const t of txns) {
       if (txnGroup(t.tipo) !== 'ingreso') continue
-      const sub = t.subcat ?? 'Sin subcategoría'
-      if (!acc[t.cat]) acc[t.cat] = {}
-      acc[t.cat][sub] = (acc[t.cat][sub] ?? 0) + Math.abs(t.amount)
+      if (!acc[t.cat]) acc[t.cat] = []
+      acc[t.cat].push(t)
     }
     return Object.fromEntries(
-      Object.entries(acc).map(([cat, subs]) => [
-        cat,
-        Object.entries(subs).sort(([, a], [, b]) => b - a).map(([label, value]) => ({ label, value })),
-      ])
+      Object.entries(acc).map(([cat, ts]) => [cat, ts.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))])
     )
   }, [txns])
 
@@ -413,9 +411,9 @@ export default function Analisis() {
               <SLabel>Ingresos por categoría — {mesLabel(mesActivo)}</SLabel>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                 {ingresosPorCat.map(({ label, value }, i) => {
-                  const isOpen = openIngCat === label
-                  const subs   = subcatByIngCat[label] ?? []
-                  const max    = ingresosPorCat[0]?.value ?? 1
+                  const isOpen  = openIngCat === label
+                  const catTxns = txnsByIngCat[label] ?? []
+                  const max     = ingresosPorCat[0]?.value ?? 1
                   return (
                     <div key={label}>
                       <button
@@ -429,7 +427,7 @@ export default function Analisis() {
                         <CatIcon cat={label} size={16} />
                         <span style={{ flex: 1, fontSize: 12.5, fontWeight: 500, color: 'var(--fg)', textAlign: 'left' }}>{label}</span>
                         <span className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--pos)' }}>{fmt(value)}</span>
-                        {subs.length > 0 && (
+                        {catTxns.length > 0 && (
                           <span style={{ fontSize: 10, color: 'var(--fg-mute)', marginLeft: 4 }}>{isOpen ? '▲' : '▼'}</span>
                         )}
                       </button>
@@ -439,13 +437,21 @@ export default function Analisis() {
                         <div style={{ height: '100%', borderRadius: 3, background: 'var(--pos)', width: `${max > 0 ? (value / max) * 100 : 0}%`, transition: 'width .35s' }} />
                       </div>
 
-                      {/* Subcategorías expandibles */}
-                      {isOpen && subs.length > 0 && (
-                        <div style={{ marginLeft: 20, marginBottom: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {subs.map(s => (
-                            <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0 4px 12px', borderLeft: '2px solid rgba(88,178,106,.2)' }}>
-                              <span style={{ fontSize: 11.5, color: 'var(--fg-dim)' }}>{s.label}</span>
-                              <span className="num" style={{ fontSize: 11.5, color: 'var(--fg-dim)' }}>{fmt(s.value)}</span>
+                      {/* Movimientos desglosados al tap */}
+                      {isOpen && catTxns.length > 0 && (
+                        <div style={{ marginBottom: 8, paddingLeft: 10, borderLeft: '2px solid rgba(88,178,106,.25)', display: 'flex', flexDirection: 'column', gap: 0 }}>
+                          {catTxns.map(t => (
+                            <div key={t.id} onClick={() => navigate('/txn/' + t.id)} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer' }}>
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ fontSize: 12, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.desc}</div>
+                                <div style={{ fontSize: 10, color: 'var(--fg-mute)', marginTop: 1, display: 'flex', gap: 4, alignItems: 'center', overflow: 'hidden' }}>
+                                  {t.subcat && <><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.subcat}</span><span style={{ flexShrink: 0 }}>·</span></>}
+                                  <span style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>{t.date}</span>
+                                </div>
+                              </div>
+                              <span className="num" style={{ fontSize: 12, fontWeight: 600, color: 'var(--pos)', whiteSpace: 'nowrap', marginLeft: 10 }}>
+                                +{fmt(Math.abs(t.amount))}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -536,43 +542,6 @@ export default function Analisis() {
               )}
             </Card>
           )}
-
-          {/* ── Top gastos por categoría ── */}
-          <Card>
-            <SLabel>Top gastos — {mesLabel(mesActivo)}</SLabel>
-            {gastosPorCat.length === 0 ? <Empty /> : (() => {
-              const totalGastos = gastosPorCat.reduce((s, e) => s + e.value, 0)
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {gastosPorCat.slice(0, 5).map(({ label: cat, value }) => {
-                    const pct   = totalGastos > 0 ? (value / totalGastos) * 100 : 0
-                    const color = catColor(cat)
-                    return (
-                      <div
-                        key={cat}
-                        onClick={() => navigate('/buscar?cat=' + encodeURIComponent(cat))}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-                          <CatIcon cat={cat} size={22} />
-                          <span style={{ flex: 1, fontSize: 12.5, color: 'var(--fg-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {cat}
-                          </span>
-                          <span className="num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--neg)' }}>{fmt(Math.abs(value))}</span>
-                          <span style={{ fontSize: 10, color: 'var(--fg-mute)', minWidth: 28, textAlign: 'right' }}>
-                            {pct.toFixed(0)}%
-                          </span>
-                        </div>
-                        <div style={{ height: 4, background: 'var(--ink-3)', borderRadius: 2, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', borderRadius: 2, background: color, width: `${pct}%`, transition: 'width .3s ease' }} />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })()}
-          </Card>
 
         </div>
       )}

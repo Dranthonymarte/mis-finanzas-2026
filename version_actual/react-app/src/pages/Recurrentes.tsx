@@ -156,7 +156,7 @@ export default function Recurrentes() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', paddingBottom: 40 }}>
-      <AppHeader title="Recurrentes" back onBack={isEditing ? () => setEditId(null) : undefined} />
+      <AppHeader title="Recurrentes" back onBack={isEditing ? () => { setEditId(null); setOpen(false) } : undefined} />
 
       <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
 

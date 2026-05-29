@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { type CSSProperties } from 'react'
 import AppHeader from '../../components/shell/AppHeader'
 import { useConfig, type TipoConfig } from '../../hooks/useConfig'
+import { confirmAction } from '../../store/confirm'
 
 const BUILT_IN = new Set(['Gasto', 'Ingreso Fijo', 'Ingreso Variable'])
 
@@ -52,6 +53,12 @@ export default function Tipos() {
   // ── Delete tipo ───────────────────────────────────
   async function removeTipo(row: TipoRow) {
     if (BUILT_IN.has(row.nombre)) return
+    if (!(await confirmAction({
+      title: 'Eliminar tipo',
+      message: `¿Eliminar el tipo "${row.nombre}"? Los movimientos existentes no se modifican.`,
+      confirmLabel: 'Eliminar',
+      danger: true,
+    }))) return
     const next: TipoConfig[] = rows.filter(r => r.id !== row.id)
     await updateConfig('tipos', next)
   }

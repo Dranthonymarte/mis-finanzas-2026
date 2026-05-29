@@ -4,6 +4,7 @@ import { useAuthStore }  from '../store/auth'
 import { type Account }  from '../data/mock'
 import { handleError }   from '../lib/handleError'
 import { useTasas }      from './useTasas'
+import { readCache, writeCache } from '../lib/cache'
 
 interface SupaCuenta {
   id:                    string
@@ -73,8 +74,9 @@ function mapCuenta(r: SupaCuenta, allMovs: MovSum[], bcv: number, prevMovs: MovS
 export function useAccounts() {
   const householdId = useAuthStore(s => s.householdId)
   const { tasas }   = useTasas()
-  const [accounts, setAccounts] = useState<Account[] | null>(null)
-  const [loading,  setLoading]  = useState(true)
+  const cacheKey    = `accts:${householdId ?? 'none'}`
+  const [accounts, setAccounts] = useState<Account[] | null>(() => readCache<Account[]>(cacheKey))
+  const [loading,  setLoading]  = useState<boolean>(() => readCache<Account[]>(cacheKey) === null)
   const [error,    setError]    = useState<string | null>(null)
 
   const fetchData = useCallback(() => {
@@ -107,14 +109,19 @@ export function useAccounts() {
       const movData     = (movRes.data     ?? []) as MovSum[]
       const prevMovData = (prevMovRes.data ?? []) as MovSum[]
       const cuentas     = (cuentasRes.data as SupaCuenta[] ?? [])
-      setAccounts(cuentas.map(r => mapCuenta(r, movData, tasas.bcv, prevMovData)))
+      const mapped      = cuentas.map(r => mapCuenta(r, movData, tasas.bcv, prevMovData))
+      setAccounts(mapped)
+      writeCache(cacheKey, mapped)
       setLoading(false)
     })
-  }, [householdId, tasas.bcv])
+  }, [householdId, tasas.bcv, cacheKey])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- guard: clear loader when no household yet (cache-first auth)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- guard + hidratación cache-first (balances al instante, sin parpadeo)
     if (!householdId) { setLoading(false); return }
+    // Hidrata balances cacheados al instante (clave real del household), luego revalida
+    const cached = readCache<Account[]>(cacheKey)
+    if (cached) { setAccounts(cached); setLoading(false) }
     fetchData()
 
     // Realtime: refresca cuando cambian cuentas o movimientos del household
@@ -138,7 +145,7 @@ export function useAccounts() {
       supabase.removeChannel(ch2)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
-  }, [householdId, fetchData])
+  }, [householdId, cacheKey, fetchData])
 
   return { accounts, loading, error, refetch: fetchData }
 }

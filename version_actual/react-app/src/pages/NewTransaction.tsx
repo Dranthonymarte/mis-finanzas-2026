@@ -110,9 +110,11 @@ export default function NewTransaction() {
   const [recurrente, setRecurrente] = useState(false)
   const [recDia,     setRecDia]     = useState(1)
   const [notes,      setNotes]      = useState('')
-  // BUG-7: initialize rateStr as '' so we don't flash the 36.50 default while DB loads
+  // Prefill con la tasa cacheada (useTasas es cache-first → tasas.bcv ya es un
+  // valor real al montar). La casilla muestra la tasa del día de inmediato; el
+  // efecto de abajo la sincroniza al valor de DB salvo que el usuario la edite.
   const [rateBCV,        setRateBCV]        = useState(tasas.bcv)
-  const [rateStr,        setRateStr]        = useState('')   // set once tasas loads from DB
+  const [rateStr,        setRateStr]        = useState(() => (tasas.bcv > 0 ? String(tasas.bcv) : ''))
   const [userEditedRate, setUserEditedRate] = useState(false)
   const [saved,         setSaved]         = useState(false)
   const [confirm,       setConfirm]       = useState(false)  // confirmation sheet

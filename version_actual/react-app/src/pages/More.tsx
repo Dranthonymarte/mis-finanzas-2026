@@ -122,6 +122,13 @@ export default function More() {
             onClick={() => navigate('/recurrentes')}
           />
           <RowLink
+            icon={<IcoBg color="#2a1f12"><span style={{ fontSize: 14 }}>🤝</span></IcoBg>}
+            iconBg="transparent"
+            label="Dinero fuera"
+            sub="Me deben · Yo debo"
+            onClick={() => navigate('/dinero-fuera')}
+          />
+          <RowLink
             icon={<IcoBg color="#1a1a2a"><span style={{ fontSize: 14 }}>🧮</span></IcoBg>}
             iconBg="transparent"
             label="Calculadora"

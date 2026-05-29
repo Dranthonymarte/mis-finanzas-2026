@@ -35,6 +35,7 @@ const ALL_SC = [
   { id: 'transfer',    label: 'Transferir',  emoji: '⇄',  path: '/transfer' },
   { id: 'calc',        label: 'Calcular',    emoji: '🧮', path: '/calculadora' },
   { id: 'recurrentes', label: 'Recurrentes', emoji: '🔁', path: '/recurrentes' },
+  { id: 'dinerofuera', label: 'Dinero fuera', emoji: '🤝', path: '/dinero-fuera' },
   { id: 'pareja',      label: 'Pareja',      emoji: '💑', path: '/pareja' },
   { id: 'tasas',       label: 'Tasas',       emoji: '💱', path: '/monedas' },
   { id: 'escanear',    label: 'Escanear',    emoji: '📷', path: '/escanear' },
@@ -42,7 +43,7 @@ const ALL_SC = [
   { id: 'buscar',      label: 'Buscar',      emoji: '🔍', path: '/buscar' },
   { id: 'ia',          label: 'IA',          emoji: '✦',  path: '/ia' },
 ]
-const DEFAULT_SC = ['analisis', 'transfer', 'calc', 'recurrentes', 'pareja']
+const DEFAULT_SC = ['analisis', 'transfer', 'dinerofuera', 'recurrentes', 'pareja']
 function loadSC(): string[] {
   try { return JSON.parse(localStorage.getItem(SC_KEY) ?? 'null') ?? DEFAULT_SC }
   catch { return DEFAULT_SC }

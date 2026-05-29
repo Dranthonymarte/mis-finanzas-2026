@@ -3,6 +3,7 @@
 // Lee del confirm store; montado una sola vez en AppShell.
 // ═══════════════════════════════════════════════════
 
+import { createPortal } from 'react-dom'
 import { useConfirmStore } from '../../store/confirm'
 
 export default function ConfirmDialog() {
@@ -20,11 +21,15 @@ export default function ConfirmDialog() {
     danger       = false,
   } = opts
 
-  return (
+  // Portaleado a <body> + zIndex 2000 para que SIEMPRE quede por encima
+  // de cualquier Sheet (zIndex 1001, también portaleado). Antes se montaba
+  // dentro de AppShell con zIndex 1000 → la confirmación salía detrás del
+  // panel (revocar Pareja, eliminar Recurrente, etc.).
+  return createPortal(
     <div
       onClick={() => close(false)}
       style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
+        position: 'fixed', inset: 0, zIndex: 2000,
         background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(2px)',
         display: 'grid', placeItems: 'center', padding: 24,
       }}
@@ -69,6 +74,7 @@ export default function ConfirmDialog() {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -4,7 +4,6 @@
 // ═══════════════════════════════════════════════════
 
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import AppHeader from '../components/shell/AppHeader'
 import { useConfig } from '../hooks/useConfig'
 import { useFormat } from '../hooks/useFormat'
@@ -56,7 +55,6 @@ const BLANK = {
 }
 
 export default function Recurrentes() {
-  const navigate             = useNavigate()
   const { fmt }              = useFormat()
   const { config, updateConfig } = useConfig()
   const userId               = useAuthStore(s => s.userId)
@@ -64,9 +62,10 @@ export default function Recurrentes() {
   const items = (config.recurrentes as RecurrenteItem[])
 
   const [open,       setOpen]       = useState(false)
+  const [editId,     setEditId]     = useState<string | null>(null)
   const [saving,     setSaving]     = useState(false)
 
-  // Form state (create only — editing goes via /recurrentes/:id)
+  // Form state
   const [desc,       setDesc]       = useState(BLANK.desc)
   const [monto,      setMonto]      = useState(BLANK.monto)
   const [freqIdx,    setFreqIdx]    = useState(BLANK.freqIdx)   // index in FREQ_OPTS
@@ -79,13 +78,26 @@ export default function Recurrentes() {
   const isMonthly = FREQ_OPTS[freqIdx]?.dias === 30 || (freqIdx === 3 && parseInt(diasCustom) >= 28)
   const diasFinal = freqIdx === 3 ? (parseInt(diasCustom) || 30) : FREQ_OPTS[freqIdx].dias
 
+  function loadIntoForm(r: RecurrenteItem) {
+    setDesc(r.descripcion)
+    setMonto(String(r.monto))
+    const presetIdx = FREQ_OPTS.findIndex(f => f.dias === r.recurrencia_dias && f.dias !== 0)
+    if (presetIdx >= 0) { setFreqIdx(presetIdx) } else { setFreqIdx(3); setDiasCustom(String(r.recurrencia_dias)) }
+    setDiaNum(r.recDia ?? 1)
+    setTipo(r.tipo)
+    setCat(r.cat)
+    setNotifTg(!!r.notif_telegram)
+  }
+
   function resetForm() {
     setDesc(BLANK.desc); setMonto(BLANK.monto); setFreqIdx(BLANK.freqIdx)
     setDiasCustom(BLANK.diasCustom); setDiaNum(BLANK.diaNum)
     setTipo(BLANK.tipo); setCat(BLANK.cat); setNotifTg(BLANK.notifTg)
   }
 
-  function openAdd() { resetForm(); setOpen(true) }
+  function openAdd() { resetForm(); setEditId(null); setOpen(true) }
+
+  function openEdit(r: RecurrenteItem) { loadIntoForm(r); setEditId(r.id); setOpen(true) }
 
   async function createNotif(r: RecurrenteItem) {
     if (!userId || !notifTg) return
@@ -113,7 +125,7 @@ export default function Recurrentes() {
     setSaving(true)
 
     const newItem: RecurrenteItem = {
-      id:               Date.now().toString(),
+      id:               editId ?? Date.now().toString(),
       descripcion:      desc.trim(),
       monto:            montoNum,
       recurrencia_dias: diasFinal,
@@ -123,10 +135,16 @@ export default function Recurrentes() {
       notif_telegram:   notifTg,
     }
 
-    const updated = [...items, newItem]
-    await createNotif(newItem)
+    let updated: RecurrenteItem[]
+    if (editId) {
+      updated = items.map(r => r.id === editId ? newItem : r)
+    } else {
+      updated = [...items, newItem]
+      await createNotif(newItem)
+    }
+
     await updateConfig('recurrentes', updated)
-    resetForm(); setOpen(false)
+    resetForm(); setOpen(false); setEditId(null)
     setSaving(false)
   }
 
@@ -134,9 +152,11 @@ export default function Recurrentes() {
     await updateConfig('recurrentes', items.filter(r => r.id !== id))
   }
 
+  const isEditing = !!editId
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', paddingBottom: 40 }}>
-      <AppHeader title="Recurrentes" back />
+      <AppHeader title="Recurrentes" back onBack={isEditing ? () => setEditId(null) : undefined} />
 
       <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
 
@@ -167,8 +187,8 @@ export default function Recurrentes() {
                   key={r.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => navigate(`/recurrentes/${r.id}`)}
-                  onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && navigate(`/recurrentes/${r.id}`)}
+                  onClick={() => openEdit(r)}
+                  onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && openEdit(r)}
                   style={{
                     display: 'grid', gridTemplateColumns: '1fr auto',
                     alignItems: 'center', gap: 10,
@@ -232,15 +252,15 @@ export default function Recurrentes() {
           </div>
         )}
 
-        {/* ── Form (create only — edit goes via /recurrentes/:id) ── */}
+        {/* ── Form (create / edit) ── */}
         {open && (
           <div style={{
-            background: 'var(--ink-2)', border: '1px solid var(--line)',
+            background: 'var(--ink-2)', border: `1px solid ${isEditing ? 'rgba(224,168,74,.4)' : 'var(--line)'}`,
             borderRadius: 14, padding: 16,
             display: 'flex', flexDirection: 'column', gap: 12,
           }}>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--fg-mute)' }}>
-              Nuevo recurrente
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: isEditing ? 'var(--amber)' : 'var(--fg-mute)' }}>
+              {isEditing ? '✏️ Editar recurrente' : 'Nuevo recurrente'}
             </div>
 
             {/* Tipo chips */}
@@ -325,7 +345,7 @@ export default function Recurrentes() {
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
               <input type="checkbox" checked={notifTg} onChange={e => setNotifTg(e.target.checked)} />
               <span>📲 Recordatorio por Telegram</span>
-              {notifTg && <span style={{ fontSize: 11, color: 'var(--fg-mute)' }}>(se crea en Notificaciones)</span>}
+              {notifTg && !isEditing && <span style={{ fontSize: 11, color: 'var(--fg-mute)' }}>(se crea en Notificaciones)</span>}
             </label>
 
             {/* Actions */}
@@ -340,10 +360,10 @@ export default function Recurrentes() {
                   border: 'none', cursor: 'pointer',
                 }}
               >
-                {saving ? 'Guardando…' : 'Crear'}
+                {saving ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Crear'}
               </button>
               <button
-                onClick={() => { setOpen(false); resetForm() }}
+                onClick={() => { setOpen(false); setEditId(null); resetForm() }}
                 style={{
                   padding: '11px 18px', borderRadius: 12, fontSize: 13.5, fontWeight: 600,
                   background: 'var(--ink-3)', border: '1px solid var(--line)',

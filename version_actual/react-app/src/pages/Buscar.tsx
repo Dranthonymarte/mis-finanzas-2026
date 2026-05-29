@@ -104,7 +104,7 @@ export default function Buscar() {
       <div style={{
         padding: '12px 12px 10px',
         paddingTop: 'max(12px, env(safe-area-inset-top))',
-        paddingRight: 'calc(16px + env(safe-area-inset-right, 0px))',
+        paddingRight: 'calc(36px + env(safe-area-inset-right, 0px))',
         background: 'var(--ink-1)',
         position: 'sticky', top: 0, zIndex: 10,
         borderBottom: '1px solid var(--line)',

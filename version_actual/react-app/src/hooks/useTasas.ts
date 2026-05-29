@@ -79,11 +79,12 @@ export function useTasas() {
       fetch('https://api.frankfurter.app/latest?from=USD&to=EUR')
         .then(r => r.ok ? (r.json() as Promise<{ rates?: { EUR?: number } }>) : Promise.reject())
         .then(data => {
-          const rate = data.rates?.EUR
-          if (!rate || rate <= 0) return
-          const next = { ...tasasRef.current, eur: rate }
+          const eurPerUsd = data.rates?.EUR
+          if (!eurPerUsd || eurPerUsd <= 0) return
+          const vesPerEur = tasasRef.current.bcv / eurPerUsd
+          const next = { ...tasasRef.current, eur: vesPerEur }
           cacheAndSet(next)
-          void saveTasas(householdId, tasasRef.current.bcv, rate, mesActivo)
+          void saveTasas(householdId, tasasRef.current.bcv, vesPerEur, mesActivo)
         })
         .catch(() => {})
     }

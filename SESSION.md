@@ -1,5 +1,5 @@
 # SESSION.md — Mis Finanzas 2026
-_Última actualización: 2026-05-27 · Branch: develop_
+_Última actualización: 2026-05-29 · Branch: develop_
 
 ---
 
@@ -9,31 +9,31 @@ _Última actualización: 2026-05-27 · Branch: develop_
 
 ---
 
-## ✅ ÚLTIMO CHECKPOINT — Sesión 2026-05-29
+## ✅ ÚLTIMO CHECKPOINT — Sesión 2026-05-29 (batch auditoría)
 
 ### Commits pushed a develop + react-preview
 ```
-2286641 feat: ≈Bs ecosistema completo + UX headers + Buscar ⚙ fix + año pills + lista compras
-5926c4d fix: sugerencia-notify CF Pages Function al path correcto + await logging
-b194619 feat: conversión sutil ≈ Bs en ecosistema (patrimony, saldo, neto, txn rows, summary strip)
-1609f51 feat: Analisis desglose ingresos al tap + Home/Txn mes por año + remove top gastos
+89d0658 refactor: Subcategorias usa ConfirmDialog global (confirmAction)
+cf0a42f fix: lint frontend (4 errores reales) + migración RLS/índices DB
+13c3d9b fix: datos desaparecen random (race householdId) + Telegram JSON parse
 ```
 
-### Features implementadas esta sesión (2026-05-29)
-| Feature | Archivo | Estado |
-|---------|---------|--------|
-| Buscar ⚙ paddingRight fix (max 44→16px) | `Buscar.tsx` | ✅ |
-| AppHeader título 16px/700 + padding 12px 16px | `mobile-uix.css` | ✅ |
-| Year pills: solo año actual en adelante | `Home.tsx` | ✅ |
-| Neto sin `+` cuando positivo (redundante con verde) | `Home.tsx` | ✅ |
-| ≈ Bs en top gastos Home | `Home.tsx` | ✅ |
-| ≈ Bs en últimos movimientos Home | `Home.tsx` | ✅ |
-| ≈ Bs en patrimonio total | `Accounts.tsx` | ✅ |
-| ≈ Bs en KPI cards Analisis | `Analisis.tsx` | ✅ |
-| ≈ Bs en filas recurrentes | `Recurrentes.tsx` | ✅ |
-| Lista de compras → grupo Movimientos | `More.tsx` | ✅ |
-| Sugerencias: envía userEmail + userName | `Sugerencias.tsx` | ✅ |
-| Email notificación muestra nombre + email | `functions/api/sugerencia-notify.js` | ✅ |
+### Trabajo de esta sesión (2026-05-29 batch)
+| Item | Detalle | Estado |
+|------|---------|--------|
+| Datos desaparecen random | `useAuth.ts` `sessionFor()` preserva householdId resuelto | ✅ shipped |
+| Telegram JSON parse | `Notifications.tsx` parseo defensivo; edge fn v12 ya bidireccional | ✅ shipped |
+| Lint frontend (4 reales) | Txn / sw / VozTxn / Transfer — build 0 errores | ✅ shipped |
+| Migración RLS + índices | 7 índices FK + 16 `ALTER POLICY` `auth.uid()`→`(select auth.uid())` | ✅ APLICADA en Supabase |
+| Backfill household_id | Verificado: 0 NULL en movimientos/cuentas/dinero_fuera | ✅ DONE |
+| Subcategorias ConfirmDialog | Unificado patrón de confirmación destructiva | ✅ shipped |
+| Emoji consistency More.tsx | Decisión: IcoBg = iconografía de navegación (coherente) | ✅ aceptable |
+
+### Pendiente verificación / decisión de Anthony
+- **Edge functions huérfanas**: `telegram-bot` v13 y `calendar-sync` v10 → revisar logs de invocación en Supabase y eliminar (Claude no borra edge functions).
+- **TxnDetail.tsx**: único consumidor restante de `ConfirmSheet` (flujo soft-delete) — migrar a `ConfirmDialog` en limpieza futura.
+- **Lint debt**: 21 err + 9 warn de react-hooks v5 (`set-state-in-effect` / `exhaustive-deps`) — revisión caso por caso, no disables a ciegas.
+- **push_subscriptions**: policy duplicada `own_push` (`DROP` opcional comentado en `MIGRACION_2026-05-29_rls_indices.sql`).
 
 ---
 
@@ -59,14 +59,9 @@ git -C "C:\Users\Anthony Marte\Documents\Documentos de Anthony\Proyectos Anthony
 - Resend.com → verificar dominio → copiar credenciales
 - Supabase → Auth → SMTP Settings → configurar
 
-### 5. Backfill household_id (MIGRACIÓN CONFIRMADA, NO APLICADA)
-```sql
-UPDATE movimientos SET household_id = 'fa3f7b3b-148b-4dea-8e2a-37f740c08b3d'
-WHERE user_id = 'fa3f7b3b-148b-4dea-8e2a-37f740c08b3d' AND household_id IS NULL;
-UPDATE cuentas SET household_id = 'fa3f7b3b-148b-4dea-8e2a-37f740c08b3d'
-WHERE user_id = 'fa3f7b3b-148b-4dea-8e2a-37f740c08b3d' AND household_id IS NULL;
-```
-Ejecutar en Supabase SQL Editor. Sin esto: datos parciales sin filtro household.
+### 5. Backfill household_id — ✅ APLICADA Y VERIFICADA (2026-05-29)
+Confirmado por SELECT: **0 filas** con `household_id IS NULL` en
+`movimientos` / `cuentas` / `dinero_fuera`. CERRADO.
 
 ---
 

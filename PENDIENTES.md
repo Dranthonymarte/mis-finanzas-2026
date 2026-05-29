@@ -1,7 +1,23 @@
 # PENDIENTES — Mis Finanzas 2026
 
 Orden estricto. Actualizar al completar.
-**Última actualización:** 2026-05-29 — Analisis KPI fix + ≈Bs categorías/semanales, HEAD `fe8dc77`
+**Última actualización:** 2026-05-29 — batch auditoría (RLS/índices aplicados, lint, refactor), HEAD `89d0658`
+
+---
+
+## ✅ Batch auditoría 2026-05-29 — COMPLETADO
+- Datos desaparecen random → FIX `useAuth.sessionFor()` ✅
+- Telegram bidireccional + JSON parse → client fix + edge fn v12 ya OK ✅
+- Lint frontend (4 errores reales) → build 0 errores ✅
+- RLS `auth_rls_initplan` + 7 índices FK → **APLICADA y verificada en Supabase** ✅
+- Backfill household_id → verificado 0 NULL ✅
+- Subcategorias → `ConfirmDialog` global unificado ✅
+- Emoji More.tsx → decisión "aceptable" (IcoBg = navegación, no emoji suelto) ✅
+
+**Quedan (decisión / verificación de Anthony):** eliminar edge functions huérfanas
+(`telegram-bot` v13, `calendar-sync` v10); migrar `TxnDetail` a `ConfirmDialog`;
+lint debt react-hooks v5 (21 err / 9 warn) caso por caso; `DROP` policy duplicada
+`own_push` (opcional, en `MIGRACION_2026-05-29_rls_indices.sql`).
 
 ---
 

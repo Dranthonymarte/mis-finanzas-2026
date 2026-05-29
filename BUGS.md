@@ -1,7 +1,21 @@
 # BUGS.md — Mis Finanzas 2026
 *Actualizar al trabajar cada bug*
 
-**Última actualización:** 2026-05-26 · React App HEAD `e824580` + ahorro fix
+**Última actualización:** 2026-05-29 · batch auditoría (BUG-R28 + BUG-R29 resueltos)
+
+---
+
+## ✅ BUG-R28 — Datos desaparecen random (race condition householdId)
+**Estado:** ✅ RESUELTO — 2026-05-29 · commit `13c3d9b`
+**Causa:** Durante `getSession`/`onAuthStateChange` el `householdId` caía al fallback (= `userId`) antes de que `resolveHouseholdId` terminara → se perdía el scope household y los reads salían vacíos de forma intermitente.
+**Fix:** Helper `sessionFor()` en `useAuth.ts` preserva el `householdId` ya resuelto en el store (si `prev.userId === userId` y había householdId válido ≠ userId) al reconstruir la sesión. Auth sigue no-bloqueante (no regresa al loop `9b9c0a8`).
+
+---
+
+## ✅ BUG-R29 — Telegram: JSON parse error al registrar webhook
+**Estado:** ✅ RESUELTO — 2026-05-29 · commit `13c3d9b`
+**Causa:** `Notifications.tsx` llamaba `res.json()` directo; si el servidor devolvía respuesta no-JSON (error/HTML) reventaba con excepción sin manejar.
+**Fix:** Parseo defensivo `res.text()` + `try/catch JSON.parse`; en fallo limpia token/username y muestra mensaje con código de estado. Edge function `telegram-bot-webhook` v12 ya es bidireccional (sin deploy).
 
 ---
 

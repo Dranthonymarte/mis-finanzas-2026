@@ -5,7 +5,26 @@ Cache local del schema de producción. Evita re-querys cada sesión.
 
 > **Regla:** Antes de aplicar cualquier query/feature → consultar este archivo.
 > Si una tabla/columna referida acá no coincide con el código → re-query con MCP y actualizar este doc en el mismo cambio.
-> Última actualización: 2026-05-17
+> Última actualización: 2026-05-29 (índices FK + RLS initplan aplicados)
+
+---
+
+## MIGRACIONES RECIENTES
+
+### 2026-05-29 — Optimización RLS + índices FK (APLICADA)
+Migraciones Supabase: `finanzas_fk_indexes_2026_05_29` + `finanzas_rls_initplan_2026_05_29`.
+- **7 índices FK** creados: `idx_household_members_user_id`, `idx_households_owner_user_id`,
+  `idx_metas_user_id`, `idx_plantillas_usuario_user_id`, `idx_registro_conexiones_user_id`,
+  `idx_registro_movimientos_user_id`, `idx_sugerencias_user_id`.
+- **16 RLS policies** reescritas: `auth.uid()` → `(select auth.uid())` (corrige
+  `auth_rls_initplan`) en `household_members`, `households`, `metas`, `plantillas_usuario`,
+  `push_subscriptions`, `registro_conexiones`, `scheduled_notifications`, `sugerencias`,
+  `telegram_connections`. Verificado: quals ahora `( SELECT auth.uid() AS uid)`.
+- Tablas household-scoped (`movimientos` / `cuentas` / `dinero_fuera` / `config_usuario`)
+  **NO tocadas** (usan `active_household_id()`, ya óptimas).
+- Backfill `household_id` verificado: **0 NULL** en movimientos/cuentas/dinero_fuera.
+- Pendiente opcional: `DROP POLICY own_push` (duplicada de "Users manage own subscriptions").
+- Archivo fuente: `MIGRACION_2026-05-29_rls_indices.sql` (raíz del proyecto).
 
 ---
 

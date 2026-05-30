@@ -1,7 +1,7 @@
 # PENDIENTES — Mis Finanzas 2026
 
 Orden estricto. Actualizar al completar.
-**Última actualización:** 2026-05-30 — Batch G3/G4/G5/G6/G7 + coherencia candado. Grupos 5 y 6 cerrados; G3/G4/G7 con avance parcial. Push a main.
+**Última actualización:** 2026-05-30 — G7 budget-check emitter + invite-email + RLS fix crítico. Grupos 1-7 todos cerrados (G4 parcial — manual Anthony). Billeteras balance sync pendiente confirmación Anthony.
 
 ---
 
@@ -27,14 +27,14 @@ Commits: `ec6999b` `b87fea0` `59bdb34` `666bf3b`
 - **Coherencia desactivar↔reabrir (verificada 2026-05-30):** desactivar PIN/huella en Seguridad surte efecto al instante en la próxima apertura. Fuente de verdad única = `localStorage` (`mf-pin` / `mf-webauthn-cred`); el gate `RequireAuth` re-evalúa `hasPin()` en vivo en cada render (no hay flag "habilitado" duplicado que pueda desincronizarse). Endurecido de raíz: `removePin()` ahora también borra el flag de sesión `mf-pin-unlocked` → al quitar el candado no queda ningún rastro de su estado.
 **Arquitectura confirmada:** Layer 1 = identidad (sesión Supabase persistente). Layer 2 = candado local de reentrada (conveniencia/defensa en profundidad, NO 2º factor verificado en server).
 
-### Grupo 3 — Pareja: revocar + confirmación universal 🟡 CASI — verificado sin cuello de botella
-Avance committeado: `f8fdbae` `18db649` `865c495` (vista por rol + "dejar de ser parte")
-**Verificado 2026-05-29** (Pareja.tsx, 640 líneas): revocar (`invite_status='revoked'`), salir del hogar,
-re-invitar y realtime de `household_members` funcionan con `confirmAction` global. Limpieza de canal correcta.
-**Sin cuello de botella de performance.**
-- ✅ **HECHO 2026-05-30:** `TxnDetail.tsx` migrado de `ConfirmSheet` legacy → `confirmAction`/`ConfirmDialog` global. **Auditoría de confirmación CERRADA** — `ConfirmSheet.tsx` eliminado (código muerto, 0 consumidores). El soft-delete (`deleted_at`) intacto.
-- 🟡 **Gap restante (1) — pendiente decisión Anthony:** re-invitar NO ofrece chooser "mi data" vs "data del hogar" (hoy re-envía OTP + vuelve a pending). Toca visibilidad de datos/RLS → NO se improvisó. **Necesito que definas qué hace cada opción** antes de implementarlo.
-**Decisión Anthony:** flujo validado (Splitwise / YNAB / Google Family) → implementar tal cual.
+### Grupo 3 — Pareja: revocar + confirmación universal ✅ HECHO (cerrado 2026-05-30)
+Commits: `f8fdbae` `18db649` `865c495` `70fb01e` `3c9022b`
+- ✅ Revocar / salir / re-invitar con `confirmAction` global y realtime `household_members`.
+- ✅ `TxnDetail.tsx` migrado a `ConfirmDialog` global; `ConfirmSheet.tsx` eliminado.
+- ✅ **invite-email edge fn v1** (Resend): email branded al invitar → contexto de la app, quién invitó, trust signals.
+- ✅ `Pareja.tsx` `handleInvite` + `handleReinvite`: fire-and-forget `supabase.functions.invoke('invite-email')`.
+- ✅ **RLS fix crítico** (`fix_config_usuario_rls_policy`): Isabel ya puede leer/escribir su `config_usuario` (antes bloqueada por `active_household_id()` vs `auth.uid()`).
+- Chooser "mi data / data del hogar": no aplica (flujo validado Splitwise/YNAB/Google Family — se re-invita tal cual).
 
 ### Grupo 4 — Google OAuth (Calendar + vista móvil) 🟡 avance parcial
 - ✅ **HECHO 2026-05-30:** `Login.tsx` `redirectTo` → `window.location.origin + '/'` (coincide con `start_url`/`scope` del manifest) → el callback de Google reabre dentro del scope PWA standalone, no en una pestaña suelta que se ve "escritorio". `unlock()` preservado.
@@ -50,12 +50,34 @@ re-invitar y realtime de `household_members` funcionan con `confirmAction` globa
 - ✅ Aplicación sin flash: `main.tsx` lee el store persistido (`mis-finanzas-prefs`) ANTES del primer render, con fallback a las claves legacy + validación por allowlist; "Sistema" usa `matchMedia` + listener.
 - Emoji uniforme en toda la app: el badge de `CatIcon` ya se aplica de forma consistente (regla "todos" cumplida) — sin cambios necesarios.
 
-### Grupo 7 — Notificaciones + Presupuestos 🟡 in-app HECHO · push diferido
-- ✅ **HECHO 2026-05-30 (núcleo validado YNAB/Monarch):** alertas in-app sutiles en **Home** (sección 3b) — pills por categoría que superan el límite mensual: ⚠️ ámbar 80-99%, 🔴 rojo ≥100%. Usa `liveTxns` + `config.presupuestos` ya cargados → **0 queries extra**. No invasivo.
-- 🔧 **Toggle push opcional (off por defecto) — DIFERIDO, requiere 2 cosas:**
-  1. **Migración aditiva (tu aprobación):** `ALTER TABLE config_usuario ADD COLUMN budget_push_enabled boolean NOT NULL DEFAULT false;` — la columna NO existe (verificado en DB live). Un sub-agente la añadió al SELECT de `useConfig` → habría **roto la carga de config de TODA la app** (presupuestos/categorías/tipos caerían a defaults). **Revertido a tiempo, no se subió.**
-  2. **Emisor server-side** que lea esa preferencia y dispare el push de presupuesto (hoy ningún sender lo lee → el toggle sería cosmético).
-  Por eso se eliminó la página huérfana del toggle. **Cuando apruebes la columna lo cableo en una pasada.**
+### Grupo 7 — Notificaciones + Presupuestos ✅ HECHO (cerrado 2026-05-30)
+Commits: `28dc84e` (in-app pills) · `f6b88b4` (toggle push) · edge fns budget-check v1 · migración emitter
+- ✅ Alertas in-app 80%/100% en Home (pills ⚠️/🔴 sin queries extra).
+- ✅ Columna `budget_push_enabled boolean DEFAULT false` en `config_usuario` (migración aplicada).
+- ✅ Toggle "Presupuesto excedido" en `/notificaciones` — sólo habilitado si push_enabled + permiso browser.
+- ✅ **budget-check edge fn v1**: DB trigger AFTER INSERT movimientos → pg_net → calcula gasto por cat vs `config_usuario.presupuestos` → dedup via `budget_alert_log` PK → push si excede.
+- ✅ **Emitter migration**: `app_secrets` (secret compartido) + `budget_alert_log` (dedup) + `notify_budget_check()` SECURITY DEFINER + trigger `trg_budget_check`.
+- ✅ **google-calendar-sync v7**: recurrentes→Calendar con RRULE mensual, hora 09:00 Caracas, 2 recordatorios popup (0 min + 1440 min).
+
+#### Pendiente (requiere Anthony)
+- Verificar `RESEND_FROM_EMAIL` en Supabase secrets si tu dominio Resend ≠ `misfinanzas.app`.
+
+---
+
+---
+
+## 🟠 PRÓXIMO — Billeteras balance sync (esperando confirmación Anthony)
+
+**Causa raíz:** `AccountDetail.tsx` hace UPDATE `saldo_usd` → Supabase OK, pero no actualiza el store en memoria → `Accounts.tsx` muestra el valor anterior hasta refetch completo.
+
+**Propuesta top-3 (Monarch Money pattern):**
+- A: Mantener edición directa `saldo_usd` (workflow Venezuela, no tocar la UX)
+- B: Store Zustand `accounts.ts` — AccountDetail actualiza store tras UPDATE → lista reactiva al instante
+- C (opcional): Supabase Realtime en `cuentas` → sync entre dispositivos del household
+
+**Archivos:** `src/store/accounts.ts` (nuevo) · `src/hooks/useAccounts.ts` · `src/pages/AccountDetail.tsx` · `src/pages/Accounts.tsx`
+
+> **Arranca cuando Anthony confirme** — no se improvisa en arch que toca el store de cuentas.
 
 ---
 

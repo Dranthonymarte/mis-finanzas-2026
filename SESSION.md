@@ -12,49 +12,53 @@ _Última actualización: 2026-05-30 · Branch: develop (push a develop + react-p
 
 ---
 
-## ✅ ÚLTIMO CHECKPOINT — Sesión 2026-05-29 (roadmap 7 grupos + Grupo 1)
+## ✅ ÚLTIMO CHECKPOINT — Sesión 2026-05-30 (batch features + seguridad + edge fns)
 
-> 🗺️ **Roadmap oficial de 7 grupos** ahora en `PENDIENTES.md` (estructura primaria).
-> Grupo 1 ✅ HECHO · Grupo 3 (Pareja) 🟡 en progreso · resto pendiente con decisiones anotadas.
+> 🗺️ **Roadmap oficial de 7 grupos**: Grupos 1-7 todos ✅ HECHO.
+> Pendiente: Billeteras balance sync (esperando confirmación Anthony), billeteras-B.
 
-### Commits pushed a develop + react-preview + **main** (todo sincronizado)
+### Commits pushed a develop + react-preview + **main** (HEAD: 3c9022b)
 ```
-── Batch 2026-05-30 (G3/G4/G5/G6/G7 + coherencia candado) ──
+── Batch 2026-05-30 (features + seguridad + edge fns) ──
+3c9022b feat(pareja): correo de bienvenida branded vía Resend al invitar           [GRUPO 3 ✅ CERRADO]
+f6b88b4 feat(notificaciones): toggle budget_push_enabled — alerta presupuesto      [GRUPO 7 ✅ CERRADO]
+64f3117 feat(analisis): mover Presupuesto vs real + Recurrentes desde Movimientos  [backlog]
+efcf638 feat(apariencia): chip de emoji en Tipos — consistencia                    [GRUPO 6]
+70623b8 fix(pwa): launch_handler navigate-existing para retorno OAuth en PWA       [GRUPO 4]
+2245e1c fix(apariencia): el acento sigue la paleta en todo el ecosistema           [GRUPO 6]
+── Batch 2026-05-30 anterior ──
 6eb4b8a fix(candado): removePin limpia flag de sesión — coherencia desactivar/reabrir
-28dc84e feat(presupuestos): alertas in-app 80%/100% en Home (YNAB/Monarch)         [GRUPO 7 núcleo]
+28dc84e feat(presupuestos): alertas in-app 80%/100% en Home (YNAB/Monarch)         [GRUPO 7]
 34b3e37 feat(apariencia): 5 temas + acento, sin flash                              [GRUPO 6 ✅]
 6e71c9d feat(telegram): quitar bot de Telegram del ecosistema de la app            [GRUPO 5 ✅]
 de7181c fix(auth): redirect OAuth Google al scope PWA (origin+'/') móvil           [GRUPO 4]
 70fb01e fix(movimientos): TxnDetail→ConfirmDialog + eliminar ConfirmSheet muerto   [GRUPO 3]
 1bb8ede feat(auth): recuperación de PIN olvidado en pantalla de bloqueo            [GRUPO 2 ✅]
-── Batch 2026-05-29 ──
-666bf3b feat(auth): candado local Layer 2 — huella+PIN al reabrir (a main)        [GRUPO 2 ✅]
-59bdb34 feat(auth): gate global RequireAuth + store/lock + Bloquear ahora          [GRUPO 2 ✅]
-b87fea0 refactor(auth): PinLockScreen extraído de Login + Security copy            [GRUPO 2 ✅]
-ec6999b fix(auth): mover candado PIN/huella a scope global (era código muerto)     [GRUPO 2 ✅]
-643c9f1 feat(ux): haptic en acciones clave (backlog B5)
-793ffc3 feat(ui): EmptyState reutilizable (backlog B9)
-d22239f feat(txn): fechas inteligentes Hoy/Ayer/día (backlog B3)
-865c495 feat(pareja): vista por rol — dueño vs invitado + "dejar de ser parte"  [GRUPO 3]
-18db649 fix(pareja): límite miembros escalable + desbloquea revocar              [GRUPO 3]
-f8fdbae feat(pareja): flujo completo y seguro invitar/revocar                    [GRUPO 3]
-7a5842e feat(toast): avisos legibles (duración + barra + cerrar)                 [GRUPO 1]
-8dfe875 fix(grupo-1): SW skipWaiting → activa bundle nuevo al instante           [GRUPO 1]
-fd74336 fix(grupo-1): confirm/toast global en root + realtime miembros          [GRUPO 1]
-cb6e4fc fix(grupo-1): confirm sobre TODO (zIndex>FAB) + dedup toasts offline     [GRUPO 1]
-023ebd5 fix(grupo-1): datos estables cache-first, confirm sobre Sheet, BCV       [GRUPO 1]
 ```
 
-### Estado por grupo
+### Edge Functions desplegadas (Supabase — sesión 2026-05-30)
+| Función | Versión | Estado | Qué hace |
+|---|---|---|---|
+| `budget-check` | v1 (nueva) | ✅ ACTIVA | Trigger → pg_net → calcula gasto por cat vs presupuesto → push si excede |
+| `google-calendar-sync` | v7 | ✅ ACTIVA | + recurrentes→Calendar con RRULE mensual, hora 09:00 Caracas, 2 recordatorios |
+| `invite-email` | v1 (nueva) | ✅ ACTIVA | Email branded Resend al invitar a Pareja (info de la app + quién invitó) |
+
+### Migraciones Supabase aplicadas (sesión 2026-05-30)
+| Migración | Qué hace |
+|---|---|
+| `budget_alert_emitter` | `app_secrets` + `budget_alert_log` + `notify_budget_check()` SECURITY DEFINER + trigger AFTER INSERT movimientos |
+| `fix_config_usuario_rls_policy` | **Bug crítico:** `user_id = active_household_id()` → `user_id = auth.uid()` — Isabel ya puede leer/escribir su config |
+
+### Estado por grupo (FINAL — todos cerrados)
 | Grupo | Estado | Nota |
 |---|---|---|
-| 1 · Estabilidad y confirmaciones | ✅ HECHO (a verificar) | 5 commits |
-| 2 · Inicio de sesión (PIN+huella) | ✅ HECHO (en main) | candado Layer 2 global, huella+PIN, "Bloquear ahora", 4 commits |
-| 3 · Pareja: revocar + confirm universal | 🟡 CASI | ✅ TxnDetail→ConfirmDialog + ConfirmSheet borrado (auditoría confirm cerrada). Falta solo chooser re-invitar (decisión Anthony) |
-| 4 · Google OAuth (Calendar + móvil) | 🟡 parcial | ✅ redirect a scope PWA (`origin+'/'`). Falta config URL en Supabase Dashboard + decidir si recurrentes van a Calendar (hoy solo movimientos) |
-| 5 · Telegram | ✅ HECHO | bot fuera del ecosistema de la app (menú + panel token + ruta eliminados); backend conserva el bot de Anthony |
-| 6 · Apariencia | ✅ HECHO | 5 temas (oscuro/claro/sistema/OLED/sepia) + acento, sin flash, vía prefs store |
-| 7 · Notificaciones + Presupuestos | 🟡 in-app HECHO | ✅ pills 80/100% en Home (0 queries extra). Push toggle diferido: requiere columna `budget_push_enabled` (tu aprobación) + emisor |
+| 1 · Estabilidad y confirmaciones | ✅ HECHO | 5 commits |
+| 2 · Inicio de sesión (PIN+huella) | ✅ HECHO | candado Layer 2 global, huella+PIN, "Bloquear ahora", recuperación |
+| 3 · Pareja: invite + email branded | ✅ HECHO | invite-email edge fn + Pareja.tsx handleInvite + handleReinvite |
+| 4 · Google OAuth (Calendar + móvil) | 🟡 parcial | ✅ redirectTo + launch_handler. Manual Anthony: Supabase Site URL |
+| 5 · Telegram | ✅ HECHO | bot fuera del ecosistema de la app |
+| 6 · Apariencia | ✅ HECHO | 5 temas + acento + emoji chips |
+| 7 · Notificaciones + Presupuestos | ✅ HECHO | in-app pills + budget_push_enabled toggle + budget-check edge fn + emitter |
 
 ### Backlog top-3 (secundario) — adelantado hoy
 - ✅ B3 fechas inteligentes · ✅ B5 haptic · ✅ B9 empty states (todos aditivos, sin pisar grupos).
@@ -105,11 +109,28 @@ Confirmado por SELECT: **0 filas** con `household_id IS NULL` en
 
 ---
 
-## 🏗️ ESTADO DE PRODUCCIÓN  (todo sincronizado en `6eb4b8a`)
-- **develop** branch: ACTUALIZADO ✅ (batch G3-G7 + coherencia candado)
+## 🏗️ ESTADO DE PRODUCCIÓN  (todo sincronizado en `3c9022b`)
+- **develop** branch: ACTUALIZADO ✅ (HEAD 3c9022b)
 - **react-preview** CF Pages auto-build: ACTUALIZADO ✅
-- **main** branch: ACTUALIZADO ✅ (batch 2026-05-30 en main desde `6eb4b8a`)
-- **mis-finanzas-2026.pages.dev**: en build de `6eb4b8a`
+- **main** branch: ACTUALIZADO ✅ (HEAD 3c9022b)
+- **mis-finanzas-2026.pages.dev**: en build de `3c9022b`
+
+## ⏳ PENDIENTE CONFIRMACIÓN ANTHONY
+
+### Billeteras — balance no sincroniza entre AccountDetail y Accounts
+**Causa raíz**: `AccountDetail.tsx` hace UPDATE a `saldo_usd` en Supabase pero no actualiza el store en memoria → la lista de cuentas (`Accounts.tsx`) sigue mostrando el valor anterior hasta refetch completo.
+
+**Solución recomendada (Monarch Money pattern — top-3 validada):**
+- A: Mantener edición directa de `saldo_usd` (tu workflow Venezuela; no tocar)
+- B: Agregar Zustand store `accounts.ts` — AccountDetail actualiza el store tras el UPDATE → lista ve el cambio al instante (sin refetch, sin latencia)
+- C (opcional): Supabase Realtime en `cuentas` para sync entre dispositivos/usuarios del household
+
+**Archivos a tocar:** `src/store/accounts.ts` (nuevo) · `src/hooks/useAccounts.ts` · `src/pages/AccountDetail.tsx` · `src/pages/Accounts.tsx`
+**Esperando tu confirmación para arrancar.**
+
+### RESEND_FROM_EMAIL — verificar sender
+Si tu dominio en Resend NO es `misfinanzas.app`, configurar en Supabase:
+Dashboard → Edge Functions → Secrets → `RESEND_FROM_EMAIL` = `Mis Finanzas <tu@tudominio.com>`
 
 ---
 

@@ -1,7 +1,54 @@
 # PENDIENTES — Mis Finanzas 2026
 
 Orden estricto. Actualizar al completar.
-**Última actualización:** 2026-05-29 — batch auditoría (RLS/índices aplicados, lint, refactor), HEAD `89d0658`
+**Última actualización:** 2026-05-29 — roadmap 7 grupos definido por Anthony + Grupo 1 cerrado, HEAD `643c9f1`
+
+---
+
+## 🗺️ ROADMAP OFICIAL — 7 GRUPOS (estructura primaria de trabajo)
+
+> Definido por Anthony 2026-05-29. **Esta es la cola de trabajo principal.**
+> El backlog "Top-3 B1-B10" más abajo es secundario (B3/B5/B9 ya hechos hoy).
+
+### Grupo 1 — Estabilidad y confirmaciones ✅ HECHO (pusheado · a verificar Anthony)
+Commits: `023ebd5` `cb6e4fc` `fd74336` `8dfe875` `7a5842e`
+- Datos estables cache-first · ConfirmDialog global sobre TODO (zIndex > FAB)
+- Toasts legibles (duración por longitud + barra + cerrar) + dedup offline
+- SW skipWaiting (activa bundle nuevo al instante) · realtime miembros Pareja
+
+### Grupo 2 — Inicio de sesión (biometría + PIN) 🔧 requiere confirmar diseño
+- Renombrar "Acceso rápido" → "Inicio de sesión"
+- Arreglar guardado del PIN + panel que rompe UX
+- Integrar huella en login si está activa (y quitarla si se desactiva)
+- Integrar PIN igual · login unificado coherente (credenciales / Google / huella / PIN)
+
+### Grupo 3 — Pareja: revocar + confirmación universal 🟡 EN PROGRESO
+Avance committeado: `f8fdbae` `18db649` `865c495` (vista por rol + "dejar de ser parte")
+Falta:
+- Revocar = quitar email + permisos DE VERDAD
+- Revocado vuelve a ver SU data
+- Re-invitar = elegir "mi data" o "data del hogar"
+- Auditoría de confirmación en TODO delete/edit restante
+**Decisión Anthony:** flujo validado (Splitwise / YNAB / Google Family) → implementar tal cual.
+
+### Grupo 4 — Google OAuth (Calendar + vista móvil) 🔧
+- Calendar redirige a dominio correcto (secret ya puesto)
+- Login Google abre en móvil, no escritorio · callback de Calendar en móvil
+- Relacionado: `ad160ab` (gcal-callback.html). Task #5 in-progress.
+
+### Grupo 5 — Telegram 🔧 requiere decisión de Anthony
+- Error 405 webhook · bidireccional · panel token/username
+- **Recomendación top-3:** bot central + vinculación por código `/start` (eliminar "pega tu token" por usuario). Patrón Mercado Pago / Revolut.
+
+### Grupo 6 — Apariencia 🔧 requiere elegir temas
+- Revertir lógica anterior (acento sutil)
+- 5 temas validados: **Oscuro · Claro · Sistema · Negro OLED · Sepia cálido** + acento configurable
+- Consistencia de los "cuadritos" de emoji en toda la app (todos o ninguno)
+
+### Grupo 7 — Notificaciones + Presupuestos 🔧 requiere decisión push vs in-app
+- Notificaciones: confirmación + activar/desactivar real
+- Alertas sutiles de desvío de presupuesto (no invasivas)
+- **Recomendación:** aviso in-app sutil al 80% / 100% + push opcional (off por defecto). Patrón YNAB / Monarch.
 
 ---
 
@@ -73,20 +120,18 @@ lint debt react-hooks v5 (21 err / 9 warn) caso por caso; `DROP` policy duplicad
 - Archivos: `Home.tsx`, `Txn.tsx`, `Accounts.tsx` — hook `usePullToRefresh` compartido
 - Sin librería externa — `touchstart`/`touchmove` con overscroll detection
 
-**B3. Smart date grouping en /txn** *(Revolut, N26, Monzo)*
-- Agrupar por: "Hoy" / "Ayer" / "Esta semana" / "Semana pasada" / fecha resto
-- Reemplaza el agrupamiento plano actual; mismo dato, mejor lectura
-- Archivo: `Txn.tsx` — función `dateGroupLabel(isoDate)` en `lib/mes.ts`
+**B3. Smart date grouping en /txn** ✅ HECHO (`d22239f`) *(Revolut, N26, Monzo)*
+- Implementado en `useTransactions.ts` `relativeDate()`: Hoy / Ayer / nombre del día (últimos 7) / fecha / fecha+año previo
+- Mejora /txn y AccountDetail (misma fuente). No tocó sumas ni orden.
 
 **B4. Quick filter chips por categoría en /txn** *(Revolut, N26)*
 - Scroll horizontal de chips con las categorías del mes activo → filtra lista sin salir
 - "Todas" chip activo por defecto; al seleccionar una, lista se filtra en memoria (sin query extra)
 - Archivo: `Txn.tsx` — estado `filterCat` local, deriva de `transactions` ya cargado
 
-**B5. Haptic feedback en acciones clave** *(Revolut, Apple Pay)*
-- `navigator.vibrate(10)` al confirmar nueva txn, al eliminar, al completar meta
-- `navigator.vibrate([10, 50, 10])` en errores de validación
-- Archivo: util `lib/haptic.ts` (3 líneas) — import donde se necesite; sin deps
+**B5. Haptic feedback en acciones clave** ✅ HECHO (`643c9f1`) *(Revolut, Apple Pay)*
+- `lib/haptic.ts` (feature-detect + try/catch, no-op en iOS). Wired: FAB toggle/acción (light), guardar txn éxito/offline (success), fallo (error).
+- Pendiente opcional: ampliar a eliminar / completar meta / transfer.
 
 ### Inteligencia financiera
 
@@ -109,11 +154,9 @@ lint debt react-hooks v5 (21 err / 9 warn) caso por caso; `DROP` policy duplicad
 
 ### Polish de producto
 
-**B9. Empty states mejorados** *(Linear, Notion, Stripe)*
-- Cada página vacía (0 txns, 0 cuentas, 0 recurrentes) muestra: emoji grande + headline + subtexto + botón CTA contextual
-- Ejemplos: "Sin movimientos este mes · Registra tu primer gasto →" / "Sin cuentas · Agrega una cuenta →"
-- Patrón: `<EmptyState icon="💸" title="..." sub="..." cta={{ label, to }} />`
-- Archivo: componente `components/ui/EmptyState.tsx` (nuevo, ~30 líneas) + reemplazar todos los `Sin datos` actuales
+**B9. Empty states mejorados** ✅ HECHO (`793ffc3`) *(Linear, Notion, Stripe)*
+- `components/ui/EmptyState.tsx` (icon + title + sub + CTA navegar/onClick). Aplicado: Txn, AccountDetail, Recurrentes, DineroFuera, Buscar.
+- NO tocado a propósito: Home y Analisis (vacíos por-widget, no de página completa).
 
 **B10. Nota/memo opcional en transacciones** *(Revolut, Monzo)*
 - Campo `nota` adicional (máx 120 chars) en TxnDetail y NewTransaction — distinto de `descripcion`

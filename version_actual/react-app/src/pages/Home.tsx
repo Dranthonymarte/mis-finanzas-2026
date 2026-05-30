@@ -270,6 +270,20 @@ export default function Home() {
     { ...MOCK_KPIS[3], id: 'ahorro', label: 'Ahorro', value: kpiData.ahorro,  delta: 0, suffix: undefined },
   ] : MOCK_KPIS
 
+  // ── Alertas de presupuesto — cats ≥80% del límite mensual ──
+  const budgetAlerts = useMemo(() => {
+    if (!liveTxns || Object.keys(config.presupuestos).length === 0) return []
+    const spentByCat: Record<string, number> = {}
+    for (const t of liveTxns) {
+      if (txnGroup(t.tipo) === 'gasto')
+        spentByCat[t.cat] = (spentByCat[t.cat] ?? 0) + Math.abs(t.amount)
+    }
+    return Object.entries(config.presupuestos)
+      .map(([cat, limit]) => ({ cat, limit, spent: spentByCat[cat] ?? 0 }))
+      .filter(({ limit, spent }) => limit > 0 && spent / limit >= 0.8)
+      .sort((a, b) => b.spent / b.limit - a.spent / a.limit)
+  }, [liveTxns, config.presupuestos])
+
   // ── Bar chart 6M: 5 meses reales + mes activo ──
   const incomeVsExp = useMemo(() => {
     const base = histKPIs.length === 5
@@ -525,6 +539,42 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* ─── 3b. ALERTAS DE PRESUPUESTO ─── */}
+      {budgetAlerts.length > 0 && (
+        <div style={{ padding: '4px 16px 0' }}>
+          <div style={{
+            background: 'var(--ink-2)', border: '1px solid var(--line)',
+            borderRadius: 14, padding: '10px 14px',
+            display: 'flex', flexDirection: 'column', gap: 6,
+          }}>
+            <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 2 }}>
+              Alertas de presupuesto
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {budgetAlerts.map(({ cat, limit, spent }) => {
+                const pct  = Math.min(999, Math.round((spent / limit) * 100))
+                const over = spent >= limit
+                return (
+                  <div
+                    key={cat}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      padding: '4px 9px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
+                      background: over ? 'rgba(214,106,90,.14)' : 'rgba(224,168,74,.12)',
+                      color:      over ? 'var(--neg)' : 'var(--amber)',
+                      border:     over ? '1px solid rgba(214,106,90,.3)' : '1px solid rgba(224,168,74,.3)',
+                    }}
+                  >
+                    <span>{over ? '🔴' : '⚠️'}</span>
+                    <span>{cat} al {pct}%</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─── 4. ACCESOS DIRECTOS (horizontal scroll) ─── */}
       <div style={{

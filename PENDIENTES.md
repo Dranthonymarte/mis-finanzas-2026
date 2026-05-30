@@ -1,7 +1,7 @@
 # PENDIENTES — Mis Finanzas 2026
 
 Orden estricto. Actualizar al completar.
-**Última actualización:** 2026-05-29 — roadmap 7 grupos definido por Anthony + Grupo 1 cerrado, HEAD `643c9f1`
+**Última actualización:** 2026-05-29 — Grupo 2 (login/candado) cerrado y pusheado a main, HEAD `666bf3b`
 
 ---
 
@@ -16,19 +16,23 @@ Commits: `023ebd5` `cb6e4fc` `fd74336` `8dfe875` `7a5842e`
 - Toasts legibles (duración por longitud + barra + cerrar) + dedup offline
 - SW skipWaiting (activa bundle nuevo al instante) · realtime miembros Pareja
 
-### Grupo 2 — Inicio de sesión (biometría + PIN) 🔧 requiere confirmar diseño
-- Renombrar "Acceso rápido" → "Inicio de sesión"
-- Arreglar guardado del PIN + panel que rompe UX
-- Integrar huella en login si está activa (y quitarla si se desactiva)
-- Integrar PIN igual · login unificado coherente (credenciales / Google / huella / PIN)
+### Grupo 2 — Inicio de sesión (biometría + PIN) ✅ HECHO (pusheado a main · a verificar Anthony)
+Commits: `ec6999b` `b87fea0` `59bdb34` `666bf3b`
+- **Candado local Layer 2**: huella primero (auto al reabrir) + PIN de respaldo en la MISMA pantalla. Nunca pide ambos.
+- Gate movido a scope global (`RequireAuth`) vía `store/lock.ts` (Zustand, NO persistido) → `PinLockScreen` extraído de Login (antes era código muerto en /login).
+- Login Layer 1 (correo / Google / magic link) llama `unlock()` al iniciar sesión → no doble-pide PIN tras autenticarse.
+- "Bloquear ahora" en More: pide huella/PIN sin cerrar sesión. "Cerrar sesión" SÍ destruye la sesión → reentrada por credenciales (no PIN).
+- Security: encabezado "Inicio de sesión" → "Bloqueo de la app" + copy aclaratorio (es candado local, no reemplaza el login con correo/Google).
+- **Recuperación de PIN olvidado** (`PinLockScreen`): link "¿Olvidaste tu PIN?" → confirm → `removePin()` + `signOut()` → cae a `/login` → re-login (correo/Google) → poner PIN nuevo. Patrón Revolut/banca (el candado local no se "recupera", se restablece probando identidad real). **Cierra la trampa de bloqueo** (antes no había salida si olvidabas el PIN sin huella).
+**Arquitectura confirmada:** Layer 1 = identidad (sesión Supabase persistente). Layer 2 = candado local de reentrada (conveniencia/defensa en profundidad, NO 2º factor verificado en server).
 
-### Grupo 3 — Pareja: revocar + confirmación universal 🟡 EN PROGRESO
+### Grupo 3 — Pareja: revocar + confirmación universal 🟡 CASI — verificado sin cuello de botella
 Avance committeado: `f8fdbae` `18db649` `865c495` (vista por rol + "dejar de ser parte")
-Falta:
-- Revocar = quitar email + permisos DE VERDAD
-- Revocado vuelve a ver SU data
-- Re-invitar = elegir "mi data" o "data del hogar"
-- Auditoría de confirmación en TODO delete/edit restante
+**Verificado 2026-05-29** (Pareja.tsx, 640 líneas): revocar (`invite_status='revoked'`), salir del hogar,
+re-invitar y realtime de `household_members` funcionan con `confirmAction` global. Limpieza de canal correcta.
+**Sin cuello de botella de performance.** Gaps reales restantes (2):
+- Re-invitar NO ofrece chooser "mi data" vs "data del hogar" (hoy: re-envía OTP + vuelve a pending). ← único gap del flujo
+- `TxnDetail.tsx` = último consumidor del `ConfirmSheet` legacy → migrar a `ConfirmDialog` (cierra la auditoría de confirmación).
 **Decisión Anthony:** flujo validado (Splitwise / YNAB / Google Family) → implementar tal cual.
 
 ### Grupo 4 — Google OAuth (Calendar + vista móvil) 🔧

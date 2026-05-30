@@ -8,10 +8,14 @@
 // ═══════════════════════════════════════════════════
 
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Logo } from '../brand/Logo'
 import PinPad from '../ui/PinPad'
 import { haptic } from '../../lib/haptic'
-import { WEBAUTHN_KEY, PIN_UNLOCKED, verifyPin, biometricSupported } from '../../lib/pin'
+import { WEBAUTHN_KEY, PIN_UNLOCKED, verifyPin, biometricSupported, removePin } from '../../lib/pin'
+import { supabase } from '../../lib/supabase'
+import { useAuthStore } from '../../store/auth'
+import { confirmAction } from '../../store/confirm'
 
 // credential.id es base64url → ArrayBuffer
 function base64ToBuffer(b64: string): ArrayBuffer {
@@ -27,6 +31,7 @@ export default function PinLockScreen({ onUnlocked }: { onUnlocked: () => void }
   const [pinError,   setPinError]   = useState<string | null>(null)
   const [bioLoading, setBioLoading] = useState(false)
   const [bioError,   setBioError]   = useState<string | null>(null)
+  const navigate                    = useNavigate()
 
   const credId     = localStorage.getItem(WEBAUTHN_KEY)
   const bioSupport = biometricSupported() && Boolean(credId)
@@ -77,6 +82,24 @@ export default function PinLockScreen({ onUnlocked }: { onUnlocked: () => void }
     }
   }
 
+  // "¿Olvidaste tu PIN?" — el candado es local; la recuperación es re-autenticarse
+  // con la identidad real (correo/Google). Patrón Revolut/banca: cerrar sesión →
+  // /login → entrar de nuevo → poner PIN nuevo. Quitamos el PIN olvidado.
+  async function handleForgotPin() {
+    const ok = await confirmAction({
+      title: '¿Olvidaste tu PIN?',
+      message: 'Para crear un PIN nuevo necesitas iniciar sesión otra vez con tu correo o Google. Tus datos están a salvo.',
+      confirmLabel: 'Cerrar sesión',
+      cancelLabel: 'Cancelar',
+      danger: true,
+    })
+    if (!ok) return
+    removePin()                       // quita el PIN olvidado + biometría asociada
+    await supabase.auth.signOut()     // destruye la sesión (Layer 1)
+    useAuthStore.getState().logout()  // resetea el store → RequireAuth manda a /login
+    navigate('/login')
+  }
+
   return (
     <div style={{
       minHeight: '100dvh',
@@ -122,6 +145,18 @@ export default function PinLockScreen({ onUnlocked }: { onUnlocked: () => void }
         {bioError && (
           <div style={{ fontSize: 12, color: '#d66a5a', textAlign: 'center' }}>{bioError}</div>
         )}
+
+        <button
+          onClick={() => void handleForgotPin()}
+          style={{
+            background: 'none', border: 'none',
+            color: 'rgba(255,255,255,.5)', fontSize: 13, fontWeight: 500,
+            cursor: 'pointer', padding: '4px 8px',
+            textDecoration: 'underline', textUnderlineOffset: 3,
+          }}
+        >
+          ¿Olvidaste tu PIN?
+        </button>
 
       </div>
     </div>

@@ -4,10 +4,11 @@ _Última actualización: 2026-05-29 · Branch: develop_
 ---
 
 ## 📊 Modelo recomendado próxima sesión
-- **Grupo 3 (Pareja revocar real + re-invitar con elección de data)** → **Opus 4.7** (toca RLS/seguridad + flujo de datos del hogar; decisión validada ya tomada).
-- **Grupo 2 (PIN + biometría + login unificado)** → **Opus 4.7** (auth, riesgo de romper login).
-- **Grupos 4/5/6/7** → **Sonnet 4.6** (implementación estándar con decisión tomada).
-> Próximo paso natural: cerrar verificación de Grupo 1 → confirmar diseño Grupo 2 o arrancar Grupo 3 (decisión ya dada).
+- **Grupo 2 (login/candado)** → ✅ CERRADO y en main (`666bf3b`). No requiere más trabajo salvo verificación de Anthony.
+- **Grupo 3 (Pareja: solo el chooser "mi data/data del hogar" + migrar TxnDetail a ConfirmDialog)** → **Sonnet 4.6** (lo grueso ya está; quedan 2 gaps acotados, sin riesgo de RLS mayor).
+- **Grupo 4 (Google OAuth: redirect vista escritorio + verificar sync recurrentes→Calendar)** → **Opus 4.7** (toca OAuth redirect + edge functions de Calendar; diagnóstico fino).
+- **Grupos 5/6/7** → **Sonnet 4.6** (implementación estándar con decisión tomada).
+> Próximo paso natural: Grupo 4 (OAuth móvil + coherencia de sync a Calendar) o cerrar los 2 gaps del Grupo 3.
 
 ---
 
@@ -18,6 +19,10 @@ _Última actualización: 2026-05-29 · Branch: develop_
 
 ### Commits pushed a develop + react-preview + **main** (todo sincronizado)
 ```
+666bf3b feat(auth): candado local Layer 2 — huella+PIN al reabrir (a main)        [GRUPO 2 ✅]
+59bdb34 feat(auth): gate global RequireAuth + store/lock + Bloquear ahora          [GRUPO 2 ✅]
+b87fea0 refactor(auth): PinLockScreen extraído de Login + Security copy            [GRUPO 2 ✅]
+ec6999b fix(auth): mover candado PIN/huella a scope global (era código muerto)     [GRUPO 2 ✅]
 643c9f1 feat(ux): haptic en acciones clave (backlog B5)
 793ffc3 feat(ui): EmptyState reutilizable (backlog B9)
 d22239f feat(txn): fechas inteligentes Hoy/Ayer/día (backlog B3)
@@ -34,9 +39,9 @@ cb6e4fc fix(grupo-1): confirm sobre TODO (zIndex>FAB) + dedup toasts offline    
 ### Estado por grupo
 | Grupo | Estado | Nota |
 |---|---|---|
-| 1 · Estabilidad y confirmaciones | ✅ HECHO (a verificar) | 5 commits arriba |
-| 2 · Inicio de sesión (PIN+huella) | 🔧 confirmar diseño | renombrar, fix guardado PIN, login unificado |
-| 3 · Pareja: revocar + confirm universal | 🟡 EN PROGRESO | 3 commits; falta revocar real + re-invitar con elección de data |
+| 1 · Estabilidad y confirmaciones | ✅ HECHO (a verificar) | 5 commits |
+| 2 · Inicio de sesión (PIN+huella) | ✅ HECHO (en main) | candado Layer 2 global, huella+PIN, "Bloquear ahora", 4 commits |
+| 3 · Pareja: revocar + confirm universal | 🟡 CASI | verificado sin cuello de botella; faltan 2 gaps (chooser data + TxnDetail ConfirmSheet) |
 | 4 · Google OAuth (Calendar + móvil) | 🔧 | callback móvil + login Google móvil |
 | 5 · Telegram | 🔧 decisión | rec: bot central + `/start`, sin token por usuario |
 | 6 · Apariencia | 🔧 elegir temas | rec: 5 temas + acento + consistencia emoji |
@@ -91,11 +96,11 @@ Confirmado por SELECT: **0 filas** con `household_id IS NULL` en
 
 ---
 
-## 🏗️ ESTADO DE PRODUCCIÓN  (todo sincronizado en `643c9f1`)
+## 🏗️ ESTADO DE PRODUCCIÓN  (todo sincronizado en `666bf3b`)
 - **develop** branch: ACTUALIZADO ✅
 - **react-preview** CF Pages auto-build: ACTUALIZADO ✅
-- **main** branch: ACTUALIZADO ✅ (Claude pushea a main por instrucción permanente "sí a producción")
-- **mis-finanzas-2026.pages.dev**: en build de `643c9f1`
+- **main** branch: ACTUALIZADO ✅ (Grupo 2 login/candado en main desde `666bf3b`)
+- **mis-finanzas-2026.pages.dev**: en build de `666bf3b`
 
 ---
 

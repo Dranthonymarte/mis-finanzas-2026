@@ -173,9 +173,9 @@ function InlineEditForm({ notif, onSave, onCancel }: InlineFormProps) {
                   onClick={() => toggleDia(d.key)}
                   style={{
                     width: 32, height: 32, borderRadius: 8, fontSize: 12, fontWeight: 700,
-                    background: sel ? 'rgba(224,168,74,.18)' : 'var(--ink-3)',
+                    background: sel ? 'rgba(var(--amber-rgb),.18)' : 'var(--ink-3)',
                     color:      sel ? 'var(--amber)' : 'var(--fg-mute)',
-                    border:     sel ? '1.5px solid rgba(224,168,74,.5)' : '1px solid var(--line)',
+                    border:     sel ? '1.5px solid rgba(var(--amber-rgb),.5)' : '1px solid var(--line)',
                     cursor: 'pointer', flexShrink: 0,
                   }}
                 >
@@ -460,7 +460,7 @@ export default function Notificaciones() {
                       width: '100%',
                       padding: '13px 14px',
                       display: 'flex', alignItems: 'flex-start', gap: 12,
-                      background: isExpanded ? 'rgba(224,168,74,.04)' : 'none',
+                      background: isExpanded ? 'rgba(var(--amber-rgb),.04)' : 'none',
                       border: 'none',
                       cursor: 'pointer', textAlign: 'left',
                     }}

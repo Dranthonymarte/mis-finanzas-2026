@@ -810,7 +810,7 @@ export default function NewTransaction() {
               fontSize: 15.5, fontWeight: 700,
               color:    saved || (!amountUSD || usdNum <= 0) ? 'var(--fg-mute)' : 'var(--ink-0)',
               letterSpacing: '.02em',
-              boxShadow: saved ? '0 4px 20px rgba(88,178,106,.35)' : (usdNum > 0 ? '0 4px 20px rgba(224,168,74,.35)' : 'none'),
+              boxShadow: saved ? '0 4px 20px rgba(88,178,106,.35)' : (usdNum > 0 ? '0 4px 20px rgba(var(--amber-rgb),.35)' : 'none'),
               transition: 'background .2s, box-shadow .2s',
             }}
           >

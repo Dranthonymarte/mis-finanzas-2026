@@ -496,7 +496,7 @@ export default function Analisis() {
                 </div>
                 <span style={{
                   fontSize: 10, color: 'var(--amber)', fontWeight: 700,
-                  background: semanalesOpen ? 'rgba(224,168,74,.22)' : 'var(--ink-3)',
+                  background: semanalesOpen ? 'rgba(var(--amber-rgb),.22)' : 'var(--ink-3)',
                   borderRadius: 4, padding: '1px 6px', lineHeight: 1.4,
                 }}>
                   {semanalesOpen ? '▲' : '▼'}
@@ -538,7 +538,7 @@ export default function Analisis() {
 
                         {/* Transacciones de la semana */}
                         {isOpen && weekTxns.length > 0 && (
-                          <div style={{ marginBottom: 8, paddingLeft: 10, borderLeft: '2px solid rgba(224,168,74,.25)', display: 'flex', flexDirection: 'column', gap: 0 }}>
+                          <div style={{ marginBottom: 8, paddingLeft: 10, borderLeft: '2px solid rgba(var(--amber-rgb),.25)', display: 'flex', flexDirection: 'column', gap: 0 }}>
                             {weekTxns.map(t => (
                               <div
                                 key={t.id}

@@ -335,7 +335,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => switchMode('forgot')}
-                  style={{ background: 'none', border: 'none', fontSize: 11, color: 'rgba(224,168,74,.7)', cursor: 'pointer', padding: 0 }}
+                  style={{ background: 'none', border: 'none', fontSize: 11, color: 'rgba(var(--amber-rgb),.7)', cursor: 'pointer', padding: 0 }}
                 >
                   ¿Olvidaste tu contraseña?
                 </button>
@@ -504,8 +504,8 @@ export default function Login() {
         {installPrompt && (
           <div style={{
             marginTop: 20,
-            background: 'rgba(224,168,74,.1)',
-            border: '1px solid rgba(224,168,74,.3)',
+            background: 'rgba(var(--amber-rgb),.1)',
+            border: '1px solid rgba(var(--amber-rgb),.3)',
             borderRadius: 14, padding: '12px 14px',
             display: 'flex', alignItems: 'center', gap: 12,
           }}>

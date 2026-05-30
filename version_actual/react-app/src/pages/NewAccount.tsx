@@ -90,7 +90,7 @@ export default function NewAccount() {
     padding: '9px 0', flex: 1, borderRadius: 10, fontSize: 13, fontWeight: 600,
     background: active ? 'var(--ink-3)' : 'transparent',
     color:      active ? 'var(--amber)' : 'var(--fg-mute)',
-    border:     active ? '1.5px solid rgba(224,168,74,.27)' : '1px solid transparent',
+    border:     active ? '1.5px solid rgba(var(--amber-rgb),.27)' : '1px solid transparent',
     transition: 'all .14s',
   })
 
@@ -309,7 +309,7 @@ export default function NewAccount() {
               boxShadow: saved
                 ? '0 4px 20px rgba(88,178,106,.35)'
                 : trimmed
-                  ? '0 4px 20px rgba(224,168,74,.35)'
+                  ? '0 4px 20px rgba(var(--amber-rgb),.35)'
                   : 'none',
               transition: 'background .2s, box-shadow .2s',
             }}

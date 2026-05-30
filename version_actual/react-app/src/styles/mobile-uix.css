@@ -260,7 +260,7 @@ body.is-mobile #pwa-nav {
 /* FAB — 56×56 circle amber gradient · -32px overhang
    Fuente: m-shell.jsx TabBar FAB cell
    background: linear-gradient(135deg, amber, amber-s)
-   box-shadow: 0 8px 20px rgba(224,168,74,.4), 0 2px 4px rgba(0,0,0,.3) */
+   box-shadow: 0 8px 20px rgba(var(--amber-rgb),.4), 0 2px 4px rgba(0,0,0,.3) */
 .m-fab {
   width: 56px !important;
   height: 56px !important;
@@ -271,7 +271,7 @@ body.is-mobile #pwa-nav {
   color: var(--ink-0) !important;
   border: none !important;
   cursor: pointer !important;
-  box-shadow: 0 8px 20px rgba(224,168,74,.4), 0 2px 4px rgba(0,0,0,.3) !important;
+  box-shadow: 0 8px 20px rgba(var(--amber-rgb),.4), 0 2px 4px rgba(0,0,0,.3) !important;
   margin-top: -32px !important;
   position: static !important;
   bottom: auto !important;

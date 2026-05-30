@@ -279,7 +279,7 @@ export default function Recurrentes() {
         {/* ── Form (create / edit) ── */}
         {open && (
           <div style={{
-            background: 'var(--ink-2)', border: `1px solid ${isEditing ? 'rgba(224,168,74,.4)' : 'var(--line)'}`,
+            background: 'var(--ink-2)', border: `1px solid ${isEditing ? 'rgba(var(--amber-rgb),.4)' : 'var(--line)'}`,
             borderRadius: 14, padding: 16,
             display: 'flex', flexDirection: 'column', gap: 12,
           }}>
@@ -328,9 +328,9 @@ export default function Recurrentes() {
                 {FREQ_OPTS.map((f, idx) => (
                   <button key={f.label} onClick={() => setFreqIdx(idx)} style={{
                     padding: '5px 11px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
-                    background: freqIdx === idx ? 'rgba(224,168,74,.15)' : 'var(--ink-3)',
+                    background: freqIdx === idx ? 'rgba(var(--amber-rgb),.15)' : 'var(--ink-3)',
                     color:      freqIdx === idx ? 'var(--amber)' : 'var(--fg-mute)',
-                    border:     freqIdx === idx ? '1.5px solid rgba(224,168,74,.4)' : '1px solid var(--line)',
+                    border:     freqIdx === idx ? '1.5px solid rgba(var(--amber-rgb),.4)' : '1px solid var(--line)',
                     cursor: 'pointer',
                   }}>{f.label}</button>
                 ))}

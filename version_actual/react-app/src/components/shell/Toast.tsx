@@ -13,7 +13,7 @@ function toneColor(tone: ToastTone): string {
 
 function toneBg(tone: ToastTone): string {
   if (tone === 'error') return 'rgba(214,106,90,.15)'
-  if (tone === 'warn')  return 'rgba(224,168,74,.12)'
+  if (tone === 'warn')  return 'rgba(var(--amber-rgb),.12)'
   return 'rgba(106,148,196,.12)'
 }
 

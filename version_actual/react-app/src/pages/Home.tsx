@@ -450,9 +450,9 @@ export default function Home() {
               style={{
                 padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700,
                 whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer',
-                background: isActive ? 'var(--amber)' : 'rgba(224,168,74,.1)',
+                background: isActive ? 'var(--amber)' : 'rgba(var(--amber-rgb),.1)',
                 color:      isActive ? 'var(--ink-0)' : 'var(--amber)',
-                border:     isActive ? 'none' : '1px dashed rgba(224,168,74,.4)',
+                border:     isActive ? 'none' : '1px dashed rgba(var(--amber-rgb),.4)',
               }}
             >
               {isActive ? mesLabel(nid).split(' ')[0] : '+ Nuevo mes'}
@@ -561,9 +561,9 @@ export default function Home() {
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 5,
                       padding: '4px 9px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
-                      background: over ? 'rgba(214,106,90,.14)' : 'rgba(224,168,74,.12)',
+                      background: over ? 'rgba(214,106,90,.14)' : 'rgba(var(--amber-rgb),.12)',
                       color:      over ? 'var(--neg)' : 'var(--amber)',
-                      border:     over ? '1px solid rgba(214,106,90,.3)' : '1px solid rgba(224,168,74,.3)',
+                      border:     over ? '1px solid rgba(214,106,90,.3)' : '1px solid rgba(var(--amber-rgb),.3)',
                     }}
                   >
                     <span>{over ? '🔴' : '⚠️'}</span>
@@ -638,8 +638,8 @@ export default function Home() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12,
                     padding: '10px 12px', borderRadius: 12,
-                    background: active ? 'rgba(224,168,74,.12)' : 'var(--ink-3)',
-                    border: active ? '1px solid rgba(224,168,74,.35)' : '1px solid var(--line)',
+                    background: active ? 'rgba(var(--amber-rgb),.12)' : 'var(--ink-3)',
+                    border: active ? '1px solid rgba(var(--amber-rgb),.35)' : '1px solid var(--line)',
                     cursor: 'pointer', textAlign: 'left',
                   }}
                 >

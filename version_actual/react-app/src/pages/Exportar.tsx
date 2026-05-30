@@ -221,8 +221,8 @@ ${budgetRows ? `
             key={opt.id}
             onClick={opt.action}
             style={{
-              background: opt.highlight ? 'rgba(224,168,74,.1)' : 'var(--ink-2)',
-              border: `1px solid ${opt.highlight ? 'rgba(224,168,74,.35)' : 'var(--line)'}`,
+              background: opt.highlight ? 'rgba(var(--amber-rgb),.1)' : 'var(--ink-2)',
+              border: `1px solid ${opt.highlight ? 'rgba(var(--amber-rgb),.35)' : 'var(--line)'}`,
               borderRadius: 14, padding: '14px',
               display: 'flex', alignItems: 'center', gap: 12,
               textAlign: 'left', cursor: 'pointer', width: '100%',

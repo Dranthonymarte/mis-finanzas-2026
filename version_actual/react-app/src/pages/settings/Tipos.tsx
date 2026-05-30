@@ -126,9 +126,9 @@ export default function Tipos() {
               onClick={() => toggleEsIngreso(row)}
               style={{
                 padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600,
-                background: row.esIngreso ? 'rgba(224,168,74,.15)' : 'rgba(214,106,90,.12)',
+                background: row.esIngreso ? 'rgba(var(--amber-rgb),.15)' : 'rgba(214,106,90,.12)',
                 color:      row.esIngreso ? 'var(--amber)'          : 'var(--neg)',
-                border:     row.esIngreso ? '1px solid rgba(224,168,74,.35)' : '1px solid rgba(214,106,90,.3)',
+                border:     row.esIngreso ? '1px solid rgba(var(--amber-rgb),.35)' : '1px solid rgba(214,106,90,.3)',
                 cursor: 'pointer', flexShrink: 0,
               }}
             >
@@ -175,9 +175,9 @@ export default function Tipos() {
               onClick={() => setNewEsIngreso(v => !v)}
               style={{
                 flex: 1, padding: '8px 10px', borderRadius: 10, fontSize: 12, fontWeight: 600,
-                background: newEsIngreso ? 'rgba(224,168,74,.18)' : 'rgba(214,106,90,.12)',
+                background: newEsIngreso ? 'rgba(var(--amber-rgb),.18)' : 'rgba(214,106,90,.12)',
                 color:      newEsIngreso ? 'var(--amber)'          : 'var(--neg)',
-                border:     newEsIngreso ? '1px solid rgba(224,168,74,.35)' : '1px solid rgba(214,106,90,.3)',
+                border:     newEsIngreso ? '1px solid rgba(var(--amber-rgb),.35)' : '1px solid rgba(214,106,90,.3)',
                 cursor: 'pointer', whiteSpace: 'nowrap',
               }}
             >

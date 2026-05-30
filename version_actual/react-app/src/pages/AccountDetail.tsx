@@ -240,7 +240,7 @@ export default function AccountDetail() {
     padding: '9px 0', flex: 1, borderRadius: 10, fontSize: 13, fontWeight: 600,
     background: active ? 'var(--ink-3)' : 'transparent',
     color:      active ? 'var(--amber)' : 'var(--fg-mute)',
-    border:     active ? '1.5px solid rgba(224,168,74,.27)' : '1px solid transparent',
+    border:     active ? '1.5px solid rgba(var(--amber-rgb),.27)' : '1px solid transparent',
     transition: 'all .14s',
   })
 
@@ -371,7 +371,7 @@ export default function AccountDetail() {
                 fontSize: 15.5, fontWeight: 700,
                 color: trimmed ? 'var(--ink-0)' : 'var(--fg-mute)',
                 letterSpacing: '.02em',
-                boxShadow: trimmed ? '0 4px 20px rgba(224,168,74,.35)' : 'none',
+                boxShadow: trimmed ? '0 4px 20px rgba(var(--amber-rgb),.35)' : 'none',
               }}
             >
               {savingEdit ? 'Guardando…' : 'Guardar cambios'}
@@ -441,8 +441,8 @@ export default function AccountDetail() {
           aria-label="Editar balance"
           style={{
             width: 36, height: 36, borderRadius: 10,
-            background: editingBalance ? 'rgba(224,168,74,.12)' : 'var(--ink-2)',
-            border: editingBalance ? '1px solid rgba(224,168,74,.35)' : '1px solid var(--line)',
+            background: editingBalance ? 'rgba(var(--amber-rgb),.12)' : 'var(--ink-2)',
+            border: editingBalance ? '1px solid rgba(var(--amber-rgb),.35)' : '1px solid var(--line)',
             display: 'grid', placeItems: 'center',
             color: editingBalance ? 'var(--amber)' : 'var(--fg-dim)', cursor: 'pointer',
           }}

@@ -318,7 +318,7 @@ export default function More() {
               icon={
                 <div style={{
                   width: 28, height: 28, borderRadius: 8,
-                  background: 'rgba(224,168,74,.15)',
+                  background: 'rgba(var(--amber-rgb),.15)',
                   display: 'grid', placeItems: 'center', fontSize: 15,
                 }}>
                   📲

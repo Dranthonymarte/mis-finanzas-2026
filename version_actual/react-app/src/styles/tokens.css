@@ -26,6 +26,7 @@
 
   /* ── Acentos — amber + teal oxidado ── */
   --amber:   #e0a84a;     /* acento primario */
+  --amber-rgb: 224, 168, 74;  /* canal RGB del acento → rgba(var(--amber-rgb), α) dinámico por paleta */
   --amber-s: #f5c572;     /* hover/soft */
   --amber-d: #2a1f0a;     /* fondo acento oscuro */
   --teal-2026:   #3d8b82;
@@ -91,6 +92,7 @@
   --fg-mute: #9a9fac;
 
   --amber:   #b87d1f;
+  --amber-rgb: 184, 125, 31;
   --amber-s: #d49a3e;
   --amber-d: #f7ecd6;
   --teal-2026:   #2a6a62;
@@ -123,6 +125,7 @@
   --fg-mute: #555555;
 
   --amber:   #e0a84a;
+  --amber-rgb: 224, 168, 74;
   --amber-s: #f5c572;
   --amber-d: #1a1200;
   --teal-2026:   #3d8b82;
@@ -155,6 +158,7 @@
   --fg-mute: #9e8b74;
 
   --amber:   #9a6b2f;
+  --amber-rgb: 154, 107, 47;
   --amber-s: #bf8c4a;
   --amber-d: #e8d8b8;
   --teal-2026:   #3a7060;
@@ -183,6 +187,7 @@
 /* ── Esmeralda ── */
 [data-palette="emerald"] {
   --amber:   #4eb88a;
+  --amber-rgb: 78, 184, 138;
   --amber-s: #74d3a6;
   --amber-d: #0e2a20;
 }
@@ -193,6 +198,7 @@
 /* ── Índigo ── */
 [data-palette="indigo"] {
   --amber:   #7c8cf0;
+  --amber-rgb: 124, 140, 240;
   --amber-s: #9aa6f5;
   --amber-d: #16183a;
 }
@@ -203,6 +209,7 @@
 /* ── Rosa ── */
 [data-palette="rose"] {
   --amber:   #e87aa8;
+  --amber-rgb: 232, 122, 168;
   --amber-s: #f29ac0;
   --amber-d: #341320;
 }
@@ -213,6 +220,7 @@
 /* ── Grafito ── */
 [data-palette="graphite"] {
   --amber:   #aeb4bf;
+  --amber-rgb: 174, 180, 191;
   --amber-s: #ccd1d9;
   --amber-d: #20242c;
 }

@@ -310,7 +310,7 @@ INSTRUCCIONES:
           </div>
         </div>
         {showInfo && (
-          <div style={{ background: 'rgba(224,168,74,.07)', border: '1px solid rgba(224,168,74,.2)', borderRadius: 10, padding: '10px 12px', marginTop: 8, fontSize: 12, color: 'var(--fg-dim)', lineHeight: 1.6 }}>
+          <div style={{ background: 'rgba(var(--amber-rgb),.07)', border: '1px solid rgba(var(--amber-rgb),.2)', borderRadius: 10, padding: '10px 12px', marginTop: 8, fontSize: 12, color: 'var(--fg-dim)', lineHeight: 1.6 }}>
             Puedo darte <b>saldos, resumen del mes, análisis de gastos, sugerencias de ahorro</b> con tus datos reales — y también responder <b>preguntas generales de finanzas</b>: conceptos, cálculos, economía, inversiones, criptomonedas. Solo pregúntame.
           </div>
         )}

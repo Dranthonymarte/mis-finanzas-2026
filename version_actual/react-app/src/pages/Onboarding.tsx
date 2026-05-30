@@ -66,7 +66,7 @@ function DashboardPreview() {
   return (
     <div style={{
       background: 'linear-gradient(160deg, #1d2129, #21262f)',
-      border: '1px solid rgba(224,168,74,.18)',
+      border: '1px solid rgba(var(--amber-rgb),.18)',
       borderRadius: 22, padding: '18px 18px 14px',
       boxShadow: '0 24px 64px rgba(0,0,0,.7)',
       width: '100%',
@@ -84,7 +84,7 @@ function DashboardPreview() {
 
       {/* Insight IA card */}
       <div style={{
-        background: 'rgba(224,168,74,.1)', border: '1px solid rgba(224,168,74,.22)',
+        background: 'rgba(var(--amber-rgb),.1)', border: '1px solid rgba(var(--amber-rgb),.22)',
         borderRadius: 12, padding: '9px 12px', display: 'flex', gap: 9, marginBottom: 10,
       }}>
         <div style={{
@@ -262,7 +262,7 @@ export default function Onboarding() {
             width: '100%', padding: '16px', borderRadius: 16,
             background: 'var(--amber)', fontSize: 15.5, fontWeight: 700,
             color: 'var(--ink-0)', letterSpacing: '.02em',
-            boxShadow: '0 4px 22px rgba(224,168,74,.38)',
+            boxShadow: '0 4px 22px rgba(var(--amber-rgb),.38)',
           }}
         >
           {slide < SLIDES.length - 1 ? 'Continuar' : 'Comenzar'}

@@ -447,7 +447,7 @@ function ListaCard({ lista, onClick }: { lista: ListaRow; onClick: () => void })
     >
       <div style={{
         width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-        background: 'rgba(224,168,74,.12)', border: '1px solid rgba(224,168,74,.25)',
+        background: 'rgba(var(--amber-rgb),.12)', border: '1px solid rgba(var(--amber-rgb),.25)',
         display: 'grid', placeItems: 'center', fontSize: 20,
       }}>🛒</div>
       <div style={{ flex: 1, minWidth: 0 }}>

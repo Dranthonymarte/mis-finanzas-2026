@@ -80,7 +80,7 @@ function TxnRow({ t, last, onTap }: { t: Transaction; last: boolean; onTap: () =
         <div style={{ fontSize: 13.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
           {t.desc}
           {t.recurrente && (
-            <span style={{ fontSize: 9, color: 'var(--amber)', background: 'rgba(224,168,74,.12)', border: '1px solid rgba(224,168,74,.25)', borderRadius: 4, padding: '1px 5px', fontWeight: 700, letterSpacing: '.04em' }}>REC</span>
+            <span style={{ fontSize: 9, color: 'var(--amber)', background: 'rgba(var(--amber-rgb),.12)', border: '1px solid rgba(var(--amber-rgb),.25)', borderRadius: 4, padding: '1px 5px', fontWeight: 700, letterSpacing: '.04em' }}>REC</span>
           )}
         </div>
         <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 2, display: 'flex', gap: 5, alignItems: 'center' }}>
@@ -287,7 +287,7 @@ export default function Txn() {
           <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', letterSpacing: '.12em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
             {monthLabel}
             {isClosed && (
-              <span style={{ fontSize: 9, color: 'var(--amber)', background: 'rgba(224,168,74,.12)', border: '1px solid rgba(224,168,74,.25)', borderRadius: 4, padding: '1px 5px', fontWeight: 700, letterSpacing: '.06em' }}>
+              <span style={{ fontSize: 9, color: 'var(--amber)', background: 'rgba(var(--amber-rgb),.12)', border: '1px solid rgba(var(--amber-rgb),.25)', borderRadius: 4, padding: '1px 5px', fontWeight: 700, letterSpacing: '.06em' }}>
                 CERRADO
               </span>
             )}
@@ -315,8 +315,8 @@ export default function Txn() {
           title={isClosed ? 'Reabrir mes' : 'Cerrar mes'}
           style={{
             width: 34, height: 34, borderRadius: 10,
-            background: isClosed ? 'rgba(224,168,74,.12)' : 'var(--ink-2)',
-            border: isClosed ? '1px solid rgba(224,168,74,.35)' : '1px solid var(--line)',
+            background: isClosed ? 'rgba(var(--amber-rgb),.12)' : 'var(--ink-2)',
+            border: isClosed ? '1px solid rgba(var(--amber-rgb),.35)' : '1px solid var(--line)',
             display: 'grid', placeItems: 'center',
             color: isClosed ? 'var(--amber)' : 'var(--fg-dim)', cursor: 'pointer',
           }}
@@ -328,8 +328,8 @@ export default function Txn() {
           onClick={() => setShowFilters(v => !v)}
           style={{
             width: 34, height: 34, borderRadius: 10,
-            background: showFilters ? 'rgba(224,168,74,.12)' : 'var(--ink-2)',
-            border: showFilters ? '1px solid rgba(224,168,74,.35)' : '1px solid var(--line)',
+            background: showFilters ? 'rgba(var(--amber-rgb),.12)' : 'var(--ink-2)',
+            border: showFilters ? '1px solid rgba(var(--amber-rgb),.35)' : '1px solid var(--line)',
             display: 'grid', placeItems: 'center',
             color: showFilters ? 'var(--amber)' : 'var(--fg-dim)', cursor: 'pointer',
           }}
@@ -550,8 +550,8 @@ export default function Txn() {
               onClick={() => setAddingBudget(v => !v)}
               style={{
                 fontSize: 11, fontWeight: 700, color: addingBudget ? 'var(--fg-mute)' : 'var(--amber)',
-                background: addingBudget ? 'var(--ink-3)' : 'rgba(224,168,74,.1)',
-                border: addingBudget ? '1px solid var(--line)' : '1px solid rgba(224,168,74,.25)',
+                background: addingBudget ? 'var(--ink-3)' : 'rgba(var(--amber-rgb),.1)',
+                border: addingBudget ? '1px solid var(--line)' : '1px solid rgba(var(--amber-rgb),.25)',
                 borderRadius: 8, padding: '3px 10px', cursor: 'pointer',
               }}
             >
@@ -560,13 +560,13 @@ export default function Txn() {
           </div>
 
           {showBudgetInfo && (
-            <div style={{ background: 'rgba(224,168,74,.07)', border: '1px solid rgba(224,168,74,.2)', borderRadius: 10, padding: '10px 12px', marginBottom: 10, fontSize: 12, color: 'var(--fg-dim)', lineHeight: 1.5 }}>
+            <div style={{ background: 'rgba(var(--amber-rgb),.07)', border: '1px solid rgba(var(--amber-rgb),.2)', borderRadius: 10, padding: '10px 12px', marginBottom: 10, fontSize: 12, color: 'var(--fg-dim)', lineHeight: 1.5 }}>
               Compara cuánto planificaste gastar por categoría vs lo que realmente gastaste este mes. Verde = dentro del límite, amarillo = cerca, rojo = excedido.
             </div>
           )}
 
           {addingBudget && (
-            <div style={{ background: 'var(--ink-2)', border: '1px solid rgba(224,168,74,.3)', borderRadius: 14, padding: '12px 14px', marginBottom: 10 }}>
+            <div style={{ background: 'var(--ink-2)', border: '1px solid rgba(var(--amber-rgb),.3)', borderRadius: 14, padding: '12px 14px', marginBottom: 10 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--amber)', marginBottom: 8 }}>
                 {budgetCat ? `Límite para ${budgetCat}` : 'Selecciona una categoría'}
               </div>
@@ -706,7 +706,7 @@ export default function Txn() {
         <div style={{ textAlign: 'center' }}>
           <div style={{
             width: 48, height: 48, borderRadius: 14, margin: '0 auto 12px',
-            background: 'rgba(224,168,74,.12)', border: '1px solid rgba(224,168,74,.3)',
+            background: 'rgba(var(--amber-rgb),.12)', border: '1px solid rgba(var(--amber-rgb),.3)',
             display: 'grid', placeItems: 'center', fontSize: 22,
           }}>
             🔒

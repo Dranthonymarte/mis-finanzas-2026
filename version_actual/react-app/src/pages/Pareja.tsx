@@ -262,6 +262,10 @@ export default function Pareja() {
         addToast(`Invite actualizado pero el correo falló: ${otpError.message}`, 'warn')
       } else {
         addToast(`Re-invitación enviada a ${targetEmail}`, 'info')
+        // Correo de contexto/bienvenida vía Resend (suplementario al OTP de Supabase, fire-and-forget)
+        void supabase.functions.invoke('invite-email', {
+          body: { invitee_email: targetEmail, inviter_name: userName ?? undefined },
+        }).catch((e: unknown) => console.error('[Pareja] reinvite email:', e))
         // Clear override email for this member
         setReinviteEmail(prev => { const next = { ...prev }; delete next[memberKey]; return next })
         void loadMembers()
@@ -342,6 +346,10 @@ export default function Pareja() {
       } else {
         setSent(true)
         addToast(`Invitación enviada a ${trimmedEmail}`, 'info')
+        // Correo de contexto/bienvenida vía Resend (suplementario al OTP de Supabase, fire-and-forget)
+        void supabase.functions.invoke('invite-email', {
+          body: { invitee_email: trimmedEmail, inviter_name: userName ?? undefined },
+        }).catch((e: unknown) => console.error('[Pareja] invite email:', e))
         setTimeout(() => {
           setSent(false)
           setEmail('')

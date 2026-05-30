@@ -49,7 +49,7 @@ function loadSC(): string[] {
   catch { return DEFAULT_SC }
 }
 
-const MONTHS_BY_YEAR = generateMesesByYear(14)
+const MONTHS_BY_YEAR = generateMesesByYear()
 
 /** Next calendar month id (for "abrir mes siguiente" button) */
 function nextMesId(): string {

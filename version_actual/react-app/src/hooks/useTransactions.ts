@@ -49,7 +49,8 @@ export function useTransactions(mesId: string) {
   const householdId = useAuthStore(s => s.householdId)
 
   const dbKey    = mesIdToDbKey(mesId)
-  const cacheKey = `txns:${householdId ?? 'none'}:${dbKey}`
+  const year     = 2000 + Number(mesId.split('-')[1] ?? '0')  // "may-26" → 2026
+  const cacheKey = `txns:${householdId ?? 'none'}:${mesId}`
 
   const [transactions, setTransactions] = useState<Transaction[] | null>(() => readCache<Transaction[]>(cacheKey))
   const [loading,      setLoading]      = useState<boolean>(() => readCache<Transaction[]>(cacheKey) === null)
@@ -62,6 +63,8 @@ export function useTransactions(mesId: string) {
       .select('id,descripcion,tipo,cat,subcat,amount,fecha,author,mes,cuenta_id')
       .eq('household_id', householdId)
       .eq('mes', dbKey)
+      .gte('fecha', `${year}-01-01`)
+      .lt('fecha', `${year + 1}-01-01`)
       .is('deleted_at', null)
       .order('fecha', { ascending: false })
       .then(({ data, error: err }) => {
@@ -84,7 +87,7 @@ export function useTransactions(mesId: string) {
         writeCache(cacheKey, mapped)
         setLoading(false)
       })
-  }, [userId, householdId, dbKey, cacheKey])
+  }, [userId, householdId, dbKey, year, cacheKey])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- guard + hidratación cache-first (stale-while-revalidate, sin parpadeo en vacío)
@@ -97,7 +100,7 @@ export function useTransactions(mesId: string) {
 
     // Supabase Realtime — refresca sin loader cuando hay cambio en el household
     const channel = supabase
-      .channel(`movimientos:${householdId}:${dbKey}`)
+      .channel(`movimientos:${householdId}:${mesId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'movimientos', filter: `household_id=eq.${householdId}` },
@@ -114,7 +117,7 @@ export function useTransactions(mesId: string) {
       supabase.removeChannel(channel)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
-  }, [userId, householdId, dbKey, cacheKey, fetchData])
+  }, [userId, householdId, mesId, cacheKey, fetchData])
 
   return { transactions, loading, error, refetch: fetchData }
 }

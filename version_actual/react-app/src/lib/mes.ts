@@ -48,20 +48,33 @@ export function currentMes(): string {
   return dateToMesId(new Date())
 }
 
+/** Año de inicio de los datos del app. El selector no genera meses anteriores
+ *  (evita pestañas de años vacíos como 2025) y rueda hacia adelante: en 2027
+ *  mostrará 2027 conservando 2026 para revisar el historial. */
+const DATA_START_YEAR = 2026
+
 /** Months grouped by year — for year-based selectors.
- *  Returns years newest-first, each with its months oldest-first. */
-export function generateMesesByYear(count = 14): Array<{
+ *  Desde enero del año de inicio hasta el mes actual (inclusive).
+ *  Años nuevos primero; meses dentro de cada año, antiguos primero. */
+export function generateMesesByYear(): Array<{
   year: string        // "26"
   yearLabel: string   // "2026"
   months: Array<{ id: string; label: string; dbKey: string }>
 }> {
-  const all = generateMeses(count)
-  const byYear: Record<string, typeof all> = {}
-  for (const m of all) {
-    const yr = m.id.split('-')[1]
-    if (!byYear[yr]) byYear[yr] = []
-    byYear[yr].push(m)
+  const now  = new Date()
+  const endY = now.getFullYear()
+  const endM = now.getMonth()
+  const byYear: Record<string, Array<{ id: string; label: string; dbKey: string }>> = {}
+
+  for (let y = DATA_START_YEAR; y <= endY; y++) {
+    const lastMonth = y === endY ? endM : 11
+    const yr = String(y).slice(2)
+    byYear[yr] = []
+    for (let m = 0; m <= lastMonth; m++) {
+      byYear[yr].push({ id: dateToMesId(new Date(y, m, 1)), label: FULL[m], dbKey: FULL[m] })
+    }
   }
+
   return Object.entries(byYear)
     .sort(([a], [b]) => Number(b) - Number(a))
     .map(([yr, months]) => ({ year: yr, yearLabel: `20${yr}`, months }))

@@ -21,7 +21,7 @@ import { calcKPIs } from '../lib/finance'
 import { generateMesesByYear, mesLabel } from '../lib/mes'
 import { useTasas } from '../hooks/useTasas'
 
-const MONTHS_BY_YEAR = generateMesesByYear(14)
+const MONTHS_BY_YEAR = generateMesesByYear()
 
 const LS_CLOSED = 'mis_finanzas_closed_months'
 

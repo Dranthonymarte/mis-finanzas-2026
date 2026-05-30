@@ -33,6 +33,11 @@ export default defineConfig({
         orientation: 'portrait',
         start_url: '/',
         scope: '/',
+        // OAuth en PWA instalada: al volver de Google (origen externo) Android
+        // tiende a abrir el retorno en el navegador (se ve "tipo escritorio").
+        // navigate-existing hace que el retorno reutilice la ventana de la PWA
+        // ya abierta en vez de un contexto nuevo. Mitiga la limitación del SO.
+        launch_handler: { client_mode: ['navigate-existing', 'auto'] },
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },

@@ -326,7 +326,7 @@ export default function Security() {
         {/* ── Inicio de sesión ── */}
         <div style={{ borderTop: '1px solid var(--line)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 0 }}>
           <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 12 }}>
-            Inicio de sesión
+            Bloqueo de la app
           </div>
 
           <BiometriaSection onChanged={bump} />
@@ -340,8 +340,8 @@ export default function Security() {
           </div>
 
           <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginTop: 10, lineHeight: 1.5 }}>
-            La huella usa WebAuthn / Passkeys del dispositivo y requiere un PIN como respaldo.
-            El PIN es una capa local — no reemplaza tu sesión.
+            Al reabrir la app se pedirá tu huella (Face ID) y, si falla, el PIN de respaldo.
+            Es un candado local — no reemplaza tu inicio de sesión con correo o Google.
           </div>
         </div>
 

@@ -64,8 +64,12 @@ export function removeBiometric(): void {
   localStorage.removeItem(WEBAUTHN_KEY)
 }
 
-/** Quita el PIN. Como el PIN es la base, también quita la biometría. */
+/** Quita el PIN. Como el PIN es la base, también quita la biometría.
+ *  Limpia además el flag de desbloqueo de la sesión: al desactivar el candado
+ *  no debe quedar ningún rastro de su estado (coherencia total — la próxima
+ *  apertura no pide nada porque hasPin()=false y no hay flag huérfano). */
 export function removePin(): void {
   localStorage.removeItem(PIN_KEY)
   removeBiometric()
+  sessionStorage.removeItem(PIN_UNLOCKED)
 }

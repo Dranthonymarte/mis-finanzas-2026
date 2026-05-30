@@ -80,7 +80,6 @@ const Categories = lazy(() => import('./pages/settings/Categories'))
 const Budgets    = lazy(() => import('./pages/settings/Budgets'))
 const Appearance = lazy(() => import('./pages/settings/Appearance'))
 const Security            = lazy(() => import('./pages/settings/Security'))
-const NotificationsSettings = lazy(() => import('./pages/settings/Notifications'))
 
 export default function App() {
   useAuth()
@@ -135,7 +134,6 @@ export default function App() {
               <Route path="/settings/security"         element={<Security />}    />
               <Route path="/settings/tipos"            element={<TiposSettings />}         />
               <Route path="/settings/subcategorias"    element={<SubcatSettings />}        />
-              <Route path="/settings/notifications"    element={<NotificationsSettings />} />
             </Route>
           </Route>
         </Routes>

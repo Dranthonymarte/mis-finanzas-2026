@@ -11,7 +11,7 @@ import {
   BudgetIcon, PaletteIcon, LockIcon, BellIcon, GlobeIcon,
   LogoutIcon, SearchIcon, TransferIcon,
   UserIcon, TagIcon, MicIcon, UploadIcon,
-  TelegramIcon, CalendarIcon, ShoppingIcon, UsersIcon, ScanIcon,
+  CalendarIcon, ShoppingIcon, UsersIcon, ScanIcon,
 } from '../components/icons/Icons'
 import { useAuthStore } from '../store/auth'
 import { useLockStore } from '../store/lock'
@@ -222,13 +222,6 @@ export default function More() {
             label="Seguridad"
             sub="PIN · Biometría · Sesión"
             onClick={() => navigate('/settings/security')}
-          />
-          <RowLink
-            icon={<IcoBg color="#1a2030"><TelegramIcon /></IcoBg>}
-            iconBg="transparent"
-            label="Bot de Telegram"
-            sub="Configura tu bot personal"
-            onClick={() => navigate('/settings/notifications')}
           />
           <RowLink
             icon={<IcoBg color="#2a1a2a"><UsersIcon /></IcoBg>}

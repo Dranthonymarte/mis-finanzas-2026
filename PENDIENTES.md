@@ -1,7 +1,7 @@
 # PENDIENTES — Mis Finanzas 2026
 
 Orden estricto. Actualizar al completar.
-**Última actualización:** 2026-05-29 — Grupo 2 (login/candado) cerrado y pusheado a main, HEAD `666bf3b`
+**Última actualización:** 2026-05-30 — Batch G3/G4/G5/G6/G7 + coherencia candado. Grupos 5 y 6 cerrados; G3/G4/G7 con avance parcial. Push a main.
 
 ---
 
@@ -24,35 +24,38 @@ Commits: `ec6999b` `b87fea0` `59bdb34` `666bf3b`
 - "Bloquear ahora" en More: pide huella/PIN sin cerrar sesión. "Cerrar sesión" SÍ destruye la sesión → reentrada por credenciales (no PIN).
 - Security: encabezado "Inicio de sesión" → "Bloqueo de la app" + copy aclaratorio (es candado local, no reemplaza el login con correo/Google).
 - **Recuperación de PIN olvidado** (`PinLockScreen`): link "¿Olvidaste tu PIN?" → confirm → `removePin()` + `signOut()` → cae a `/login` → re-login (correo/Google) → poner PIN nuevo. Patrón Revolut/banca (el candado local no se "recupera", se restablece probando identidad real). **Cierra la trampa de bloqueo** (antes no había salida si olvidabas el PIN sin huella).
+- **Coherencia desactivar↔reabrir (verificada 2026-05-30):** desactivar PIN/huella en Seguridad surte efecto al instante en la próxima apertura. Fuente de verdad única = `localStorage` (`mf-pin` / `mf-webauthn-cred`); el gate `RequireAuth` re-evalúa `hasPin()` en vivo en cada render (no hay flag "habilitado" duplicado que pueda desincronizarse). Endurecido de raíz: `removePin()` ahora también borra el flag de sesión `mf-pin-unlocked` → al quitar el candado no queda ningún rastro de su estado.
 **Arquitectura confirmada:** Layer 1 = identidad (sesión Supabase persistente). Layer 2 = candado local de reentrada (conveniencia/defensa en profundidad, NO 2º factor verificado en server).
 
 ### Grupo 3 — Pareja: revocar + confirmación universal 🟡 CASI — verificado sin cuello de botella
 Avance committeado: `f8fdbae` `18db649` `865c495` (vista por rol + "dejar de ser parte")
 **Verificado 2026-05-29** (Pareja.tsx, 640 líneas): revocar (`invite_status='revoked'`), salir del hogar,
 re-invitar y realtime de `household_members` funcionan con `confirmAction` global. Limpieza de canal correcta.
-**Sin cuello de botella de performance.** Gaps reales restantes (2):
-- Re-invitar NO ofrece chooser "mi data" vs "data del hogar" (hoy: re-envía OTP + vuelve a pending). ← único gap del flujo
-- `TxnDetail.tsx` = último consumidor del `ConfirmSheet` legacy → migrar a `ConfirmDialog` (cierra la auditoría de confirmación).
+**Sin cuello de botella de performance.**
+- ✅ **HECHO 2026-05-30:** `TxnDetail.tsx` migrado de `ConfirmSheet` legacy → `confirmAction`/`ConfirmDialog` global. **Auditoría de confirmación CERRADA** — `ConfirmSheet.tsx` eliminado (código muerto, 0 consumidores). El soft-delete (`deleted_at`) intacto.
+- 🟡 **Gap restante (1) — pendiente decisión Anthony:** re-invitar NO ofrece chooser "mi data" vs "data del hogar" (hoy re-envía OTP + vuelve a pending). Toca visibilidad de datos/RLS → NO se improvisó. **Necesito que definas qué hace cada opción** antes de implementarlo.
 **Decisión Anthony:** flujo validado (Splitwise / YNAB / Google Family) → implementar tal cual.
 
-### Grupo 4 — Google OAuth (Calendar + vista móvil) 🔧
-- Calendar redirige a dominio correcto (secret ya puesto)
-- Login Google abre en móvil, no escritorio · callback de Calendar en móvil
-- Relacionado: `ad160ab` (gcal-callback.html). Task #5 in-progress.
+### Grupo 4 — Google OAuth (Calendar + vista móvil) 🟡 avance parcial
+- ✅ **HECHO 2026-05-30:** `Login.tsx` `redirectTo` → `window.location.origin + '/'` (coincide con `start_url`/`scope` del manifest) → el callback de Google reabre dentro del scope PWA standalone, no en una pestaña suelta que se ve "escritorio". `unlock()` preservado.
+- 🔧 **Manual Anthony (raíz del callback escritorio):** Supabase → Authentication → URL Configuration → **Site URL** = `https://mis-finanzas-2026.pages.dev` y **Redirect URLs** con `/` y `/*`. Sin esto el redirect puede caer fuera del scope.
+- ⚠️ **Hallazgo sync recurrentes→Calendar:** NO existe puente recurrente→Google Calendar (ni frontend ni edge fn). `google-calendar-sync` (v6 live) solo refleja `movimientos` reales (últimos 60 días, máx 50). Los **recurrentes** solo alimentan `scheduled_notifications` (push/Telegram). Hacer que los recurrentes sincronicen a Calendar = **feature NUEVO**, no un bug. **Decisión pendiente Anthony:** ¿lo quieres? (alcance acotado: extender el edge fn o crear puente).
 
-### Grupo 5 — Telegram 🔧 requiere decisión de Anthony
-- Error 405 webhook · bidireccional · panel token/username
-- **Recomendación top-3:** bot central + vinculación por código `/start` (eliminar "pega tu token" por usuario). Patrón Mercado Pago / Revolut.
+### Grupo 5 — Telegram ✅ HECHO (decisión Anthony: sacar del ecosistema de la app)
+- ✅ **HECHO 2026-05-30:** eliminado del menú **More** y de **Settings** el RowLink "Bot de Telegram" + su `TelegramIcon`. Eliminada la página `settings/Notifications.tsx` (panel "pega tu token" / BotFather por usuario) + su ruta `/settings/notifications` + lazy import en `App.tsx`. La columna `config_usuario.telegram_bot_token`/`_username` se conserva en DB y en el mapeo de `useConfig` (backend la sigue usando — sin refs muertas).
+- **Modelo final:** Anthony (creador/dev) mantiene SU bot en el backend sobre SU usuario; el bot NO se expone como feature configurable del ecosistema de la app. La gestión de canal Telegram por notificación sigue en `/notificaciones` (toggle global), no por token de usuario.
 
-### Grupo 6 — Apariencia 🔧 requiere elegir temas
-- Revertir lógica anterior (acento sutil)
-- 5 temas validados: **Oscuro · Claro · Sistema · Negro OLED · Sepia cálido** + acento configurable
-- Consistencia de los "cuadritos" de emoji en toda la app (todos o ninguno)
+### Grupo 6 — Apariencia ✅ HECHO
+- ✅ **HECHO 2026-05-30:** 5 temas vía `[data-theme]` en `tokens.css` + `mobile-uix.css`: **Oscuro (`:root`) · Claro · Sistema · Negro OLED (`#000`) · Sepia cálido**. Selector de tema (2 filas 3+2) + 5 acentos en `Appearance.tsx`, cableado al `prefs` store (Zustand persist: `tema`/`palette`).
+- ✅ Aplicación sin flash: `main.tsx` lee el store persistido (`mis-finanzas-prefs`) ANTES del primer render, con fallback a las claves legacy + validación por allowlist; "Sistema" usa `matchMedia` + listener.
+- Emoji uniforme en toda la app: el badge de `CatIcon` ya se aplica de forma consistente (regla "todos" cumplida) — sin cambios necesarios.
 
-### Grupo 7 — Notificaciones + Presupuestos 🔧 requiere decisión push vs in-app
-- Notificaciones: confirmación + activar/desactivar real
-- Alertas sutiles de desvío de presupuesto (no invasivas)
-- **Recomendación:** aviso in-app sutil al 80% / 100% + push opcional (off por defecto). Patrón YNAB / Monarch.
+### Grupo 7 — Notificaciones + Presupuestos 🟡 in-app HECHO · push diferido
+- ✅ **HECHO 2026-05-30 (núcleo validado YNAB/Monarch):** alertas in-app sutiles en **Home** (sección 3b) — pills por categoría que superan el límite mensual: ⚠️ ámbar 80-99%, 🔴 rojo ≥100%. Usa `liveTxns` + `config.presupuestos` ya cargados → **0 queries extra**. No invasivo.
+- 🔧 **Toggle push opcional (off por defecto) — DIFERIDO, requiere 2 cosas:**
+  1. **Migración aditiva (tu aprobación):** `ALTER TABLE config_usuario ADD COLUMN budget_push_enabled boolean NOT NULL DEFAULT false;` — la columna NO existe (verificado en DB live). Un sub-agente la añadió al SELECT de `useConfig` → habría **roto la carga de config de TODA la app** (presupuestos/categorías/tipos caerían a defaults). **Revertido a tiempo, no se subió.**
+  2. **Emisor server-side** que lea esa preferencia y dispare el push de presupuesto (hoy ningún sender lo lee → el toggle sería cosmético).
+  Por eso se eliminó la página huérfana del toggle. **Cuando apruebes la columna lo cableo en una pasada.**
 
 ---
 

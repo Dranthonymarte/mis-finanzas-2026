@@ -7,18 +7,24 @@
 
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../store/auth'
+import { useLockStore } from '../../store/lock'
+import { hasPin } from '../../lib/pin'
+import PinLockScreen from './PinLockScreen'
 
 /**
  * Protects the main app routes.
  * Priority: authReady=false  → loading splash (prevents flash-redirect on F5)
  *           onboarding unseen → /onboarding
  *           not authenticated → /login
+ *           PIN set + locked  → PinLockScreen (candado local Layer 2)
  *           else              → render children
  */
 export function RequireAuth() {
   const authReady         = useAuthStore((s) => s.authReady)
   const hasSeenOnboarding = useAuthStore((s) => s.hasSeenOnboarding)
   const isAuthenticated   = useAuthStore((s) => s.isAuthenticated)
+  const unlocked          = useLockStore((s) => s.unlocked)
+  const unlock            = useLockStore((s) => s.unlock)
   const location          = useLocation()
 
   // Block until getSession() resolves — prevents /login flash on reload when user IS logged in
@@ -44,6 +50,11 @@ export function RequireAuth() {
   }
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />
+  }
+  // Layer 2 — candado local: la sesión está viva pero la app se reabrió sin
+  // desbloquear. Huella primero (auto), PIN de respaldo. Solo si hay PIN.
+  if (hasPin() && !unlocked) {
+    return <PinLockScreen onUnlocked={unlock} />
   }
   return <Outlet />
 }

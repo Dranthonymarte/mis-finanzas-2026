@@ -5,13 +5,11 @@
 // PIN / WebAuthn: capa local adicional (NO reemplaza sesión Supabase)
 // ═══════════════════════════════════════════════════
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { type CSSProperties } from 'react'
 import { Logo } from '../components/brand/Logo'
 import { supabase } from '../lib/supabase'
-import PinPad from '../components/ui/PinPad'
-import { haptic } from '../lib/haptic'
-import { PIN_KEY, WEBAUTHN_KEY, PIN_UNLOCKED, verifyPin, biometricSupported } from '../lib/pin'
+import { useLockStore } from '../store/lock'
 
 // BeforeInstallPromptEvent is not in lib.dom — declare minimally
 interface BeforeInstallPromptEvent extends Event {
@@ -57,123 +55,6 @@ const PW_LEVELS = [
   { label: 'Muy fuerte',color: '#58b26a' },
 ]
 
-// ── PIN Lock Screen ───────────────────────────────────────────
-function PinLockScreen({ onUnlocked }: { onUnlocked: () => void }) {
-  const [pin,         setPin]         = useState('')
-  const [pinError,    setPinError]    = useState<string | null>(null)
-  const [bioLoading,  setBioLoading]  = useState(false)
-  const [bioError,    setBioError]    = useState<string | null>(null)
-
-  const credId     = localStorage.getItem(WEBAUTHN_KEY)
-  const bioSupport = biometricSupported() && Boolean(credId)
-
-  const markUnlocked = useCallback(() => {
-    sessionStorage.setItem(PIN_UNLOCKED, '1')
-    onUnlocked()
-  }, [onUnlocked])
-
-  // Auto-trigger biometría if available and PIN is also set
-  useEffect(() => {
-    if (bioSupport) void handleBiometria()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  async function handlePinSubmit(v: string) {
-    if (await verifyPin(v)) {
-      markUnlocked()
-    } else {
-      haptic('error')
-      setPinError('PIN incorrecto. Inténtalo de nuevo.')
-      setPin('')
-    }
-  }
-
-  async function handleBiometria() {
-    if (!bioSupport || !credId) return
-    setBioLoading(true)
-    setBioError(null)
-    try {
-      const challenge = crypto.getRandomValues(new Uint8Array(32))
-      const assertion = await navigator.credentials.get({
-        publicKey: {
-          challenge,
-          allowCredentials: [{ type: 'public-key', id: base64ToBuffer(credId) }],
-          userVerification: 'required',
-          timeout: 60000,
-        },
-      })
-      if (assertion) markUnlocked()
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
-      if (!msg.includes('cancel') && !msg.includes('Cancel') && !msg.includes('abort') && !msg.includes('NotAllowed')) {
-        setBioError('Biometría fallida. Usa tu PIN.')
-      }
-    } finally {
-      setBioLoading(false)
-    }
-  }
-
-  return (
-    <div style={{
-      minHeight: '100dvh',
-      background: 'radial-gradient(ellipse at 50% -4%, #1f1509 0%, #0a0b0d 52%)',
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      padding: '0 24px',
-      paddingTop: 'env(safe-area-inset-top, 0px)',
-      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-    }}>
-      <div style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 28, alignItems: 'center' }}>
-
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <Logo iconSize={28} textSize={15} />
-        </div>
-
-        <PinPad
-          value={pin}
-          onChange={v => { setPin(v); setPinError(null) }}
-          onSubmit={v => void handlePinSubmit(v)}
-          label="Ingresa tu PIN"
-          error={pinError}
-          variant="dark"
-        />
-
-        {bioSupport && (
-          <button
-            onClick={() => void handleBiometria()}
-            disabled={bioLoading}
-            style={{
-              background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)',
-              borderRadius: 14, padding: '12px 24px', color: '#fff',
-              fontSize: 13, fontWeight: 500, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 8,
-              opacity: bioLoading ? .6 : 1,
-            }}
-          >
-            <span style={{ fontSize: 20 }}>🫆</span>
-            {bioLoading ? 'Verificando…' : 'Desbloquear con biometría'}
-          </button>
-        )}
-
-        {bioError && (
-          <div style={{ fontSize: 12, color: '#d66a5a', textAlign: 'center' }}>{bioError}</div>
-        )}
-
-      </div>
-    </div>
-  )
-}
-
-// ── Util ──────────────────────────────────────────────────────
-function base64ToBuffer(b64: string): ArrayBuffer {
-  // credential.id is base64url — convert to ArrayBuffer
-  const padded = b64.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(b64.length / 4) * 4, '=')
-  const binary  = atob(padded)
-  const buf     = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) buf[i] = binary.charCodeAt(i)
-  return buf.buffer
-}
-
 // ── Main Login Component ──────────────────────────────────────
 export default function Login() {
   const [mode,          setMode]          = useState<Mode>('login')
@@ -185,26 +66,6 @@ export default function Login() {
   const [error,         setError]         = useState<string | null>(null)
   const [success,       setSuccess]       = useState<string | null>(null)
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  // PIN lock: active when Supabase session exists + PIN is set + not yet unlocked this session
-  const [pinLocked,     setPinLocked]     = useState(false)
-  const [checkingPin,   setCheckingPin]   = useState(true)
-
-  // On mount: check if we need to show PIN lock screen
-  useEffect(() => {
-    async function checkPinLock() {
-      const storedPin = localStorage.getItem(PIN_KEY)
-      if (!storedPin) { setCheckingPin(false); return }
-      // Already unlocked this session?
-      if (sessionStorage.getItem(PIN_UNLOCKED)) { setCheckingPin(false); return }
-      // Check Supabase session
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        setPinLocked(true)
-      }
-      setCheckingPin(false)
-    }
-    void checkPinLock()
-  }, [])
 
   // Capture the PWA install prompt — only fires once per session on Android Chrome
   useEffect(() => {
@@ -261,6 +122,9 @@ export default function Login() {
   async function handleGoogleLogin() {
     setLoading(true)
     setError(null)
+    // Desbloquea antes del redirect OAuth — sessionStorage sobrevive el round-trip
+    // same-origin, así no se pide PIN al volver de Google.
+    useLockStore.getState().unlock()
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin },
@@ -291,6 +155,10 @@ export default function Login() {
         setError(err.message === 'Invalid login credentials'
           ? 'Email o contraseña incorrectos.'
           : err.message)
+      } else {
+        // Login completo (Layer 1) → desbloquea la sesión: no pedir el PIN
+        // inmediatamente después de autenticar con credenciales (sería fricción).
+        useLockStore.getState().unlock()
       }
       // Si success → onAuthStateChange en useAuth.ts dispara setSession
       // → isAuthenticated = true → RequireNoAuth redirige a "/"
@@ -336,16 +204,6 @@ export default function Login() {
       setLoading(false)
       setError('Error de conexión. Intenta de nuevo.')
     }
-  }
-
-  // ── PIN lock gate ──────────────────────────────────────────
-  if (checkingPin) {
-    // Brief check — show nothing to avoid flash
-    return null
-  }
-
-  if (pinLocked) {
-    return <PinLockScreen onUnlocked={() => setPinLocked(false)} />
   }
 
   const isLogin = mode === 'login'

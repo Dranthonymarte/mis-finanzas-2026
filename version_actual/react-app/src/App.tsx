@@ -1,11 +1,11 @@
 // ═══════════════════════════════════════════════════
 // App — routing root  (BLOQUE 8)
 //
-// Layer 1: Auth routes (no shell, warm dark bg)
+// Layer 1: Auth routes (no shell, warm dark bg) — identidad/credenciales
 //   /onboarding  — first-time users
-//   /login       — PIN keypad (every launch)
+//   /login       — email+contraseña / Google / enlace mágico
 //
-// Layer 2: App routes (RequireAuth → AppShell → TabBar)
+// Layer 2: App routes (RequireAuth → candado local huella/PIN → AppShell → TabBar)
 //   /            — Home
 //   /txn         — Movimientos
 //   /accounts    — Cuentas

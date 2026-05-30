@@ -824,6 +824,49 @@ export default function Home() {
         </div>
       )}
 
+      {/* ─── 5c. ALERTAS DE PRESUPUESTO ─── */}
+      {budgetAlerts.length > 0 && (
+        <div style={{ padding: '4px 16px' }}>
+          <div style={{
+            background: 'rgba(212,106,74,.08)', border: '1px solid rgba(212,106,74,.22)',
+            borderRadius: 14, padding: '12px 14px',
+          }}>
+            <div style={{ fontSize: 9.5, color: 'var(--neg)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 8, fontWeight: 700 }}>
+              ⚠️ Presupuesto excedido
+            </div>
+            {budgetAlerts.map((a, i) => {
+              const pct = Math.round((a.spent / a.limit) * 100)
+              return (
+                <div
+                  key={a.cat}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    marginTop: i > 0 ? 8 : 0,
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {a.cat}
+                    </div>
+                    <div style={{ marginTop: 4, height: 4, borderRadius: 4, background: 'var(--ink-3)', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 4,
+                        width: `${Math.min(pct, 100)}%`,
+                        background: pct >= 100 ? 'var(--neg)' : 'var(--warn)',
+                        transition: 'width .4s',
+                      }} />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: pct >= 100 ? 'var(--neg)' : 'var(--warn)', flexShrink: 0 }}>
+                    {pct}%
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ─── 6. INGRESOS VS GASTOS 6M ─── */}
       <div style={{ padding: '12px 16px 4px' }}>
         <div style={{

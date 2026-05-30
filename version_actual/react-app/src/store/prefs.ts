@@ -9,7 +9,7 @@ import { currentMes } from '../lib/mes'
 
 export type Moneda  = 'USD' | 'BS' | 'EUR'
 export type TemaId  = 'dark' | 'light' | 'system' | 'oled' | 'sepia'
-export type PaletteId = 'amber' | 'emerald' | 'indigo' | 'rose' | 'graphite'
+export type PaletteId = 'amber' | 'emerald' | 'indigo' | 'rose' | 'sky' | 'graphite'
 
 export interface PrefsState {
   moneda:        Moneda

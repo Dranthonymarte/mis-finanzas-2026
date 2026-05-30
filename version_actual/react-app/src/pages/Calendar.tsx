@@ -158,7 +158,15 @@ export default function Calendar() {
       // Fallback to same-window redirect if popup is blocked (e.g., strict PWA)
       const oauthUrl = `${GOOGLE_OAUTH_URL}?user_id=${session.user.id}&redirect=${encodeURIComponent(window.location.origin + '/calendar')}`
       const popup = window.open(oauthUrl, 'mf-google-oauth', 'width=520,height=660,popup=1')
-      if (!popup) window.location.href = oauthUrl   // fallback
+      if (!popup) { window.location.href = oauthUrl; return }   // fallback
+
+      // Polling fallback: in PWA/strict-origin contexts postMessage may not fire.
+      // Poll every second until popup closes, then re-check status.
+      const iv = setInterval(() => {
+        try { if (!popup.closed) return } catch { /* cross-origin — keep polling */ }
+        clearInterval(iv)
+        setTimeout(() => void checkStatus(), 600)
+      }, 1000)
     } catch {
       addToast('Error al iniciar conexión con Google', 'error')
     }

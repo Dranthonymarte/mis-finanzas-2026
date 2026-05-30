@@ -214,3 +214,23 @@
   --amber-s: #ccd1d9;
   --amber-d: #20242c;
 }
+
+/* ── Cielo ── */
+[data-palette="sky"] {
+  --amber:   #4a9ede;
+  --amber-rgb: 74, 158, 222;
+  --amber-s: #72b8ec;
+  --amber-d: #0a1e30;
+}
+
+/* ── Accent bleeds: focused inputs + focus rings inherit palette accent ──
+   Follows Linear/Stripe/Notion pattern: palette accent = system focus color. ── */
+input:focus, textarea:focus, select:focus {
+  border-color: rgba(var(--amber-rgb), .65) !important;
+  box-shadow: 0 0 0 3px rgba(var(--amber-rgb), .10);
+  outline: none;
+}
+button:focus-visible {
+  outline: 2px solid rgba(var(--amber-rgb), .55);
+  outline-offset: 2px;
+}

@@ -61,6 +61,7 @@ const PALETTES: { id: PaletteId; label: string; accent: string }[] = [
   { id: 'emerald',  label: 'Esmeralda', accent: '#4eb88a' },
   { id: 'indigo',   label: 'Índigo',    accent: '#7c8cf0' },
   { id: 'rose',     label: 'Rosa',      accent: '#e87aa8' },
+  { id: 'sky',      label: 'Cielo',     accent: '#4a9ede' },
   { id: 'graphite', label: 'Grafito',   accent: '#aeb4bf' },
 ]
 

@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════
 // Txn — Movimientos dashboard (BLOQUE 3)
 // Mes desde prefs store · Cierre · Filtros · Donut
-// Presupuesto vs real · Recurrentes
+// (Presupuesto vs real + Recurrentes → movidos a Análisis)
 // ═══════════════════════════════════════════════════
 
 import { useState, useRef, useEffect } from 'react'
@@ -129,34 +129,6 @@ function DateHeader({ date, txns }: { date: string; txns: Transaction[] }) {
   )
 }
 
-interface Recurrente {
-  id: string; desc: string; cat: string; tipo: string
-  amount: number; recDia?: number
-}
-
-/* ── Recurrente row (simplified) ── */
-function RecRow({ t, last }: { t: Recurrente; last: boolean }) {
-  const { fmt } = useFormat()
-  const isInc = txnGroup(t.tipo) === 'ingreso'
-  const color = isInc ? 'var(--pos)' : 'var(--neg)'
-  return (
-    <div style={{
-      display: 'grid', gridTemplateColumns: '36px 1fr auto auto', gap: 8,
-      alignItems: 'center', padding: '10px 14px',
-      borderBottom: last ? 'none' : '1px solid var(--line)',
-    }}>
-      <CatIcon cat={t.cat} />
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.desc}</div>
-        <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginTop: 1 }}>Día {t.recDia} de cada mes</div>
-      </div>
-      <div style={{ fontSize: 12.5, fontWeight: 600, color, whiteSpace: 'nowrap' }}>
-        {fmt(Math.abs(t.amount))}
-      </div>
-    </div>
-  )
-}
-
 export default function Txn() {
   const navigate        = useNavigate()
   const { fmt }         = useFormat()
@@ -172,15 +144,11 @@ export default function Txn() {
   const [closed,        setClosed]        = useState<Set<string>>(loadClosed)
   const [showFilters,   setShowFilters]   = useState(false)
   const [confirmClose,  setConfirmClose]  = useState(false)
-  const [addingBudget,   setAddingBudget]   = useState(false)
-  const [budgetCat,      setBudgetCat]      = useState('')
-  const [budgetAmt,      setBudgetAmt]      = useState('')
-  const [showBudgetInfo, setShowBudgetInfo] = useState(false)
   const monthsRef = useRef<HTMLDivElement>(null)
 
   const isClosed = closed.has(activeMes)
   const { transactions: liveTxns } = useTransactions(activeMes)
-  const { config, updateConfig }   = useConfig()
+  const { config }                 = useConfig()
 
   // Scroll active month chip into view on mount
   useEffect(() => {
@@ -211,16 +179,6 @@ export default function Txn() {
 
   const txnsForMonth = liveTxns ?? []
 
-  // Recurrentes from config_usuario — map RecurrenteConfig → local Recurrente shape
-  const recurring: Recurrente[] = config.recurrentes.map(r => ({
-    id:     r.id,
-    desc:   r.descripcion,
-    cat:    r.cat,
-    tipo:   r.tipo,
-    amount: r.monto,
-    recDia: undefined,
-  }))
-
   const filtered = txnsForMonth.filter(t => {
     if (filter === 'all') return true
     return txnGroup(t.tipo) === filter
@@ -248,24 +206,6 @@ export default function Txn() {
   const kpis     = calcKPIs(txnsForMonth, config.tipos)
   const income   = kpis.ingresos
   const expenses = kpis.gastos
-
-  // ── Presupuesto vs real ──
-  const spentByCat: Record<string, number> = {}
-  for (const t of txnsForMonth) {
-    if (txnGroup(t.tipo) === 'gasto')
-      spentByCat[t.cat] = (spentByCat[t.cat] ?? 0) + Math.abs(t.amount)
-  }
-  const budgetCats = Object.keys(config.presupuestos)
-
-  // Categories without a budget (for the picker)
-  const NON_BUDGET_TIPOS = new Set(['Ahorro en efectivo', 'Transferencia Interna', 'Prestamo pagado', 'Ajuste'])
-  const expenseCats = [...new Set([
-    ...config.tipos
-      .filter(t => !t.esIngreso && !NON_BUDGET_TIPOS.has(t.nombre))
-      .flatMap(t => config.categorias[t.nombre] ?? []),
-    ...Object.keys(spentByCat),
-  ])]
-  const noBudgetCats = expenseCats.filter(c => !config.presupuestos[c])
 
   const LABELS: Record<FilterType, string> = {
     all: 'Todos', gasto: 'Gastos', ingreso: 'Ingresos', ahorro: 'Ahorro',
@@ -523,181 +463,6 @@ export default function Txn() {
           />
         )}
       </div>
-
-      {/* ── Presupuesto vs real (siempre visible) ── */}
-      {(
-        <div style={{ padding: '20px 16px 4px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)' }}>
-                Presupuesto vs real
-              </div>
-              <button
-                onClick={() => setShowBudgetInfo(v => !v)}
-                style={{
-                  background: showBudgetInfo ? 'var(--amber)' : 'var(--ink-3)',
-                  border: '1px solid var(--line)', borderRadius: '50%',
-                  cursor: 'pointer', padding: 0, lineHeight: 1,
-                  color: showBudgetInfo ? 'var(--ink-0)' : 'var(--fg-dim)',
-                  fontSize: 10, fontWeight: 700,
-                  width: 16, height: 16,
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                }}
-                aria-label="Info presupuesto"
-              >ℹ</button>
-            </div>
-            <button
-              onClick={() => setAddingBudget(v => !v)}
-              style={{
-                fontSize: 11, fontWeight: 700, color: addingBudget ? 'var(--fg-mute)' : 'var(--amber)',
-                background: addingBudget ? 'var(--ink-3)' : 'rgba(var(--amber-rgb),.1)',
-                border: addingBudget ? '1px solid var(--line)' : '1px solid rgba(var(--amber-rgb),.25)',
-                borderRadius: 8, padding: '3px 10px', cursor: 'pointer',
-              }}
-            >
-              {addingBudget ? '✕ Cancelar' : '+ Agregar'}
-            </button>
-          </div>
-
-          {showBudgetInfo && (
-            <div style={{ background: 'rgba(var(--amber-rgb),.07)', border: '1px solid rgba(var(--amber-rgb),.2)', borderRadius: 10, padding: '10px 12px', marginBottom: 10, fontSize: 12, color: 'var(--fg-dim)', lineHeight: 1.5 }}>
-              Compara cuánto planificaste gastar por categoría vs lo que realmente gastaste este mes. Verde = dentro del límite, amarillo = cerca, rojo = excedido.
-            </div>
-          )}
-
-          {addingBudget && (
-            <div style={{ background: 'var(--ink-2)', border: '1px solid rgba(var(--amber-rgb),.3)', borderRadius: 14, padding: '12px 14px', marginBottom: 10 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--amber)', marginBottom: 8 }}>
-                {budgetCat ? `Límite para ${budgetCat}` : 'Selecciona una categoría'}
-              </div>
-
-              {/* Step 1: Category picker */}
-              {!budgetCat && (
-                noBudgetCats.length === 0
-                  ? <div style={{ fontSize: 12, color: 'var(--fg-mute)', textAlign: 'center', padding: '12px 0' }}>
-                      Todas las categorías ya tienen presupuesto
-                    </div>
-                  : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {noBudgetCats.map(cat => (
-                        <button
-                          key={cat}
-                          onClick={() => { setBudgetCat(cat); setBudgetAmt('') }}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 6,
-                            padding: '7px 12px', borderRadius: 10, fontSize: 12.5, fontWeight: 500,
-                            background: 'var(--ink-3)', border: '1px solid var(--line)',
-                            color: 'var(--fg-dim)', cursor: 'pointer',
-                          }}
-                        >
-                          <CatIcon cat={cat} size={18} />
-                          {cat}
-                        </button>
-                      ))}
-                    </div>
-              )}
-
-              {/* Step 2: Amount input (after category selected) */}
-              {budgetCat && (
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button
-                    onClick={() => setBudgetCat('')}
-                    style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--ink-3)', border: '1px solid var(--line)', color: 'var(--fg-mute)', fontSize: 11, cursor: 'pointer' }}
-                  >← Volver</button>
-                  <div style={{ position: 'relative', flex: 1 }}>
-                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--fg-mute)' }}>$</span>
-                    <input
-                      autoFocus type="number" min="0" step="0.01"
-                      placeholder="Límite mensual"
-                      value={budgetAmt}
-                      onChange={e => setBudgetAmt(e.target.value)}
-                      onKeyDown={async e => {
-                        if (e.key === 'Enter') {
-                          const amt = parseFloat(budgetAmt)
-                          if (!isNaN(amt) && amt > 0) {
-                            await updateConfig('presupuestos', { ...config.presupuestos, [budgetCat]: amt })
-                            setBudgetCat(''); setBudgetAmt(''); setAddingBudget(false)
-                          }
-                        }
-                      }}
-                      style={{ width: '100%', background: 'var(--ink-1)', border: '1px solid var(--line)', borderRadius: 10, padding: '9px 12px 9px 22px', fontSize: 13, color: 'var(--fg)', outline: 'none', boxSizing: 'border-box' as const }}
-                    />
-                  </div>
-                  <button
-                    onClick={async () => {
-                      const amt = parseFloat(budgetAmt)
-                      if (isNaN(amt) || amt <= 0) return
-                      await updateConfig('presupuestos', { ...config.presupuestos, [budgetCat]: amt })
-                      setBudgetCat(''); setBudgetAmt(''); setAddingBudget(false)
-                    }}
-                    disabled={!budgetAmt}
-                    style={{
-                      flexShrink: 0, padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                      background: budgetAmt ? 'var(--amber)' : 'var(--ink-3)',
-                      color: budgetAmt ? 'var(--ink-0)' : 'var(--fg-mute)',
-                      border: 'none', cursor: budgetAmt ? 'pointer' : 'default',
-                    }}
-                  >Guardar</button>
-                </div>
-              )}
-            </div>
-          )}
-          <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
-            {budgetCats.length === 0 && (
-              <div style={{ padding: '16px', textAlign: 'center', color: 'var(--fg-mute)', fontSize: 12 }}>
-                Sin presupuestos — toca "+ Agregar" para crear uno.
-              </div>
-            )}
-            {budgetCats.map((cat, i) => {
-              const limit  = config.presupuestos[cat]
-              const spent  = spentByCat[cat] ?? 0
-              const pct    = Math.min(100, (spent / limit) * 100)
-              const over   = spent > limit
-              const color  = catColor(cat)
-              const isLast = i === budgetCats.length - 1
-              return (
-                <div key={cat} style={{
-                  padding: '12px 14px',
-                  borderBottom: isLast ? 'none' : '1px solid var(--line)',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
-                    <CatIcon cat={cat} size={22} />
-                    <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{cat}</span>
-                    <span className="num" style={{ fontSize: 12.5, color: over ? 'var(--neg)' : 'var(--fg-dim)' }}>
-                      {fmt(spent)} / {fmt(limit)}
-                    </span>
-                  </div>
-                  <div style={{ height: 5, background: 'var(--ink-3)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%', borderRadius: 3, transition: 'width .4s ease',
-                      width: `${pct}%`,
-                      background: over ? 'var(--neg)' : color,
-                    }} />
-                  </div>
-                  {over && (
-                    <div style={{ fontSize: 10, color: 'var(--neg)', marginTop: 4, textAlign: 'right' }}>
-                      Excedido {fmt(spent - limit)}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Recurrentes ── */}
-      {recurring.length > 0 && (
-        <div style={{ padding: '20px 16px 4px' }}>
-          <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--fg-mute)', marginBottom: 10 }}>
-            Recurrentes este mes
-          </div>
-          <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
-            {recurring.map((t, i) => (
-              <RecRow key={t.id} t={t} last={i === recurring.length - 1} />
-            ))}
-          </div>
-        </div>
-      )}
 
       <div style={{ height: 24 }} />
 

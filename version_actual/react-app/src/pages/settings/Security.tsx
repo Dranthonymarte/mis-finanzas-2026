@@ -1,9 +1,14 @@
 import { useState } from 'react'
 import AppHeader from '../../components/shell/AppHeader'
+import Sheet from '../../components/shell/Sheet'
+import PinPad from '../../components/ui/PinPad'
 import { supabase } from '../../lib/supabase'
 import { useToastStore } from '../../store/toast'
-
-const PIN_KEY = 'mf-pin'
+import { haptic } from '../../lib/haptic'
+import {
+  hasPin, setPin, verifyPin, removePin,
+  hasBiometric, biometricSupported, removeBiometric, WEBAUTHN_KEY,
+} from '../../lib/pin'
 
 const inputSt: React.CSSProperties = {
   width: '100%', background: 'var(--ink-1)', border: '1px solid var(--line)',
@@ -11,186 +16,26 @@ const inputSt: React.CSSProperties = {
   color: 'var(--fg)', outline: 'none', boxSizing: 'border-box',
 }
 
-// ── PIN Keypad ────────────────────────────────────────────────
-function PinKeypad({
-  value, onChange, onSubmit, label, sublabel,
-}: {
-  value: string
-  onChange: (v: string) => void
-  onSubmit?: () => void
-  label: string
-  sublabel?: string
-}) {
-  const digits = ['1','2','3','4','5','6','7','8','9','','0','⌫']
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-      <div style={{ fontSize: 13, color: 'var(--fg-mute)', textAlign: 'center' }}>{label}</div>
-      {sublabel && <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', textAlign: 'center', marginTop: -10 }}>{sublabel}</div>}
-
-      {/* Dots */}
-      <div style={{ display: 'flex', gap: 12 }}>
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} style={{
-            width: 14, height: 14, borderRadius: '50%',
-            background: i < value.length ? 'var(--amber)' : 'var(--ink-3)',
-            border: '1.5px solid var(--line)',
-            transition: 'background .15s',
-          }} />
-        ))}
-      </div>
-
-      {/* Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 64px)', gap: 10 }}>
-        {digits.map((d, idx) => (
-          <button
-            key={idx}
-            disabled={d === ''}
-            onClick={() => {
-              if (d === '⌫') {
-                onChange(value.slice(0, -1))
-              } else if (d !== '' && value.length < 4) {
-                const next = value + d
-                onChange(next)
-                if (next.length === 4) onSubmit?.()
-              }
-            }}
-            style={{
-              width: 64, height: 64, borderRadius: '50%',
-              background: d === '' ? 'transparent' : 'var(--ink-2)',
-              border: d === '' ? 'none' : '1px solid var(--line)',
-              color: 'var(--fg)', fontSize: d === '⌫' ? 18 : 20, fontWeight: 500,
-              cursor: d === '' ? 'default' : 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'background .1s',
-            }}
-          >
-            {d}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
+const primaryBtn: React.CSSProperties = {
+  padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+  background: 'var(--amber)', color: 'var(--ink-0)', border: 'none', cursor: 'pointer',
 }
-
-// ── PIN Section ───────────────────────────────────────────────
-function PinSection() {
-  const addToast = useToastStore(s => s.addToast)
-  const [step, setStep]         = useState<'idle' | 'verify-change' | 'verify-remove' | 'enter-new' | 'confirm-new'>('idle')
-  const [currentPin, setCurrentPin] = useState('')
-  const [newPin,     setNewPin]     = useState('')
-  const [confirmPin, setConfirmPin] = useState('')
-  // Re-read from localStorage each render so hasPin stays fresh after save/delete
-  const hasPin = Boolean(localStorage.getItem(PIN_KEY))
-
-  function reset() { setCurrentPin(''); setNewPin(''); setConfirmPin(''); setStep('idle') }
-
-  function handleVerifyForChange() {
-    if (currentPin !== localStorage.getItem(PIN_KEY)) {
-      addToast('PIN incorrecto.', 'error'); setCurrentPin(''); return
-    }
-    setCurrentPin(''); setStep('enter-new')
-  }
-
-  function handleVerifyForRemove() {
-    if (currentPin !== localStorage.getItem(PIN_KEY)) {
-      addToast('PIN incorrecto.', 'error'); setCurrentPin(''); return
-    }
-    localStorage.removeItem(PIN_KEY)
-    addToast('PIN eliminado.', 'info')
-    reset()
-  }
-
-  function handleNewDone() { setStep('confirm-new') }
-
-  function handleConfirmDone() {
-    if (confirmPin !== newPin) {
-      addToast('Los PINs no coinciden. Inténtalo de nuevo.', 'error')
-      setNewPin(''); setConfirmPin(''); setStep('enter-new'); return
-    }
-    localStorage.setItem(PIN_KEY, newPin)
-    addToast('PIN guardado correctamente.', 'info')
-    reset()
-  }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
-      {step === 'idle' && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>🔢</span> PIN de acceso
-            </div>
-            <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginTop: 3 }}>
-              {hasPin ? 'PIN activo — 4 dígitos' : 'Sin PIN configurado'}
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
-            <button
-              onClick={() => { setCurrentPin(''); setNewPin(''); setConfirmPin(''); setStep(hasPin ? 'verify-change' : 'enter-new') }}
-              style={{
-                padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                background: 'var(--amber)', color: 'var(--ink-0)', border: 'none', cursor: 'pointer',
-              }}
-            >
-              {hasPin ? 'Cambiar' : 'Activar'}
-            </button>
-            {hasPin && (
-              <button
-                onClick={() => { setCurrentPin(''); setStep('verify-remove') }}
-                style={{
-                  padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-                  background: 'var(--ink-3)', color: 'var(--neg)', border: 'none', cursor: 'pointer',
-                }}
-              >
-                Eliminar
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {step === 'verify-change' && (
-        <div style={{ paddingTop: 8 }}>
-          <PinKeypad value={currentPin} onChange={setCurrentPin} onSubmit={handleVerifyForChange} label="Ingresa tu PIN actual" />
-          <button onClick={reset} style={{ marginTop: 16, width: '100%', background: 'none', border: 'none', color: 'var(--fg-mute)', fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
-        </div>
-      )}
-
-      {step === 'verify-remove' && (
-        <div style={{ paddingTop: 8 }}>
-          <PinKeypad value={currentPin} onChange={setCurrentPin} onSubmit={handleVerifyForRemove} label="Confirma tu PIN para eliminar" />
-          <button onClick={reset} style={{ marginTop: 16, width: '100%', background: 'none', border: 'none', color: 'var(--fg-mute)', fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
-        </div>
-      )}
-
-      {step === 'enter-new' && (
-        <div style={{ paddingTop: 8 }}>
-          <PinKeypad value={newPin} onChange={setNewPin} onSubmit={handleNewDone} label="Elige un PIN de 4 dígitos" sublabel="No uses fechas de nacimiento obvias" />
-          <button onClick={reset} style={{ marginTop: 16, width: '100%', background: 'none', border: 'none', color: 'var(--fg-mute)', fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
-        </div>
-      )}
-
-      {step === 'confirm-new' && (
-        <div style={{ paddingTop: 8 }}>
-          <PinKeypad value={confirmPin} onChange={setConfirmPin} onSubmit={handleConfirmDone} label="Confirma tu nuevo PIN" />
-          <button onClick={reset} style={{ marginTop: 16, width: '100%', background: 'none', border: 'none', color: 'var(--fg-mute)', fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
-        </div>
-      )}
-    </div>
-  )
+const dangerBtn: React.CSSProperties = {
+  padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+  background: 'var(--ink-3)', color: 'var(--neg)', border: 'none', cursor: 'pointer',
 }
 
 // ── Biometría Section ─────────────────────────────────────────
-function BiometriaSection() {
-  const addToast = useToastStore(s => s.addToast)
-  const supported = typeof PublicKeyCredential !== 'undefined'
-  const credId    = localStorage.getItem('mf-webauthn-cred')
+// PIN base: activar huella exige PIN configurado (respaldo si el sensor falla).
+function BiometriaSection({ onChanged }: { onChanged: () => void }) {
+  const addToast  = useToastStore(s => s.addToast)
+  const supported = biometricSupported()
+  const pinSet    = hasPin()
+  const enrolled  = hasBiometric()
   const [enrolling, setEnrolling] = useState(false)
 
   async function handleEnroll() {
-    if (!supported) return
+    if (!supported || !pinSet) return
     setEnrolling(true)
     try {
       const challenge = crypto.getRandomValues(new Uint8Array(32))
@@ -216,8 +61,10 @@ function BiometriaSection() {
       }) as PublicKeyCredential | null
 
       if (cred) {
-        localStorage.setItem('mf-webauthn-cred', cred.id)
+        localStorage.setItem(WEBAUTHN_KEY, cred.id)
+        haptic('success')
         addToast('Biometría activada correctamente.', 'info')
+        onChanged()
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al activar biometría.'
@@ -230,9 +77,18 @@ function BiometriaSection() {
   }
 
   function handleRemoveBio() {
-    localStorage.removeItem('mf-webauthn-cred')
+    removeBiometric()
     addToast('Biometría desactivada.', 'info')
+    onChanged()
   }
+
+  const sub = !supported
+    ? 'No disponible en este dispositivo'
+    : enrolled
+      ? 'Biometría activa'
+      : !pinSet
+        ? 'Configura un PIN primero'
+        : 'Desbloquear con biometría del dispositivo'
 
   return (
     <div style={{
@@ -244,46 +100,146 @@ function BiometriaSection() {
         <div style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
           <span>🫆</span> Huella / Face ID
         </div>
-        <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginTop: 3 }}>
-          {!supported
-            ? 'No disponible en este dispositivo'
-            : credId
-              ? 'Biometría activa'
-              : 'Desbloquear con biometría del dispositivo'}
-        </div>
+        <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginTop: 3 }}>{sub}</div>
       </div>
-      {supported ? (
-        credId ? (
-          <button
-            onClick={handleRemoveBio}
-            style={{
-              padding: '6px 12px', borderRadius: 8, fontSize: 11.5, fontWeight: 600,
-              background: 'var(--ink-3)', color: 'var(--neg)', border: 'none', cursor: 'pointer',
-            }}
-          >
-            Desactivar
-          </button>
-        ) : (
-          <button
-            onClick={() => void handleEnroll()}
-            disabled={enrolling}
-            style={{
-              padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-              background: 'var(--amber)', color: 'var(--ink-0)', border: 'none',
-              cursor: enrolling ? 'default' : 'pointer', opacity: enrolling ? .7 : 1,
-            }}
-          >
-            {enrolling ? 'Activando…' : 'Activar'}
-          </button>
-        )
-      ) : (
+
+      {!supported ? (
         <div style={{
           padding: '4px 10px', borderRadius: 8, fontSize: 10.5, fontWeight: 700,
           background: 'var(--ink-3)', color: 'var(--fg-mute)', letterSpacing: '.05em',
         }}>
           No disponible
         </div>
+      ) : enrolled ? (
+        <button onClick={handleRemoveBio} style={{ ...dangerBtn, padding: '6px 12px', fontSize: 11.5 }}>
+          Desactivar
+        </button>
+      ) : (
+        <button
+          onClick={() => void handleEnroll()}
+          disabled={enrolling || !pinSet}
+          style={{
+            ...primaryBtn,
+            cursor: (enrolling || !pinSet) ? 'default' : 'pointer',
+            opacity: (enrolling || !pinSet) ? .5 : 1,
+          }}
+        >
+          {enrolling ? 'Activando…' : 'Activar'}
+        </button>
       )}
+    </div>
+  )
+}
+
+// ── PIN Section ───────────────────────────────────────────────
+function PinSection({ onChanged }: { onChanged: () => void }) {
+  const addToast = useToastStore(s => s.addToast)
+  const pinSet   = hasPin()
+
+  const [open, setOpen]   = useState(false)
+  const [mode, setMode]   = useState<'set' | 'change' | 'remove'>('set')
+  const [step, setStep]   = useState<'verify' | 'enter-new' | 'confirm-new'>('verify')
+  const [entry,  setEntry]  = useState('')
+  const [newPin, setNewPin] = useState('')
+  const [error,  setError]  = useState<string | null>(null)
+
+  function start(m: 'set' | 'change' | 'remove') {
+    setMode(m)
+    setEntry(''); setNewPin(''); setError(null)
+    setStep(m === 'set' ? 'enter-new' : 'verify')
+    setOpen(true)
+  }
+
+  function closeSheet() {
+    setOpen(false)
+    setEntry(''); setNewPin(''); setError(null)
+  }
+
+  async function onVerify(v: string) {
+    if (!(await verifyPin(v))) {
+      haptic('error'); setError('PIN incorrecto.'); setEntry(''); return
+    }
+    if (mode === 'remove') {
+      removePin()           // quita PIN + biometría (PIN es la base)
+      haptic('success')
+      addToast('PIN eliminado.', 'info')
+      onChanged()
+      closeSheet()
+    } else {
+      setEntry(''); setError(null); setStep('enter-new')
+    }
+  }
+
+  function onEnterNew(v: string) {
+    setNewPin(v); setEntry(''); setError(null); setStep('confirm-new')
+  }
+
+  async function onConfirmNew(v: string) {
+    if (v !== newPin) {
+      haptic('error')
+      setError('Los PINs no coinciden. Inténtalo de nuevo.')
+      setEntry(''); setNewPin(''); setStep('enter-new'); return
+    }
+    await setPin(v)
+    haptic('success')
+    addToast('PIN guardado correctamente.', 'info')
+    onChanged()
+    closeSheet()
+  }
+
+  const sheetTitle = mode === 'remove' ? 'Eliminar PIN' : mode === 'change' ? 'Cambiar PIN' : 'Activar PIN'
+
+  let padLabel = ''
+  let padSub: string | undefined
+  if (step === 'verify') {
+    padLabel = mode === 'remove' ? 'Confirma tu PIN para eliminar' : 'Ingresa tu PIN actual'
+  } else if (step === 'enter-new') {
+    padLabel = 'Elige un PIN de 4 dígitos'
+    padSub   = 'No uses fechas de nacimiento obvias'
+  } else {
+    padLabel = 'Confirma tu nuevo PIN'
+  }
+
+  function handleSubmit(v: string) {
+    if (step === 'verify')         void onVerify(v)
+    else if (step === 'enter-new') onEnterNew(v)
+    else                           void onConfirmNew(v)
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>🔢</span> PIN de acceso
+        </div>
+        <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginTop: 3 }}>
+          {pinSet ? 'PIN activo — 4 dígitos' : 'Sin PIN configurado'}
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+        <button onClick={() => start(pinSet ? 'change' : 'set')} style={primaryBtn}>
+          {pinSet ? 'Cambiar' : 'Activar'}
+        </button>
+        {pinSet && (
+          <button onClick={() => start('remove')} style={dangerBtn}>Eliminar</button>
+        )}
+      </div>
+
+      <Sheet open={open} onClose={closeSheet} title={sheetTitle}>
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          minHeight: '42vh', padding: '8px 0 4px',
+        }}>
+          <PinPad
+            value={entry}
+            onChange={v => { setEntry(v); setError(null) }}
+            onSubmit={handleSubmit}
+            label={padLabel}
+            sublabel={padSub}
+            error={error}
+          />
+        </div>
+      </Sheet>
     </div>
   )
 }
@@ -295,6 +251,9 @@ export default function Security() {
   const [next,     setNext]     = useState('')
   const [confirm,  setConfirm]  = useState('')
   const [saving,   setSaving]   = useState(false)
+  // Bump forces both sub-secciones a re-leer localStorage (PIN ⇄ biometría coherentes)
+  const [, setRefresh] = useState(0)
+  const bump = () => setRefresh(n => n + 1)
 
   async function handleSave() {
     if (!current || !next || !confirm) return addToast('Completa todos los campos.', 'error')
@@ -364,24 +323,25 @@ export default function Security() {
           {saving ? 'Guardando…' : 'Actualizar contraseña'}
         </button>
 
-        {/* ── Acceso rápido ── */}
+        {/* ── Inicio de sesión ── */}
         <div style={{ borderTop: '1px solid var(--line)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 0 }}>
           <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 12 }}>
-            Acceso rápido
+            Inicio de sesión
           </div>
 
-          <BiometriaSection />
+          <BiometriaSection onChanged={bump} />
 
           {/* PIN row attached below biometría */}
           <div style={{
             background: 'var(--ink-2)', border: '1px solid var(--line)', borderTop: 'none',
             borderRadius: '0 0 12px 12px', padding: '14px 14px',
           }}>
-            <PinSection />
+            <PinSection onChanged={bump} />
           </div>
 
           <div style={{ fontSize: 10.5, color: 'var(--fg-mute)', marginTop: 10, lineHeight: 1.5 }}>
-            La biometría usa WebAuthn / Passkeys del dispositivo. El PIN es una capa local adicional — no reemplaza tu sesión.
+            La huella usa WebAuthn / Passkeys del dispositivo y requiere un PIN como respaldo.
+            El PIN es una capa local — no reemplaza tu sesión.
           </div>
         </div>
 

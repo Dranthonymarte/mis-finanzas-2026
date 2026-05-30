@@ -9,10 +9,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { type CSSProperties } from 'react'
 import { Logo } from '../components/brand/Logo'
 import { supabase } from '../lib/supabase'
-
-const PIN_KEY      = 'mf-pin'
-const WEBAUTHN_KEY = 'mf-webauthn-cred'
-const PIN_UNLOCKED = 'mf-pin-unlocked'  // sessionStorage flag — cleared on tab close
+import PinPad from '../components/ui/PinPad'
+import { haptic } from '../lib/haptic'
+import { PIN_KEY, WEBAUTHN_KEY, PIN_UNLOCKED, verifyPin, biometricSupported } from '../lib/pin'
 
 // BeforeInstallPromptEvent is not in lib.dom — declare minimally
 interface BeforeInstallPromptEvent extends Event {
@@ -58,74 +57,6 @@ const PW_LEVELS = [
   { label: 'Muy fuerte',color: '#58b26a' },
 ]
 
-// ── PIN Keypad ────────────────────────────────────────────────
-function PinKeypad({
-  value, onChange, onSubmit, label, sublabel, error,
-}: {
-  value: string
-  onChange: (v: string) => void
-  onSubmit?: () => void
-  label: string
-  sublabel?: string
-  error?: string | null
-}) {
-  const digits = ['1','2','3','4','5','6','7','8','9','','0','⌫']
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-      <div style={{ fontSize: 14, color: 'rgba(255,255,255,.8)', textAlign: 'center', fontWeight: 500 }}>{label}</div>
-      {sublabel && (
-        <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.4)', textAlign: 'center', marginTop: -10 }}>{sublabel}</div>
-      )}
-
-      {/* Dots */}
-      <div style={{ display: 'flex', gap: 14 }}>
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} style={{
-            width: 16, height: 16, borderRadius: '50%',
-            background: i < value.length ? '#e0a84a' : 'rgba(255,255,255,.15)',
-            border: '1.5px solid rgba(255,255,255,.2)',
-            transition: 'background .15s',
-          }} />
-        ))}
-      </div>
-
-      {error && (
-        <div style={{ fontSize: 12.5, color: '#d66a5a', textAlign: 'center' }}>{error}</div>
-      )}
-
-      {/* Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 70px)', gap: 10 }}>
-        {digits.map((d, idx) => (
-          <button
-            key={idx}
-            disabled={d === ''}
-            onClick={() => {
-              if (d === '⌫') {
-                onChange(value.slice(0, -1))
-              } else if (d !== '' && value.length < 4) {
-                const next = value + d
-                onChange(next)
-                if (next.length === 4) onSubmit?.()
-              }
-            }}
-            style={{
-              width: 70, height: 70, borderRadius: '50%',
-              background: d === '' ? 'transparent' : 'rgba(255,255,255,.08)',
-              border: d === '' ? 'none' : '1px solid rgba(255,255,255,.12)',
-              color: '#fff', fontSize: d === '⌫' ? 20 : 22, fontWeight: 400,
-              cursor: d === '' ? 'default' : 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'background .1s',
-            }}
-          >
-            {d}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 // ── PIN Lock Screen ───────────────────────────────────────────
 function PinLockScreen({ onUnlocked }: { onUnlocked: () => void }) {
   const [pin,         setPin]         = useState('')
@@ -133,9 +64,8 @@ function PinLockScreen({ onUnlocked }: { onUnlocked: () => void }) {
   const [bioLoading,  setBioLoading]  = useState(false)
   const [bioError,    setBioError]    = useState<string | null>(null)
 
-  const storedPin  = localStorage.getItem(PIN_KEY)
   const credId     = localStorage.getItem(WEBAUTHN_KEY)
-  const bioSupport = typeof PublicKeyCredential !== 'undefined' && Boolean(credId)
+  const bioSupport = biometricSupported() && Boolean(credId)
 
   const markUnlocked = useCallback(() => {
     sessionStorage.setItem(PIN_UNLOCKED, '1')
@@ -148,10 +78,11 @@ function PinLockScreen({ onUnlocked }: { onUnlocked: () => void }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function handlePinSubmit() {
-    if (pin === storedPin) {
+  async function handlePinSubmit(v: string) {
+    if (await verifyPin(v)) {
       markUnlocked()
     } else {
+      haptic('error')
       setPinError('PIN incorrecto. Inténtalo de nuevo.')
       setPin('')
     }
@@ -198,12 +129,13 @@ function PinLockScreen({ onUnlocked }: { onUnlocked: () => void }) {
           <Logo iconSize={28} textSize={15} />
         </div>
 
-        <PinKeypad
+        <PinPad
           value={pin}
           onChange={v => { setPin(v); setPinError(null) }}
-          onSubmit={handlePinSubmit}
+          onSubmit={v => void handlePinSubmit(v)}
           label="Ingresa tu PIN"
           error={pinError}
+          variant="dark"
         />
 
         {bioSupport && (

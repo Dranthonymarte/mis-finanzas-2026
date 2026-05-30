@@ -41,20 +41,80 @@ const CAT_EMOJI: Record<string, string> = {
 /** Keyword-based emoji fallback */
 function findEmojiByKeyword(cat: string): string | undefined {
   const lower = cat.toLowerCase()
-  if (lower.includes('ahorro'))     return '🐷'
-  if (lower.includes('ingreso'))    return '💰'
-  if (lower.includes('salario'))    return '💵'
-  if (lower.includes('comida') || lower.includes('aliment')) return '🍔'
-  if (lower.includes('transport'))  return '🚗'
-  if (lower.includes('salud') || lower.includes('medic'))    return '❤️'
-  if (lower.includes('hogar') || lower.includes('casa'))     return '🏠'
-  if (lower.includes('ropa') || lower.includes('vestid'))    return '👕'
-  if (lower.includes('edu') || lower.includes('escuela'))    return '📚'
-  if (lower.includes('viaje') || lower.includes('vuelo'))    return '✈️'
-  if (lower.includes('entret') || lower.includes('ocio'))    return '🎬'
-  if (lower.includes('serv'))       return '⚡'
-  if (lower.includes('tecno') || lower.includes('comput'))   return '💻'
-  if (lower.includes('ajuste'))     return '⚙️'
+  // Ahorros / inversiones
+  if (lower.includes('ahorro'))                                               return '🐷'
+  if (lower.includes('inversion') || lower.includes('inversión') ||
+      lower.includes('bolsa') || lower.includes('cripto'))                    return '📈'
+  // Ingresos / salarios
+  if (lower.includes('salario') || lower.includes('sueldo') ||
+      lower.includes('nomina') || lower.includes('nómina'))                   return '💵'
+  if (lower.includes('ingreso'))                                              return '💰'
+  // Préstamos / deudas / crédito
+  if (lower.includes('prestamo') || lower.includes('préstamo') ||
+      lower.includes('deuda') || lower.includes('credito') ||
+      lower.includes('crédito'))                                              return '💳'
+  // Impuestos / tributos
+  if (lower.includes('impuesto') || lower.includes('iva') ||
+      lower.includes('tributo'))                                              return '🧾'
+  // Bancario / comisiones
+  if (lower.includes('banco') || lower.includes('comision') ||
+      lower.includes('comisión') || lower.includes('interes') ||
+      lower.includes('interés'))                                              return '🏦'
+  // Combustible / gasolina
+  if (lower.includes('combustible') || lower.includes('gasolina') ||
+      lower.includes('gas'))                                                  return '⛽'
+  // Transporte específico
+  if (lower.includes('taxi') || lower.includes('uber') ||
+      lower.includes('metro'))                                                return '🚕'
+  if (lower.includes('transport'))                                            return '🚗'
+  // Alimentación / comida
+  if (lower.includes('restaur') || lower.includes('almuerzo') ||
+      lower.includes('cena') || lower.includes('desayuno'))                   return '🍽️'
+  if (lower.includes('supermercado') || lower.includes('mercado'))            return '🛒'
+  if (lower.includes('comida') || lower.includes('aliment'))                  return '🍔'
+  // Salud
+  if (lower.includes('farmacia') || lower.includes('medicamento'))            return '💊'
+  if (lower.includes('dentis') || lower.includes('dental'))                   return '🦷'
+  if (lower.includes('gym') || lower.includes('gimnasio') ||
+      lower.includes('deporte'))                                              return '💪'
+  if (lower.includes('salud') || lower.includes('medic'))                     return '❤️'
+  // Seguros
+  if (lower.includes('seguro') || lower.includes('póliza') ||
+      lower.includes('poliza'))                                               return '🛡️'
+  // Hogar / vivienda
+  if (lower.includes('alquiler') || lower.includes('arriend') ||
+      lower.includes('arrend'))                                               return '🏠'
+  if (lower.includes('hogar') || lower.includes('casa'))                      return '🏠'
+  // Servicios públicos
+  if (lower.includes('agua'))                                                 return '💧'
+  if (lower.includes('internet') || lower.includes('wifi') ||
+      lower.includes('celular') || lower.includes('telefon') ||
+      lower.includes('teléfon') || lower.includes('movil') ||
+      lower.includes('móvil'))                                                return '📱'
+  if (lower.includes('serv'))                                                 return '⚡'
+  // Hospedaje / viajes
+  if (lower.includes('hotel') || lower.includes('hosped'))                    return '🏨'
+  if (lower.includes('viaje') || lower.includes('vuelo'))                     return '✈️'
+  // Ropa / vestimenta
+  if (lower.includes('ropa') || lower.includes('vestid'))                     return '👕'
+  // Educación
+  if (lower.includes('edu') || lower.includes('escuela'))                     return '📚'
+  // Entretenimiento / ocio
+  if (lower.includes('entret') || lower.includes('ocio'))                     return '🎬'
+  // Tecnología
+  if (lower.includes('tecno') || lower.includes('comput'))                    return '💻'
+  // Ajustes
+  if (lower.includes('ajuste'))                                               return '⚙️'
+  // Mascotas
+  if (lower.includes('mascota') || lower.includes('veterinari'))              return '🐾'
+  // Transferencias
+  if (lower.includes('transfer') || lower.includes('interno'))                return '🔄'
+  // Regalos / donaciones
+  if (lower.includes('regalo') || lower.includes('donacion') ||
+      lower.includes('donación'))                                             return '🎁'
+  // Personal / belleza
+  if (lower.includes('belleza') || lower.includes('peluquer') ||
+      lower.includes('personal'))                                             return '💇'
   return undefined
 }
 

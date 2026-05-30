@@ -16,7 +16,8 @@ import { confirmAction } from '../store/confirm'
 // ESCALABLE: súbelo a 3 o 5 para permitir más personas. Cuenta solo
 // miembros activos (accepted/pending); revocar libera cupo. Default 2
 // = owner + 1 pareja (es decir, 1 invitado, como se pidió).
-const MAX_MIEMBROS = 2
+const MAX_MIEMBROS  = 2
+const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL as string
 
 interface Member {
   user_id:      string | null
@@ -263,9 +264,15 @@ export default function Pareja() {
       } else {
         addToast(`Re-invitación enviada a ${targetEmail}`, 'info')
         // Correo de contexto/bienvenida vía Resend (suplementario al OTP de Supabase, fire-and-forget)
-        void supabase.functions.invoke('invite-email', {
-          body: { invitee_email: targetEmail, inviter_name: userName ?? undefined },
-        }).catch((e: unknown) => console.error('[Pareja] reinvite email:', e))
+        void (async () => {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session) return
+          await fetch(`${SUPABASE_URL}/functions/v1/invite-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ invitee_email: targetEmail, inviter_name: userName ?? undefined }),
+          })
+        })().catch((e: unknown) => console.error('[Pareja] reinvite email:', e))
         // Clear override email for this member
         setReinviteEmail(prev => { const next = { ...prev }; delete next[memberKey]; return next })
         void loadMembers()
@@ -347,9 +354,15 @@ export default function Pareja() {
         setSent(true)
         addToast(`Invitación enviada a ${trimmedEmail}`, 'info')
         // Correo de contexto/bienvenida vía Resend (suplementario al OTP de Supabase, fire-and-forget)
-        void supabase.functions.invoke('invite-email', {
-          body: { invitee_email: trimmedEmail, inviter_name: userName ?? undefined },
-        }).catch((e: unknown) => console.error('[Pareja] invite email:', e))
+        void (async () => {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session) return
+          await fetch(`${SUPABASE_URL}/functions/v1/invite-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ invitee_email: trimmedEmail, inviter_name: userName ?? undefined }),
+          })
+        })().catch((e: unknown) => console.error('[Pareja] invite email:', e))
         setTimeout(() => {
           setSent(false)
           setEmail('')

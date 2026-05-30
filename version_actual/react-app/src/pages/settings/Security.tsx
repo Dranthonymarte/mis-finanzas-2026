@@ -9,6 +9,7 @@ import {
   hasPin, setPin, verifyPin, removePin,
   hasBiometric, biometricSupported, removeBiometric, WEBAUTHN_KEY,
 } from '../../lib/pin'
+import { useLockStore } from '../../store/lock'
 
 const inputSt: React.CSSProperties = {
   width: '100%', background: 'var(--ink-1)', border: '1px solid var(--line)',
@@ -251,6 +252,7 @@ export default function Security() {
   const [next,     setNext]     = useState('')
   const [confirm,  setConfirm]  = useState('')
   const [saving,   setSaving]   = useState(false)
+  const lock = useLockStore(s => s.lock)
   // Bump forces both sub-secciones a re-leer localStorage (PIN ⇄ biometría coherentes)
   const [, setRefresh] = useState(0)
   const bump = () => setRefresh(n => n + 1)
@@ -343,6 +345,19 @@ export default function Security() {
             Al reabrir la app se pedirá tu huella (Face ID) y, si falla, el PIN de respaldo.
             Es un candado local — no reemplaza tu inicio de sesión con correo o Google.
           </div>
+
+          {(hasPin() || hasBiometric()) && (
+            <button
+              onClick={() => { haptic('medium'); lock() }}
+              style={{
+                marginTop: 8, padding: '13px', borderRadius: 12, fontSize: 14, fontWeight: 600,
+                background: 'var(--ink-2)', color: 'var(--fg)', border: '1px solid var(--line)',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              🔒 Bloquear ahora
+            </button>
+          )}
         </div>
 
       </div>

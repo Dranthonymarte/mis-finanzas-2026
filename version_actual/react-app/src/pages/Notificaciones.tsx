@@ -4,9 +4,12 @@
 // ═══════════════════════════════════════════════════
 
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import AppHeader from '../components/shell/AppHeader'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
+import { useToastStore } from '../store/toast'
+import { useConfig } from '../hooks/useConfig'
 
 interface Notif {
   id:               string
@@ -236,7 +239,10 @@ function InlineEditForm({ notif, onSave, onCancel }: InlineFormProps) {
 }
 
 export default function Notificaciones() {
-  const userId = useAuthStore(s => s.userId)
+  const userId    = useAuthStore(s => s.userId)
+  const navigate  = useNavigate()
+  const addToast  = useToastStore(s => s.addToast)
+  const { config } = useConfig()
 
   const [notifs,  setNotifs]  = useState<Notif[]>([])
   const [loading, setLoading] = useState(true)
@@ -247,6 +253,7 @@ export default function Notificaciones() {
   // ── Channel toggles (from config_usuario) ──
   const [toggles,       setToggles]       = useState<NotifToggles>({ push_enabled: false, telegram_enabled: false, gcal_enabled: false, budget_push_enabled: false })
   const [savingToggle,  setSavingToggle]  = useState<string | null>(null)
+  const [gcalConnected, setGcalConnected] = useState<boolean>(false)
 
   // ── Inline edit: which notif id is expanded ──
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -278,7 +285,7 @@ export default function Notificaciones() {
 
       supabase
         .from('config_usuario')
-        .select('push_enabled,telegram_enabled,gcal_enabled,budget_push_enabled')
+        .select('push_enabled,telegram_enabled,gcal_enabled,budget_push_enabled,google_calendar_token')
         .eq('user_id', userId)
         .single(),
     ]).then(([notifsRes, togglesRes]) => {
@@ -290,6 +297,7 @@ export default function Notificaciones() {
           gcal_enabled:        togglesRes.data.gcal_enabled        ?? false,
           budget_push_enabled: togglesRes.data.budget_push_enabled ?? false,
         })
+        setGcalConnected(!!togglesRes.data.google_calendar_token)
       }
       setLoading(false)
     })
@@ -304,6 +312,11 @@ export default function Notificaciones() {
 
   async function saveToggle(field: keyof NotifToggles, value: boolean) {
     if (!userId) return
+    // Warn if enabling gcal without Calendar connected
+    if (field === 'gcal_enabled' && value && !gcalConnected) {
+      addToast('Google Calendar no conectado. Ve a Menú → Google Calendar para conectar tu cuenta.', 'warn')
+      // Navigate hint — still save the preference so user can set it up
+    }
     setSavingToggle(field)
     setToggles(prev => ({ ...prev, [field]: value }))
     await supabase
@@ -464,8 +477,45 @@ export default function Notificaciones() {
           <div style={{ textAlign: 'center', color: 'var(--fg-mute)', padding: '24px 0', fontSize: 13 }}>Cargando…</div>
         )}
 
-        {!loading && notifs.length === 0 && (
+        {!loading && notifs.length === 0 && config.recurrentes.length === 0 && (
           <div style={{ textAlign: 'center', color: 'var(--fg-mute)', padding: '24px 0', fontSize: 13 }}>Sin notificaciones programadas</div>
+        )}
+
+        {/* Recurrentes from config_usuario */}
+        {config.recurrentes.length > 0 && (
+          <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
+            {config.recurrentes.map((r, i) => (
+              <div
+                key={r.id}
+                style={{
+                  padding: '12px 14px',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  borderBottom: i < config.recurrentes.length - 1 ? '1px solid var(--line)' : 'none',
+                }}
+              >
+                <span style={{ fontSize: 18 }}>🔄</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {r.descripcion}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--fg-mute)', marginTop: 2 }}>
+                    {r.cat && <span>{r.cat} · </span>}
+                    {r.recurrencia_dias ? `Cada ${r.recurrencia_dias}d` : r.recDia ? `Día ${r.recDia} del mes` : 'Recurrente'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => void navigate('/recurrentes')}
+                  style={{
+                    padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                    background: 'var(--ink-3)', color: 'var(--fg-mute)', border: '1px solid var(--line)',
+                    cursor: 'pointer', flexShrink: 0,
+                  }}
+                >
+                  Ver
+                </button>
+              </div>
+            ))}
+          </div>
         )}
 
         {notifs.length > 0 && (

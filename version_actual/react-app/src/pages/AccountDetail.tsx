@@ -191,6 +191,8 @@ export default function AccountDetail() {
     setSavingBalance(false)
     setEditingBalance(false)
     setMovSum(null)  // force recalc
+    // Invalidar cache de cuentas para que la lista muestre el saldo actualizado al volver
+    try { Object.keys(localStorage).filter(k => k.startsWith('accts:')).forEach(k => localStorage.removeItem(k)) } catch { /* noop */ }
     window.location.reload()
   }
 

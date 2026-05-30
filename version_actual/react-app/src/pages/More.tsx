@@ -333,27 +333,6 @@ export default function More() {
           </RowGroup>
         )}
 
-        {/* ── Bloquear (candado local — solo si hay PIN configurado) ── */}
-        {hasPin() && (
-          <RowGroup>
-            <RowLink
-              icon={
-                <div style={{
-                  width: 28, height: 28, borderRadius: 8,
-                  background: 'rgba(255,255,255,.06)',
-                  display: 'grid', placeItems: 'center',
-                }}>
-                  <LockIcon />
-                </div>
-              }
-              iconBg="transparent"
-              label="Bloquear ahora"
-              sub="Pide huella o PIN sin cerrar sesión"
-              last
-              onClick={lock}
-            />
-          </RowGroup>
-        )}
 
         {/* ── Logout ── */}
         <RowGroup>

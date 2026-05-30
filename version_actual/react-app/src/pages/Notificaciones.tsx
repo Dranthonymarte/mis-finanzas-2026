@@ -23,9 +23,10 @@ interface Notif {
 }
 
 interface NotifToggles {
-  push_enabled:     boolean
-  telegram_enabled: boolean
-  gcal_enabled:     boolean
+  push_enabled:        boolean
+  telegram_enabled:    boolean
+  gcal_enabled:        boolean
+  budget_push_enabled: boolean
 }
 
 // Days of the week for recurring weekly notifications
@@ -244,7 +245,7 @@ export default function Notificaciones() {
   )
 
   // ── Channel toggles (from config_usuario) ──
-  const [toggles,       setToggles]       = useState<NotifToggles>({ push_enabled: false, telegram_enabled: false, gcal_enabled: false })
+  const [toggles,       setToggles]       = useState<NotifToggles>({ push_enabled: false, telegram_enabled: false, gcal_enabled: false, budget_push_enabled: false })
   const [savingToggle,  setSavingToggle]  = useState<string | null>(null)
 
   // ── Inline edit: which notif id is expanded ──
@@ -277,16 +278,17 @@ export default function Notificaciones() {
 
       supabase
         .from('config_usuario')
-        .select('push_enabled,telegram_enabled,gcal_enabled')
+        .select('push_enabled,telegram_enabled,gcal_enabled,budget_push_enabled')
         .eq('user_id', userId)
         .single(),
     ]).then(([notifsRes, togglesRes]) => {
       setNotifs((notifsRes.data ?? []) as Notif[])
       if (togglesRes.data) {
         setToggles({
-          push_enabled:     togglesRes.data.push_enabled     ?? false,
-          telegram_enabled: togglesRes.data.telegram_enabled ?? false,
-          gcal_enabled:     togglesRes.data.gcal_enabled     ?? false,
+          push_enabled:        togglesRes.data.push_enabled        ?? false,
+          telegram_enabled:    togglesRes.data.telegram_enabled    ?? false,
+          gcal_enabled:        togglesRes.data.gcal_enabled        ?? false,
+          budget_push_enabled: togglesRes.data.budget_push_enabled ?? false,
         })
       }
       setLoading(false)
@@ -424,6 +426,31 @@ export default function Notificaciones() {
             </div>
             <div style={{ opacity: savingToggle === 'gcal_enabled' ? 0.5 : 1, transition: 'opacity .15s' }}>
               <Toggle on={toggles.gcal_enabled} onChange={v => void saveToggle('gcal_enabled', v)} />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Alertas automáticas ── */}
+        <div style={{ fontSize: 12, color: 'var(--fg-mute)', letterSpacing: '.1em', textTransform: 'uppercase', marginTop: 4 }}>
+          Alertas automáticas
+        </div>
+        <div style={{ background: 'var(--ink-2)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden' }}>
+          <div style={{ padding: '13px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 20 }}>🎯</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600 }}>Presupuesto excedido</div>
+              <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginTop: 1 }}>
+                {toggles.push_enabled && permission === 'granted'
+                  ? 'Recibe un push cuando superes el límite de una categoría'
+                  : 'Requiere activar las notificaciones push'}
+              </div>
+            </div>
+            <div style={{ opacity: savingToggle === 'budget_push_enabled' ? 0.5 : 1, transition: 'opacity .15s' }}>
+              <Toggle
+                on={toggles.budget_push_enabled}
+                onChange={v => void saveToggle('budget_push_enabled', v)}
+                disabled={!(toggles.push_enabled && permission === 'granted')}
+              />
             </div>
           </div>
         </div>

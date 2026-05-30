@@ -125,9 +125,13 @@ export default function Login() {
     // Desbloquea antes del redirect OAuth — sessionStorage sobrevive el round-trip
     // same-origin, así no se pide PIN al volver de Google.
     useLockStore.getState().unlock()
+    // redirectTo = origin + '/' para coincidir EXACTO con manifest start_url/scope ('/').
+    // En móvil esto asegura que el callback reabra dentro del scope PWA (display
+    // standalone) y no en una pestaña suelta del navegador (que se ve "escritorio").
+    // El whitelisting del Site URL + Redirect URLs se configura en Supabase Dashboard.
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: window.location.origin + '/' },
     })
     if (err) { setError(err.message); setLoading(false) }
   }

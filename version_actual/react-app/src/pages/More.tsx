@@ -14,8 +14,6 @@ import {
   CalendarIcon, ShoppingIcon, UsersIcon, ScanIcon,
 } from '../components/icons/Icons'
 import { useAuthStore } from '../store/auth'
-import { useLockStore } from '../store/lock'
-import { hasPin }       from '../lib/pin'
 import { supabase }     from '../lib/supabase'
 import Sheet            from '../components/ui/Sheet'
 import { usePwaInstall } from '../hooks/usePwaInstall'
@@ -37,7 +35,6 @@ export default function More() {
   const logout          = useAuthStore(s => s.logout)
   const userName        = useAuthStore(s => s.userName)
   const userEmail       = useAuthStore(s => s.userEmail)
-  const lock            = useLockStore(s => s.lock)
   const [confirmLogout, setConfirmLogout] = useState(false)
   const { canInstall, install } = usePwaInstall()
 

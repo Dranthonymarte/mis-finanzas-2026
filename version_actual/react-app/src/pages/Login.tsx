@@ -77,6 +77,18 @@ export default function Login() {
     return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall)
   }, [])
 
+  // OAuth popup callback: si esta ventana es el popup de vuelta de Google → cerrar
+  useEffect(() => {
+    if (
+      window.opener &&
+      (window.location.hash.includes('access_token') ||
+       window.location.search.includes('code='))
+    ) {
+      const t = setTimeout(() => window.close(), 300)
+      return () => clearTimeout(t)
+    }
+  }, [])
+
   async function handleInstall() {
     if (!installPrompt) return
     await installPrompt.prompt()
@@ -122,18 +134,28 @@ export default function Login() {
   async function handleGoogleLogin() {
     setLoading(true)
     setError(null)
-    // Desbloquea antes del redirect OAuth — sessionStorage sobrevive el round-trip
-    // same-origin, así no se pide PIN al volver de Google.
     useLockStore.getState().unlock()
-    // redirectTo = origin + '/' para coincidir EXACTO con manifest start_url/scope ('/').
-    // En móvil esto asegura que el callback reabra dentro del scope PWA (display
-    // standalone) y no en una pestaña suelta del navegador (que se ve "escritorio").
-    // El whitelisting del Site URL + Redirect URLs se configura en Supabase Dashboard.
-    const { error: err } = await supabase.auth.signInWithOAuth({
+    // Popup de 500px (responsive CSS → layout mobile) — mismo patrón que Calendar.tsx.
+    // skipBrowserRedirect=true → obtenemos la URL sin redirigir la ventana principal.
+    // El popup procesa los tokens de Google y cierra; onAuthStateChange del parent detecta
+    // la sesión y navega automáticamente a home (RequireNoAuth redirect).
+    const { data, error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + '/' },
+      options: {
+        redirectTo: window.location.origin + '/login',
+        skipBrowserRedirect: true,
+      },
     })
-    if (err) { setError(err.message); setLoading(false) }
+    if (err) { setError(err.message); setLoading(false); return }
+    if (!data?.url) { setLoading(false); return }
+    const popup = window.open(data.url, 'mf-google-login', 'width=500,height=660,popup=1')
+    if (!popup) {
+      // Fallback si el popup está bloqueado (ej. PWA standalone sin popup support)
+      window.location.href = data.url
+      return
+    }
+    // Resetear loading cuando el popup se cierre (usuario lo canceló)
+    window.addEventListener('focus', () => setLoading(false), { once: true })
   }
 
   async function handleLogin(e: React.FormEvent) {

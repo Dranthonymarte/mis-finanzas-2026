@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { type CSSProperties } from 'react'
 import AppHeader from '../../components/shell/AppHeader'
+import CatIcon   from '../../components/ui/CatIcon'
 import { useConfig, type TipoConfig } from '../../hooks/useConfig'
 import { confirmAction } from '../../store/confirm'
 
@@ -111,11 +112,13 @@ export default function Tipos() {
           <div
             key={row.id}
             style={{
-              display: 'flex', alignItems: 'center', gap: 10,
+              display: 'flex', alignItems: 'center', gap: 12,
               background: 'var(--ink-2)', border: '1px solid var(--line)',
-              borderRadius: 14, padding: '12px 14px',
+              borderRadius: 14, padding: '13px 14px',
             }}
           >
+            {/* Chip de emoji — consistente con Categorías / Subcategorías */}
+            <CatIcon cat={row.nombre} size={36} />
             {/* Nombre */}
             <span style={{ flex: 1, fontSize: 14, fontWeight: 500 }}>
               {row.nombre}

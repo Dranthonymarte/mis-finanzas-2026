@@ -9,7 +9,6 @@ import { useFormat }   from '../hooks/useFormat'
 import { useConfig } from '../hooks/useConfig'
 import { supabase }     from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
-import ConfirmSheet from '../components/ui/ConfirmSheet'
 import { confirmAction } from '../store/confirm'
 
 interface SupaMovimiento {
@@ -93,7 +92,6 @@ export default function TxnDetail() {
   const [txn,           setTxn]           = useState<SupaMovimiento | null>(null)
   const [loadingTxn,    setLoadingTxn]    = useState(true)
   const [editMode,      setEditMode]      = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const [editDesc,   setEditDesc]   = useState('')
   const [editCat,    setEditCat]    = useState('')
@@ -203,6 +201,13 @@ export default function TxnDetail() {
   }
 
   async function handleDelete() {
+    if (!(await confirmAction({
+      title: '¿Eliminar movimiento?',
+      message: 'Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar',
+      cancelLabel: 'Cancelar',
+      danger: true,
+    }))) return
     const { error } = await supabase
       .from('movimientos')
       .update({ deleted_at: new Date().toISOString() })
@@ -255,7 +260,7 @@ export default function TxnDetail() {
             }}>
               <EditIcon />
             </button>
-            <button onClick={() => setConfirmDelete(true)} aria-label="Eliminar" style={{
+            <button onClick={handleDelete} aria-label="Eliminar" style={{
               width: 36, height: 36, borderRadius: 10,
               background: 'var(--ink-2)', border: '1px solid var(--line)',
               display: 'grid', placeItems: 'center', color: 'var(--neg)', cursor: 'pointer',
@@ -442,15 +447,6 @@ export default function TxnDetail() {
         <div style={{ height: 'calc(32px + env(safe-area-inset-bottom, 0px))' }} />
       </div>
 
-      <ConfirmSheet
-        open={confirmDelete && !editMode}
-        title="¿Eliminar este movimiento?"
-        message="Se archivará. No afecta el historial contable."
-        confirmLabel="Eliminar"
-        danger
-        onConfirm={handleDelete}
-        onCancel={() => setConfirmDelete(false)}
-      />
     </div>
   )
 }

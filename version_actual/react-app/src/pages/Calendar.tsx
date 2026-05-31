@@ -5,7 +5,7 @@
 // OAuth: google-oauth Edge Function
 // ═══════════════════════════════════════════════════
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import AppHeader from '../components/shell/AppHeader'
 import Pill from '../components/ui/Pill'
 import { supabase } from '../lib/supabase'
@@ -147,6 +147,16 @@ export default function Calendar() {
       setSyncing(false)
     }
   }
+
+  // ── Auto-sync recurrentes al conectar (transición no-conectado → conectado) ──
+  const prevConnected = useRef<boolean | null>(null)
+  useEffect(() => {
+    if (prevConnected.current === false && connected === true) {
+      void handleSync()   // recién conectado → empuja los recurrentes a Google Calendar
+    }
+    prevConnected.current = connected
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSync estable; solo reaccionamos a `connected`
+  }, [connected])
 
   // ── Connect Google ──
   async function handleConnect() {

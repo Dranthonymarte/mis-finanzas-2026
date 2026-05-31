@@ -4,12 +4,6 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  // mobile-uix.css uses `@media (...), body.is-mobile` mixed selectors which
-  // lightningcss (default Vite 8 CSS minifier) cannot parse. Disable CSS minification
-  // for the preview build — bundle size is acceptable for Checkpoint A.
-  build: {
-    cssMinify: false,
-  },
   plugins: [
     react(),
     VitePWA({

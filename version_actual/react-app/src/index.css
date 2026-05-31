@@ -31,10 +31,17 @@ body {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  max-width: 430px;       /* phone viewport cap */
+  max-width: 430px;       /* phone viewport cap (centra la app en desktop real) */
   margin: 0 auto;
   position: relative;
   overflow-x: hidden;
+}
+
+/* Dispositivos táctiles (incluye móviles forzados a "modo escritorio", cuyo
+   layout-viewport reporta >430px): la app debe llenar el ancho, no quedar como
+   una columna estrecha centrada. Desktop real (pointer: fine) conserva el cap. */
+@media (pointer: coarse) {
+  #root { max-width: 100%; }
 }
 
 /* ── Overflow guard — apply to scrollable page wrappers ── */

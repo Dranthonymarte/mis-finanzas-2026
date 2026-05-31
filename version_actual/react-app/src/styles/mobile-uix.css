@@ -6,7 +6,8 @@
    ╚══════════════════════════════════════════════════════════════════════╝
 
    REGLAS:
-   · Solo aplica en ≤ 819px o body.is-mobile
+   · Aplica en ≤ 819px, body.is-mobile, o cualquier dispositivo táctil
+     (pointer: coarse) — incluye móviles forzados a "modo escritorio"
    · NUNCA modificar tokens.css · styles.css · app-*.js
    · Todos los estilos van aquí — NO en shell/dashboard/pages.css
    · Markup fiel al JSX — clases m-* sin re-skin de legacy
@@ -169,7 +170,7 @@
 /* ══════════════════════════════════════════════════════════════════════
    §02  RESET + BASE MOBILE
    ══════════════════════════════════════════════════════════════════════ */
-@media (max-width: 819px) {
+@media (max-width: 819px), (pointer: coarse) {
   body, .main {
     overflow-x: hidden !important;
   }
@@ -197,7 +198,7 @@ body.is-mobile .main {
         Fuente: m-shell.jsx TabBar()
         grid 5-col · padding 8px 12px 22px · bg ink-1 · border-top line
    ══════════════════════════════════════════════════════════════════════ */
-@media (max-width: 819px) {
+@media (max-width: 819px), (pointer: coarse) {
   #pwa-nav {
     display: grid !important;
     grid-template-columns: repeat(5, 1fr) !important;
@@ -457,7 +458,7 @@ body.is-mobile #pwa-nav {
 }
 
 /* Upgrade: existing modal-overlays → Sheet anatomy on mobile */
-@media (max-width: 819px) {
+@media (max-width: 819px), (pointer: coarse) {
   .modal-overlay {
     align-items: flex-end !important;
     padding: 0 !important;
@@ -1087,7 +1088,7 @@ body.is-mobile .modal-overlay > .modal-box {
         summary: 3-col ink-2 radius 14 · chip: amber-d active
         groups: date header 10.5px muted uppercase
    ══════════════════════════════════════════════════════════════════════ */
-@media (max-width: 819px), body.is-mobile {
+@media (max-width: 819px), (pointer: coarse) {
   #screen-txn-panel {
     display: none;
     flex-direction: column;
@@ -1312,7 +1313,7 @@ body.is-mobile .modal-overlay > .modal-box {
 }
 
 /* Legacy wallet-card base (AccountCards before full rebuild) */
-@media (max-width: 819px) {
+@media (max-width: 819px), (pointer: coarse) {
   .wallet-card {
     background: var(--ink-2) !important;
     border: 1px solid var(--line) !important;
@@ -1458,7 +1459,7 @@ body.is-mobile .modal-overlay > .modal-box {
 }
 
 /* IA modal overrides on mobile */
-@media (max-width: 819px) {
+@media (max-width: 819px), (pointer: coarse) {
   #modal-ia > .modal {
     max-height: 92vh !important;
     padding: 0 !important;
@@ -1769,7 +1770,7 @@ body.is-mobile .modal-overlay > .modal-box {
         currency tabs: inline-flex · tab amber active
         save btn: amber gradient · radius 14 · 16px padding
    ══════════════════════════════════════════════════════════════════════ */
-@media (max-width: 819px) {
+@media (max-width: 819px), (pointer: coarse) {
   #modal-mov > .modal {
     overflow: hidden !important;
     padding: 0 !important;
@@ -1938,7 +1939,7 @@ body.is-mobile .modal-overlay > .modal-box {
    §22  SCREEN MÁS — Settings hub legacy
         Keeps .sett-* selectors used by the HTML
    ══════════════════════════════════════════════════════════════════════ */
-@media (max-width: 819px) {
+@media (max-width: 819px), (pointer: coarse) {
   .sett-header {
     display: flex;
     align-items: center;
@@ -2304,7 +2305,7 @@ body.is-mobile .modal-overlay > .modal-box {
         bg: ink-0 + radial blobs amber-d + teal
         card: ink-1 radius 24 24 0 0 · bottom sheet
    ══════════════════════════════════════════════════════════════════════ */
-@media (max-width: 819px) {
+@media (max-width: 819px), (pointer: coarse) {
   #login-screen {
     background: var(--ink-0) !important;
     padding: 0 !important;
@@ -2406,7 +2407,7 @@ body.is-mobile .modal-overlay > .modal-box {
 /* Las reglas en §03 tienen precedencia por estar más abajo que el legado */
 
 /* ── FIX 2: header legacy oculto en mobile ── */
-@media (max-width: 820px) {
+@media (max-width: 820px), (pointer: coarse) {
   .btn-header.mobile-sm { display: none !important; }
 }
 
@@ -2462,7 +2463,7 @@ body.is-mobile .modal-overlay > .modal-box {
 /* ── FIX 5: AccountCards base — ya cubierto en §16 ── */
 
 /* ── FIX 6: 390px overflow-x + touch targets mínimos ── */
-@media (max-width: 819px) {
+@media (max-width: 819px), (pointer: coarse) {
   body, .main { overflow-x: hidden !important; }
   button, [role="button"], a { touch-action: manipulation; }
   .m-row-link, .m-fab-action-btn, .m-tab, .m-fab-quick-btn {
@@ -2473,6 +2474,6 @@ body.is-mobile .modal-overlay > .modal-box {
 /* ── FIX 7: sett-lista header — ya cubierto en §22 ── */
 
 /* ── EXTRA: desktop-only elements ocultos en mobile ── */
-@media (max-width: 819px) {
+@media (max-width: 819px), (pointer: coarse) {
   .desktop-only { display: none !important; }
 }

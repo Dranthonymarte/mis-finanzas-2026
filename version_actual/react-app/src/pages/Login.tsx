@@ -77,18 +77,6 @@ export default function Login() {
     return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall)
   }, [])
 
-  // OAuth popup callback: si esta ventana es el popup de vuelta de Google → cerrar
-  useEffect(() => {
-    if (
-      window.opener &&
-      (window.location.hash.includes('access_token') ||
-       window.location.search.includes('code='))
-    ) {
-      const t = setTimeout(() => window.close(), 300)
-      return () => clearTimeout(t)
-    }
-  }, [])
-
   async function handleInstall() {
     if (!installPrompt) return
     await installPrompt.prompt()
@@ -135,36 +123,23 @@ export default function Login() {
     setLoading(true)
     setError(null)
     useLockStore.getState().unlock()
-    // OAuth: en PWA instalada (standalone) o móvil → redirect en la MISMA ventana.
-    // window.open en móvil abre una pestaña del navegador FUERA de la PWA (vista
-    // escritorio) y la sesión queda en el navegador, no en la app instalada. El
-    // redirect same-window vuelve a /login dentro de la PWA → detectSessionInUrl
-    // intercambia el code (PKCE verifier en el mismo localStorage) → RequireNoAuth
-    // navega a home. En desktop usamos popup (mejor UX, no pierde la pestaña).
-    const { data, error: err } = await supabase.auth.signInWithOAuth({
+    // OAuth Google: SIEMPRE redirect en la misma ventana (sin popup).
+    // El popup hacía que Google se mostrara en VERSIÓN ESCRITORIO cuando la
+    // detección de móvil por User-Agent fallaba (p.ej. Android Chrome en "modo
+    // escritorio", cuyo UA no contiene "Android" → caía en window.open). El
+    // redirect same-window conserva el UA real (Google se ve móvil en móvil),
+    // mantiene el PKCE verifier en el mismo localStorage y vuelve a /login dentro
+    // de la app → detectSessionInUrl intercambia el code → RequireNoAuth → home.
+    // Sin skipBrowserRedirect, Supabase navega el top frame directamente.
+    const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: window.location.origin + '/login',
-        skipBrowserRedirect: true,
+        queryParams: { prompt: 'select_account' },
       },
     })
-    if (err) { setError(err.message); setLoading(false); return }
-    if (!data?.url) { setLoading(false); return }
-    const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as unknown as { standalone?: boolean }).standalone === true
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-    if (isStandalone || isMobile) {
-      window.location.href = data.url   // mismo contexto → vuelve a la PWA
-      return
-    }
-    const popup = window.open(data.url, 'mf-google-login', 'width=500,height=660,popup=1')
-    if (!popup) {
-      window.location.href = data.url   // popup bloqueado → fallback redirect
-      return
-    }
-    // Resetear loading cuando el popup se cierre (usuario lo canceló)
-    window.addEventListener('focus', () => setLoading(false), { once: true })
+    if (err) { setError(err.message); setLoading(false) }
+    // sin error → el navegador ya está redirigiendo a Google (no resetear loading)
   }
 
   async function handleLogin(e: React.FormEvent) {

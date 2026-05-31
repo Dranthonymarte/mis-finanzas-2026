@@ -7,7 +7,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import AppHeader from '../components/shell/AppHeader'
-import Pill from '../components/ui/Pill'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/auth'
 import { useToastStore } from '../store/toast'
@@ -28,6 +27,8 @@ interface SyncResult {
   synced?:    number
   events?:    CalEvent[]
   connected?: boolean
+  errors?:    string[]
+  email?:     string
   error?:     string
 }
 
@@ -52,6 +53,8 @@ export default function Calendar() {
   const [lastSync,    setLastSync]    = useState<string | null>(null)
   const [syncing,     setSyncing]     = useState(false)
   const [checking,    setChecking]    = useState(true)
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [email,       setEmail]       = useState<string | null>(null)
 
   // ── Check connection status ──
   const checkStatus = useCallback(async () => {
@@ -73,6 +76,7 @@ export default function Calendar() {
       if (resp.ok) {
         const data = await resp.json() as SyncResult
         setConnected(data.connected ?? false)
+        setEmail(data.email ?? null)
         if (data.events) setEvents(data.events)
       } else {
         // 401/403 = not connected, other errors = unknown
@@ -139,8 +143,14 @@ export default function Calendar() {
 
       setLastSync(new Date().toISOString())
       if (data.events) setEvents(data.events)
-      addToast(`Sincronizado — ${data.synced ?? data.events?.length ?? 0} eventos`, 'info')
       setConnected(true)
+      const n = data.synced ?? data.events?.length ?? 0
+      if (data.errors && data.errors.length > 0) {
+        // Falla real de Google ya no es silenciosa — la mostramos
+        addToast(`${n} sincronizados · ${data.errors.length} con error: ${data.errors[0]}`, 'warn')
+      } else {
+        addToast(`Sincronizado — ${n} ${n === 1 ? 'recurrente' : 'recurrentes'}`, 'info')
+      }
     } catch {
       addToast('Error de red al sincronizar', 'error')
     } finally {
@@ -182,8 +192,41 @@ export default function Calendar() {
     }
   }
 
-  const connectionTone = connected === true ? 'pos' : connected === false ? 'neg' : 'mute'
-  const connectionLabel = connected === true ? 'Conectado' : connected === false ? 'No conectado' : 'Verificando…'
+  // ── Disconnect Google (toggle OFF) ──
+  async function handleDisconnect() {
+    if (disconnecting) return
+    if (!window.confirm('¿Desconectar Google Calendar? Tus gastos recurrentes dejarán de sincronizarse a tu calendario.')) return
+    setDisconnecting(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { addToast('Sesión expirada', 'error'); return }
+      const resp = await fetch(GCAL_SYNC_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'disconnect' }),
+      })
+      if (resp.ok) {
+        setConnected(false); setEvents([]); setLastSync(null); setEmail(null)
+        addToast('Google Calendar desconectado', 'info')
+      } else {
+        addToast('No se pudo desconectar', 'error')
+      }
+    } catch {
+      addToast('Error de red al desconectar', 'error')
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  // ── Toggle: ON conecta (OAuth) · OFF desconecta ──
+  function handleToggle() {
+    if (checking || disconnecting) return
+    if (connected === true) void handleDisconnect()
+    else void handleConnect()
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
@@ -228,10 +271,31 @@ export default function Calendar() {
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13.5, fontWeight: 600 }}>Google Calendar</div>
               <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', marginTop: 2 }}>
-                Sincroniza tus eventos con la app
+                Sincroniza tus gastos recurrentes a tu calendario
               </div>
             </div>
-            <Pill tone={connectionTone} size="xs">{connectionLabel}</Pill>
+            {/* Toggle conectar/desconectar */}
+            <button
+              role="switch"
+              aria-checked={connected === true}
+              aria-label={connected === true ? 'Desconectar Google Calendar' : 'Conectar Google Calendar'}
+              onClick={handleToggle}
+              disabled={checking || disconnecting}
+              style={{
+                position: 'relative', width: 46, height: 28, flexShrink: 0,
+                borderRadius: 999, border: 'none', padding: 0,
+                cursor: (checking || disconnecting) ? 'default' : 'pointer',
+                background: connected === true ? 'var(--pos)' : 'var(--line)',
+                opacity: (checking || disconnecting) ? 0.6 : 1,
+                transition: 'background .2s',
+              }}
+            >
+              <span style={{
+                position: 'absolute', top: 3, left: connected === true ? 21 : 3,
+                width: 22, height: 22, borderRadius: '50%', background: '#fff',
+                transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.3)',
+              }} />
+            </button>
           </div>
 
           {lastSync && (
@@ -262,7 +326,7 @@ export default function Calendar() {
               fontSize: 12, color: 'var(--fg-mute)',
             }}>
               <span style={{ color: 'var(--pos)' }}>●</span>
-              Cuenta conectada · los eventos se sincronizan automáticamente
+              {email ? `Conectado como ${email}` : 'Cuenta conectada'} · tus recurrentes se sincronizan automáticamente
             </div>
           ) : (
             <div style={{ fontSize: 12, color: 'var(--fg-mute)' }}>
@@ -281,7 +345,7 @@ export default function Calendar() {
               fontSize: 11, color: 'var(--fg-mute)', marginBottom: 14,
               letterSpacing: '.1em', textTransform: 'uppercase',
             }}>
-              Últimos eventos sincronizados
+              Recurrentes sincronizados a Google Calendar
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -307,7 +371,7 @@ export default function Calendar() {
             textAlign: 'center', color: 'var(--fg-mute)',
             fontSize: 13, padding: '24px 0',
           }}>
-            Sin eventos sincronizados aún.{' '}
+            Sin recurrentes sincronizados aún.{' '}
             <button
               onClick={() => void handleSync()}
               disabled={syncing}
@@ -323,8 +387,9 @@ export default function Calendar() {
 
         {/* ── Info ── */}
         <div style={{ fontSize: 11.5, color: 'var(--fg-mute)', padding: '0 4px', lineHeight: 1.5 }}>
-          Los eventos de Google Calendar se sincronizan con tu app para recordatorios
-          y análisis de tiempo. Los datos no se comparten con terceros.
+          Tus gastos recurrentes registrados se crean como eventos en tu Google Calendar,
+          con recordatorios automáticos el día anterior y el día del vencimiento.
+          Activa o desactiva la sincronización con el interruptor. Tus datos no se comparten con terceros.
         </div>
 
       </div>

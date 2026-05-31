@@ -3,7 +3,8 @@
 // Lista + crear + editar recurrentes con notificación
 // ═══════════════════════════════════════════════════
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import AppHeader from '../components/shell/AppHeader'
 import EmptyState from '../components/ui/EmptyState'
 import { useConfig } from '../hooks/useConfig'
@@ -67,6 +68,7 @@ export default function Recurrentes() {
   const { tasas }            = useTasas()
 
   const items = (config.recurrentes as RecurrenteItem[])
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [open,       setOpen]       = useState(false)
   const [editId,     setEditId]     = useState<string | null>(null)
@@ -105,6 +107,21 @@ export default function Recurrentes() {
   function openAdd() { resetForm(); setEditId(null); setOpen(true) }
 
   function openEdit(r: RecurrenteItem) { loadIntoForm(r); setEditId(r.id); setOpen(true) }
+
+  // Deep-link desde Notificaciones: /recurrentes?edit=<id> abre ese recurrente específico
+  const openedDeepLink = useRef(false)
+  useEffect(() => {
+    if (openedDeepLink.current) return
+    const editParam = searchParams.get('edit')
+    if (!editParam) return
+    const target = items.find(r => r.id === editParam)
+    if (target) {
+      openedDeepLink.current = true
+      openEdit(target)
+      setSearchParams({}, { replace: true })   // limpiar param para no reabrir
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- abrir una sola vez (guard por ref); openEdit estable
+  }, [items, searchParams])
 
   async function createNotif(r: RecurrenteItem) {
     if (!userId || !notifTg) return

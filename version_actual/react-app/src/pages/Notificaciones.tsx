@@ -213,7 +213,7 @@ export default function Notificaciones() {
                   </div>
                 </div>
                 <button
-                  onClick={() => void navigate('/recurrentes')}
+                  onClick={() => void navigate(`/recurrentes?edit=${r.id}`)}
                   style={{
                     padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
                     background: 'var(--ink-3)', color: 'var(--fg-mute)', border: '1px solid var(--line)',

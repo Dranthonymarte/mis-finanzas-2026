@@ -135,10 +135,12 @@ export default function Login() {
     setLoading(true)
     setError(null)
     useLockStore.getState().unlock()
-    // Popup de 500px (responsive CSS → layout mobile) — mismo patrón que Calendar.tsx.
-    // skipBrowserRedirect=true → obtenemos la URL sin redirigir la ventana principal.
-    // El popup procesa los tokens de Google y cierra; onAuthStateChange del parent detecta
-    // la sesión y navega automáticamente a home (RequireNoAuth redirect).
+    // OAuth: en PWA instalada (standalone) o móvil → redirect en la MISMA ventana.
+    // window.open en móvil abre una pestaña del navegador FUERA de la PWA (vista
+    // escritorio) y la sesión queda en el navegador, no en la app instalada. El
+    // redirect same-window vuelve a /login dentro de la PWA → detectSessionInUrl
+    // intercambia el code (PKCE verifier en el mismo localStorage) → RequireNoAuth
+    // navega a home. En desktop usamos popup (mejor UX, no pierde la pestaña).
     const { data, error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -148,10 +150,17 @@ export default function Login() {
     })
     if (err) { setError(err.message); setLoading(false); return }
     if (!data?.url) { setLoading(false); return }
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    if (isStandalone || isMobile) {
+      window.location.href = data.url   // mismo contexto → vuelve a la PWA
+      return
+    }
     const popup = window.open(data.url, 'mf-google-login', 'width=500,height=660,popup=1')
     if (!popup) {
-      // Fallback si el popup está bloqueado (ej. PWA standalone sin popup support)
-      window.location.href = data.url
+      window.location.href = data.url   // popup bloqueado → fallback redirect
       return
     }
     // Resetear loading cuando el popup se cierre (usuario lo canceló)
